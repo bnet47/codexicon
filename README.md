@@ -123,7 +123,7 @@ ownership. Do not deploy or accept risk on my behalf.
 | Assure | `$review`, `$review-creative`, `$architecture-review` | Actionable findings resolved and canonical checks passing |
 | Release | `$production-readiness`, then `$ship` | Readiness verdict plus only the authorized Git action |
 
-The [visual playbook](docs/repo-template-playbook.html) explains each stage, every repository skill, example prompts, context loading, safety boundaries, and conservative model floors.
+The [live visual playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html) explains each stage, every repository skill, example prompts, context loading, safety boundaries, and conservative model floors. Its standalone HTML source remains in `docs/repo-template-playbook.html` for local and offline use.
 
 ## Workflow map
 

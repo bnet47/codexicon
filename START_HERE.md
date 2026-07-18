@@ -2,7 +2,7 @@
 
 Codexicon begins deliberately unconfigured. The best results come from defining the project before selecting a stack, then asking Codex to build one small verified slice at a time.
 
-For a visual overview of the lifecycle, workflow routing, token model, and safety boundaries, open [the interactive template playbook](docs/repo-template-playbook.html).
+For a visual overview of the lifecycle, workflow routing, token model, and safety boundaries, open [the live interactive template playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html). The same guide is available locally at `docs/repo-template-playbook.html`.
 
 ## What you need
 
