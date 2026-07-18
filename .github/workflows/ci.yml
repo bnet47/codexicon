@@ -58,7 +58,7 @@ jobs:
           python-version: "3.13"
       - name: Canonical local security gate
         run: bash ./scripts/security.sh
-      - uses: trufflesecurity/trufflehog@17456f8c7d042d8c82c9a8ca9e937231f9f42e26 # v3.95.2
+      - uses: trufflesecurity/trufflehog@27b0417c16317ca9a472a9a8092acce143b49c55 # v3.95.9
         with:
-          version: 3.95.2
+          version: 3.95.9
           extra_args: --results=verified,unknown
