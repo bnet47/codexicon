@@ -1,0 +1,13 @@
+# Conservative project-scoped Codex defaults. Codex loads this layer only for
+# trusted projects. Model, personality, sandbox, and approval choices remain
+# user-controlled rather than being pinned by the template.
+project_root_markers = [".git", "AGENTS.md"]
+
+[features]
+hooks = true
+multi_agent = true
+
+[agents]
+# Enough parallelism for useful exploration without encouraging broad fan-out.
+max_threads = 4
+max_depth = 1

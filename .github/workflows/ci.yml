@@ -1,0 +1,64 @@
+name: Template CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Codex template
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Lint and structural checks (POSIX)
+        if: runner.os != 'Windows'
+        run: bash ./scripts/lint.sh
+      - name: Tests (POSIX)
+        if: runner.os != 'Windows'
+        run: bash ./scripts/test.sh
+      - name: Lint and structural checks (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/lint.ps1
+      - name: Tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/test.ps1
+
+  security:
+    name: Security gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+      - name: Canonical local security gate
+        run: bash ./scripts/security.sh
+      - uses: trufflesecurity/trufflehog@17456f8c7d042d8c82c9a8ca9e937231f9f42e26 # v3.95.2
+        with:
+          version: 3.95.2
+          extra_args: --results=verified,unknown

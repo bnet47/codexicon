@@ -1,0 +1,63 @@
+2.5.0
+
+Released: 2026-07-18
+
+## 2.5.0 — Codexicon public release
+
+- Named and documented the template as Codexicon with a newcomer-first public README and end-to-end sports-app example.
+- Added contribution, conduct, support, issue, ownership, and maintainer guidance for a healthy public repository.
+- Replaced generic license and disclosure identity with the public maintainer and GitHub private-reporting route.
+- Removed template-development task records and machine-specific validation paths from the distributable project memory.
+- Aligned the visual playbook and repository metadata with the Codexicon public identity.
+
+## 2.4.0 — Production-readiness hardening
+
+- Added a dependency-free local credential scan, opt-in Git gates, shipping enforcement, and matching CI security checks.
+- Expanded Codex credential protection to common user stores, environment enumeration, and secret-like variable reads; stale verification receipts are pruned.
+- Added a progressively disclosed production-readiness audit plus project security and operations evidence templates.
+- Expanded CI to the minimum/current supported Python versions on Linux and Windows, least-privilege checkout behavior, reviewed immutable action pins, and job timeouts.
+- Added a responsible disclosure policy and reproducible playbook-source validation.
+
+## 2.3.0 — Evidence-backed creative execution
+
+- Strengthened design work with brand-versus-product routing, physical-use context, explicit variance/motion/density decisions, shape-before-style, two-level reflex checks, and rendered iteration.
+- Added progressively disclosed interface craft, production hardening, copy and conversion, campaign, research, measurement, and cross-artifact review references.
+- Added an advisory deterministic interface scanner with tests for accessibility hazards and common generated-design signals; findings require contextual confirmation.
+- Hardened marketing with an evidence ledger, claim provenance, channel roles, experiment contracts, privacy boundaries, and activation authority.
+- Strengthened creative review with evidence packets, separate operational and craft passes, baseline comparison, and artifact-specific verification.
+
+## 2.2.0 — Customer-facing quality workflows
+
+- Added progressively disclosed design, marketing, and creative-review skills for customer-facing work.
+- Added visual verification, complete interaction-state, accessibility, evidence, brand-voice, and claim-integrity gates.
+- Routed app, website, campaign, launch, and anti-slop review requests without increasing ordinary engineering skill bodies.
+
+## 2.1.0 — Token-efficiency hardening
+
+- Reduced always-loaded `AGENTS.md` guidance and initial skill-catalog metadata without removing engineering boundaries.
+- Added opt-in `$concise` communication that preserves reasoning, code, verification, review, and safety detail.
+- Added context-budget reporting and regression limits to template validation.
+- Documented why the template avoids always-on prose compression, prompt compression, and lower verification limits.
+
+## 2.0.0 — Codex-first pivot
+
+- Made `AGENTS.md`, `.agents/skills/`, and `.codex/` the authoritative repository surfaces.
+- Replaced machine-specific shell hooks with a portable, tested Python hook and Windows command overrides.
+- Added session-isolated, lock-safe verification state and one-use success receipts that cannot confuse a failed check with a passing one.
+- Added native PowerShell lint/test entry points and a Linux/Windows CI matrix.
+- Added conservative project config and accurate project-scoped custom agents.
+- Reworked skills around Codex invocation, task-shaped delegation, explicit side-effect authority, and current session-state paths.
+- Removed duplicated Claude, Gemini, Cursor, and Antigravity compatibility layers.
+- Removed unused dual-language prompt loader scaffolding from the stack-agnostic template.
+- Added real template linting, tests, and fail-closed command stubs.
+- Pinned CI actions and the secret scanner to immutable revisions and scanner versions.
+- Added Codex setup documentation, an ADR template, and a Codex-first architecture decision.
+
+## Upgrading a 1.x template
+
+1. Preserve project content in `agent_docs/`, application code, and real scripts.
+2. Review and merge the new root `AGENTS.md`; do not overwrite project-specific commands or boundaries.
+3. Move the authoritative skill set to `.agents/skills/` and remove duplicates only after comparing local changes.
+4. Replace `.codex/hooks.json` and hook scripts, then review and trust them with `/hooks`.
+5. Add `.codex/config.toml` selectively; do not overwrite user or managed model and permission policy.
+6. Run the real project lint and tests after migration.

@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/bnet47/codexicon/security/advisories/new
+    about: Report vulnerabilities privately; do not open a public issue.
+  - name: Support guidance
+    url: https://github.com/bnet47/codexicon/blob/main/SUPPORT.md
+    about: Check setup, evidence, and safe reporting guidance first.
+

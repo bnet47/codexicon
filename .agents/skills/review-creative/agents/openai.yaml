@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Creative"
+  short_description: "Audit customer-facing work for quality and slop"
+  default_prompt: "Use $review-creative to audit this customer-facing work against its design, brand, and conversion goals."

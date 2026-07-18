@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Marketing"
+  short_description: "Create evidence-based marketing that converts"
+  default_prompt: "Use $create-marketing to create audience-specific marketing grounded in real product proof."

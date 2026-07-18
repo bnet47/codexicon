@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+set -eu
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+bash ./scripts/lint.sh
+bash ./scripts/test.sh
+bash ./scripts/security.sh

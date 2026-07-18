@@ -1,0 +1,5 @@
+interface:
+  display_name: "Production Readiness"
+  short_description: "Audit release safety before production launch"
+  default_prompt: "Use $production-readiness to audit this project or release before it reaches production."
+

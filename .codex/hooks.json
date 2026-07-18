@@ -1,0 +1,83 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/\".codex/hooks/codex_hook.py\" for r in (p,*p.parents) if (r/\".codex/hooks/codex_hook.py\").is_file()),None);assert s,\"Codex hook script not found\";sys.argv=[str(s),\"session-start\"];runpy.run_path(str(s),run_name=\"__main__\")'",
+            "commandWindows": "python -c \"import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/'.codex/hooks/codex_hook.py' for r in (p,*p.parents) if (r/'.codex/hooks/codex_hook.py').is_file()),None);assert s,'Codex hook script not found';sys.argv=[str(s),'session-start'];runpy.run_path(str(s),run_name='__main__')\"",
+            "timeout": 10,
+            "statusMessage": "Starting verification state"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$|^apply_patch$|^Read$|^read_file$|^read_text_file$|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/\".codex/hooks/codex_hook.py\" for r in (p,*p.parents) if (r/\".codex/hooks/codex_hook.py\").is_file()),None);assert s,\"Codex hook script not found\";sys.argv=[str(s),\"protect-secrets\"];runpy.run_path(str(s),run_name=\"__main__\")'",
+            "commandWindows": "python -c \"import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/'.codex/hooks/codex_hook.py' for r in (p,*p.parents) if (r/'.codex/hooks/codex_hook.py').is_file()),None);assert s,'Codex hook script not found';sys.argv=[str(s),'protect-secrets'];runpy.run_path(str(s),run_name='__main__')\"",
+            "timeout": 10,
+            "statusMessage": "Checking protected paths"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^apply_patch$|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/\".codex/hooks/codex_hook.py\" for r in (p,*p.parents) if (r/\".codex/hooks/codex_hook.py\").is_file()),None);assert s,\"Codex hook script not found\";sys.argv=[str(s),\"record-write\"];runpy.run_path(str(s),run_name=\"__main__\")'",
+            "commandWindows": "python -c \"import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/'.codex/hooks/codex_hook.py' for r in (p,*p.parents) if (r/'.codex/hooks/codex_hook.py').is_file()),None);assert s,'Codex hook script not found';sys.argv=[str(s),'record-write'];runpy.run_path(str(s),run_name='__main__')\"",
+            "timeout": 10,
+            "statusMessage": "Recording repository change"
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/\".codex/hooks/codex_hook.py\" for r in (p,*p.parents) if (r/\".codex/hooks/codex_hook.py\").is_file()),None);assert s,\"Codex hook script not found\";sys.argv=[str(s),\"record-shell\"];runpy.run_path(str(s),run_name=\"__main__\")'",
+            "commandWindows": "python -c \"import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/'.codex/hooks/codex_hook.py' for r in (p,*p.parents) if (r/'.codex/hooks/codex_hook.py').is_file()),None);assert s,'Codex hook script not found';sys.argv=[str(s),'record-shell'];runpy.run_path(str(s),run_name='__main__')\"",
+            "timeout": 10,
+            "statusMessage": "Recording verification evidence"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/\".codex/hooks/codex_hook.py\" for r in (p,*p.parents) if (r/\".codex/hooks/codex_hook.py\").is_file()),None);assert s,\"Codex hook script not found\";sys.argv=[str(s),\"record-compact\"];runpy.run_path(str(s),run_name=\"__main__\")'",
+            "commandWindows": "python -c \"import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/'.codex/hooks/codex_hook.py' for r in (p,*p.parents) if (r/'.codex/hooks/codex_hook.py').is_file()),None);assert s,'Codex hook script not found';sys.argv=[str(s),'record-compact'];runpy.run_path(str(s),run_name='__main__')\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/\".codex/hooks/codex_hook.py\" for r in (p,*p.parents) if (r/\".codex/hooks/codex_hook.py\").is_file()),None);assert s,\"Codex hook script not found\";sys.argv=[str(s),\"verify-stop\"];runpy.run_path(str(s),run_name=\"__main__\")'",
+            "commandWindows": "python -c \"import pathlib,runpy,sys;p=pathlib.Path.cwd().resolve();s=next((r/'.codex/hooks/codex_hook.py' for r in (p,*p.parents) if (r/'.codex/hooks/codex_hook.py').is_file()),None);assert s,'Codex hook script not found';sys.argv=[str(s),'verify-stop'];runpy.run_path(str(s),run_name='__main__')\"",
+            "timeout": 15,
+            "statusMessage": "Checking verification evidence"
+          }
+        ]
+      }
+    ]
+  }
+}

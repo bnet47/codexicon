@@ -1,0 +1,62 @@
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+secrets/
+*.secret
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+application_default_credentials.json
+.npmrc
+.pypirc
+.netrc
+.aws/
+.ssh/
+.kube/
+.docker/config.json
+.config/gh/hosts.yml
+.terraform.d/credentials.tfrc.json
+
+# Codex local state (kept outside protected .codex/ so sandboxed commands can update it)
+.codex-state/
+.codex/config.local.toml
+.codex-log/
+
+# Node
+node_modules/
+*.log
+.npm/
+dist/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Common framework output
+.next/
+.nuxt/
+out/
+.svelte-kit/
+.wrangler/
+
+# IDE and OS
+.vscode/settings.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Ephemeral task artifacts
+agent_docs/plans/task-*-brief.md
+agent_docs/plans/task-*-report.md
+TEMPLATE_FEEDBACK.md

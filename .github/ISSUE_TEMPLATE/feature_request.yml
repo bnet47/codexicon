@@ -1,0 +1,39 @@
+name: Feature request
+description: Propose a focused improvement to Codexicon
+title: "[Proposal]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What recurring project-start or Codex workflow problem needs solving?
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current workaround
+      description: How is the problem handled today, and where does that fail?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior, not a preferred implementation alone.
+    validations:
+      required: true
+  - type: textarea
+    id: cost
+    attributes:
+      label: Context and maintenance cost
+      description: Would this add always-loaded guidance, a skill, a dependency, or another public surface?
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Boundaries
+      options:
+        - label: This proposal does not require automatic Git, deployment, messaging, spend, or production side effects.
+          required: true
+

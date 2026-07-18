@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a reproducible problem in the Codexicon template
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Before continuing, remove credentials, environment dumps, private code, and customer data.
+  - type: input
+    id: version
+    attributes:
+      label: Codexicon version
+      description: Copy the version from TEMPLATE_VERSION.
+      placeholder: 2.5.0
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Python version, and Codex surface.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest safe sequence that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include only the decisive redacted error excerpt.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, private data, and sensitive logs.
+          required: true
+        - label: This is not a security vulnerability; security reports use SECURITY.md.
+          required: true
+

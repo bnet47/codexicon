@@ -1,0 +1,675 @@
+<div id="codex-template-playbook">
+  <style>
+    #codex-template-playbook {
+      display: grid;
+      gap: 2.5rem;
+      color: var(--foreground);
+    }
+
+    #codex-template-playbook .playbook-section {
+      display: grid;
+      gap: 1rem;
+    }
+
+    #codex-template-playbook .stage-content {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem 1.5rem;
+    }
+
+    #codex-template-playbook .stage-content > div {
+      min-width: 0;
+    }
+
+    #codex-template-playbook .stage-content p {
+      margin-bottom: 0;
+    }
+
+    #codex-template-playbook .route-list {
+      display: grid;
+    }
+
+    #codex-template-playbook .route-head,
+    #codex-template-playbook .route-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.9fr) minmax(0, 1.25fr);
+      gap: 1rem;
+      align-items: start;
+      padding: 0.8rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #codex-template-playbook .route-head {
+      color: var(--muted-foreground);
+    }
+
+    #codex-template-playbook .route-row code {
+      overflow-wrap: anywhere;
+    }
+
+    #codex-template-playbook .route-label {
+      display: none;
+      color: var(--muted-foreground);
+    }
+
+    #codex-template-playbook .context-stack {
+      display: grid;
+      gap: 0.55rem;
+    }
+
+    #codex-template-playbook .context-layer {
+      display: grid;
+      grid-template-columns: minmax(8rem, 0.8fr) minmax(0, 1.6fr);
+      gap: 1rem;
+      align-items: center;
+      padding: 0.9rem 1rem;
+      background: color-mix(in srgb, var(--layer-color) 13%, transparent);
+    }
+
+    #codex-template-playbook .context-layer:nth-child(1) {
+      margin-inline: 18%;
+      --layer-color: var(--viz-series-1);
+    }
+
+    #codex-template-playbook .context-layer:nth-child(2) {
+      margin-inline: 9%;
+      --layer-color: var(--viz-series-2);
+    }
+
+    #codex-template-playbook .context-layer:nth-child(3) {
+      --layer-color: var(--viz-series-3);
+    }
+
+    #codex-template-playbook .task-loop {
+      display: grid;
+      grid-template-columns: repeat(13, minmax(0, auto));
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    #codex-template-playbook .loop-node {
+      display: grid;
+      place-items: center;
+      min-height: 4rem;
+      padding: 0.55rem;
+      text-align: center;
+      background: color-mix(in srgb, var(--viz-series-1) 10%, transparent);
+      border-bottom: 2px solid var(--viz-series-1);
+    }
+
+    #codex-template-playbook .loop-arrow {
+      color: var(--muted-foreground);
+      text-align: center;
+    }
+
+    #codex-template-playbook .guardrails {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 1.5rem;
+    }
+
+    #codex-template-playbook .guardrail {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      padding: 0.9rem 0;
+      border-top: 1px solid var(--border);
+    }
+
+    #codex-template-playbook .guardrail svg {
+      flex: 0 0 auto;
+      color: var(--viz-series-1);
+    }
+
+    #codex-template-playbook .prompt-anatomy {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.6rem;
+    }
+
+    #codex-template-playbook .prompt-part {
+      min-width: 0;
+      padding: 0.8rem;
+      background: color-mix(in srgb, var(--muted) 70%, transparent);
+      border-top: 2px solid var(--viz-series-2);
+    }
+
+    @media (max-width: 560px) {
+      #codex-template-playbook .stage-content,
+      #codex-template-playbook .guardrails,
+      #codex-template-playbook .prompt-anatomy {
+        grid-template-columns: 1fr;
+      }
+
+      #codex-template-playbook .route-head {
+        display: none;
+      }
+
+      #codex-template-playbook .route-row {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+        padding: 1rem 0;
+      }
+
+      #codex-template-playbook .route-label {
+        display: inline;
+      }
+
+      #codex-template-playbook .context-layer,
+      #codex-template-playbook .context-layer:nth-child(1),
+      #codex-template-playbook .context-layer:nth-child(2) {
+        grid-template-columns: 1fr;
+        gap: 0.2rem;
+        margin-inline: 0;
+      }
+
+      #codex-template-playbook .task-loop {
+        grid-template-columns: 1fr;
+      }
+
+      #codex-template-playbook .loop-arrow {
+        transform: rotate(90deg);
+      }
+    }
+  </style>
+
+  <section class="playbook-section" aria-labelledby="lifecycle-heading">
+    <div>
+      <h2 id="lifecycle-heading">From intent to a verified project</h2>
+      <span class="viz-badge">Codexicon · Matchday sports app</span>
+      <p class="text-muted">Select a stage to see its contract.</p>
+    </div>
+
+    <div class="viz-controls" aria-label="Project lifecycle stages">
+      <button type="button" class="btn btn-primary" data-stage="discover" aria-pressed="true">1 · Discover</button>
+      <button type="button" class="btn" data-stage="init" aria-pressed="false">2 · Initialise</button>
+      <button type="button" class="btn" data-stage="build" aria-pressed="false">3 · Build</button>
+      <button type="button" class="btn" data-stage="creative" aria-pressed="false">4 · Experience</button>
+      <button type="button" class="btn" data-stage="assure" aria-pressed="false">5 · Assure</button>
+      <button type="button" class="btn" data-stage="ship" aria-pressed="false">6 · Ship</button>
+    </div>
+
+    <div class="card" aria-live="polite" aria-atomic="true">
+      <h3 id="stage-title">Discover the project</h3>
+      <div class="stage-content">
+        <div>
+          <span class="text-small text-muted">Purpose</span>
+          <p id="stage-purpose">Define the problem, user, observable outcome, constraints, and non-goals before choosing technology.</p>
+        </div>
+        <div>
+          <span class="text-small text-muted">Invoke</span>
+          <p><code id="stage-command">$discover</code></p>
+        </div>
+        <div>
+          <span class="text-small text-muted">Minimum configuration</span>
+          <p><strong id="stage-model">GPT-5.6 Sol · Medium</strong></p>
+        </div>
+        <div>
+          <span class="text-small text-muted">Raise reasoning when</span>
+          <p id="stage-model-note">Use High for regulated or unusually ambiguous products; use Extra High when a wrong charter would create major safety, compliance, or investment risk.</p>
+        </div>
+        <div>
+          <span class="text-small text-muted">Evidence to continue</span>
+          <p id="stage-evidence">An approved charter under agent_docs/briefs/.</p>
+        </div>
+        <div>
+          <span class="text-small text-muted">Avoid</span>
+          <p id="stage-avoid">Selecting a framework or database before the problem and constraints require one.</p>
+        </div>
+      </div>
+      <div>
+        <span class="text-small text-muted">Sports app prompt</span>
+        <p><code id="stage-example">$discover We want a mobile-first sports app for community football fans to follow fixtures, live scores, standings, and match alerts. Success means a fan can find today's match and understand its current state in under 10 seconds. Constraints: accessible web app, no betting features, no provider selected.</code></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>How to read the model floor</h3>
+      <p><strong>Reliability-first policy:</strong> each project gate uses <strong>GPT-5.6 Sol</strong>. <strong>Luna · Extra High</strong> may assist with narrow, reversible work after the requirements are fixed, but should not own a gate. Terra, GPT-5.5, and GPT-5.4 are not recommended by this playbook.</p>
+      <p class="text-small text-muted">This is a conservative workflow policy, not a claim that Terra is incapable. OpenAI positions Sol for complex reasoning and coding, Terra for balancing intelligence and cost, and Luna for cost-sensitive high-volume work; Luna roughly corresponds to the earlier nano tier. A model never replaces explicit done conditions, lint, tests, rendered inspection, or human approval. See the <a href="https://developers.openai.com/api/docs/models" target="_blank" rel="noreferrer">current model guide</a> and <a href="https://developers.openai.com/api/docs/models/gpt-5.6-luna" target="_blank" rel="noreferrer">Luna model card</a>.</p>
+    </div>
+
+    <div aria-labelledby="communication-economy-heading">
+      <h3 id="communication-economy-heading">Communication economy</h3>
+      <div class="stage-content">
+        <div>
+          <span class="text-small text-muted">Built into the template</span>
+          <p>Dense updates, targeted context, bounded logs, progressively loaded skills, and restrained delegation.</p>
+        </div>
+        <div>
+          <span class="text-small text-muted">Use <code>$concise</code></span>
+          <p>Request terse communication at any stage. Reasoning, exact code and errors, implementation, tests, review, and safety remain unchanged.</p>
+        </div>
+        <div>
+          <span class="text-small text-muted">What stays complete</span>
+          <p>Requirements, decisions, code, commands, errors, verification evidence, review findings, risks, and handoffs.</p>
+        </div>
+        <div>
+          <span class="text-small text-muted">Do not trade away</span>
+          <p>Reasoning effort, tool evidence, test depth, security detail, review quality, or useful development context.</p>
+        </div>
+      </div>
+      <p class="text-small text-muted">Communication compression and model reasoning are separate controls. The repository-native <code>$concise</code> skill changes output style only and loads when relevant.</p>
+    </div>
+  </section>
+
+  <section class="playbook-section" aria-labelledby="prompt-heading">
+    <h2 id="prompt-heading">Give Codex four pieces of task truth</h2>
+    <div class="prompt-anatomy" role="list" aria-label="Effective prompt structure">
+      <div class="prompt-part" role="listitem"><strong>Outcome</strong><br><span class="text-muted">Fans can follow a live match without refreshing.</span></div>
+      <div class="prompt-part" role="listitem"><strong>Done when</strong><br><span class="text-muted">Score, clock, incidents, loading, stale, and error states are tested.</span></div>
+      <div class="prompt-part" role="listitem"><strong>Constraints</strong><br><span class="text-muted">Mobile-first, keyboard accessible, existing API contract, no betting content.</span></div>
+      <div class="prompt-part" role="listitem"><strong>Authority</strong><br><span class="text-muted">Local code changes only; do not commit, deploy, or contact users.</span></div>
+    </div>
+  </section>
+
+  <section class="playbook-section" aria-labelledby="routing-heading">
+    <div>
+      <h2 id="routing-heading">Choose the smallest workflow that fits</h2>
+      <p class="text-muted">More ceremony only when uncertainty or reversibility requires it.</p>
+    </div>
+    <div class="route-list" role="table" aria-label="Workflow routing guide">
+      <div class="route-head" role="row">
+        <span role="columnheader">Signal</span>
+        <span role="columnheader">Route</span>
+        <span role="columnheader">Result</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>Clear, small change</span>
+        <code role="cell">$quick</code>
+        <span role="cell"><span class="route-label">Result · </span>Small complete implementation with focused verification</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>Feature behaviour is genuinely unclear</span>
+        <code role="cell">$brainstorm</code>
+        <span role="cell"><span class="route-label">Result · </span>Approved behaviour before implementation</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>Precise durable requirement</span>
+        <code role="cell">$spec → $write-plan</code>
+        <span role="cell"><span class="route-label">Result · </span>Executable contract; plan only when dependencies justify it</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>Approved independent work packages</span>
+        <code role="cell">$execute-plan</code>
+        <span role="cell"><span class="route-label">Result · </span>Bounded execution with integrated verification</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>Unknown cause or costly technical choice</span>
+        <code role="cell">$investigate / $architecture-review</code>
+        <span role="cell"><span class="route-label">Result · </span>Root cause or explicit reversible decision</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>Customer-facing design or marketing</span>
+        <code role="cell">$design-experience / $create-marketing</code>
+        <span role="cell"><span class="route-label">Result · </span>Rendered, evidence-backed work followed by <code>$review-creative</code></span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>First launch or major production change</span>
+        <code role="cell">$production-readiness</code>
+        <span role="cell"><span class="route-label">Result · </span>Evidence-backed READY, ACCEPTED RISK, or NOT READY decision before shipping</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="playbook-section" aria-labelledby="skills-heading">
+    <div>
+      <h2 id="skills-heading">Explore every repository skill</h2>
+      <p class="text-muted">Choose by the shape of the work, not by how important it feels.</p>
+    </div>
+    <label class="form-label" for="skill-select">Skill</label>
+    <select id="skill-select" class="form-select">
+      <optgroup label="Project start">
+        <option value="discover">$discover</option>
+        <option value="init">$init</option>
+      </optgroup>
+      <optgroup label="Define and plan">
+        <option value="brainstorm">$brainstorm</option>
+        <option value="spec">$spec</option>
+        <option value="write-plan">$write-plan</option>
+      </optgroup>
+      <optgroup label="Implement">
+        <option value="quick">$quick</option>
+        <option value="execute-plan">$execute-plan</option>
+      </optgroup>
+      <optgroup label="Customer experience">
+        <option value="design-experience">$design-experience</option>
+        <option value="create-marketing">$create-marketing</option>
+        <option value="review-creative">$review-creative</option>
+      </optgroup>
+      <optgroup label="Diagnose and decide">
+        <option value="investigate">$investigate</option>
+        <option value="architecture-review">$architecture-review</option>
+        <option value="retro">$retro</option>
+      </optgroup>
+      <optgroup label="Review and ship">
+        <option value="review">$review</option>
+        <option value="production-readiness">$production-readiness</option>
+        <option value="ship">$ship</option>
+        <option value="conventional-commit">$conventional-commit</option>
+      </optgroup>
+      <optgroup label="Communication and continuity">
+        <option value="concise">$concise</option>
+        <option value="context-dump">$context-dump</option>
+      </optgroup>
+    </select>
+
+    <div class="card" aria-live="polite" aria-atomic="true">
+      <h3><code id="skill-title">$discover</code></h3>
+      <div class="stage-content">
+        <div>
+          <span class="text-small text-muted">Use when</span>
+          <p id="skill-when">The copied template has no approved product definition and technical choices should wait.</p>
+        </div>
+        <div>
+          <span class="text-small text-muted">Produces</span>
+          <p id="skill-produces">An approved charter covering the problem, user, outcome, constraints, evidence, and non-goals.</p>
+        </div>
+        <div>
+          <span class="text-small text-muted">Usually followed by</span>
+          <p><code id="skill-next">$init</code></p>
+        </div>
+        <div>
+          <span class="text-small text-muted">Sports app prompt</span>
+          <p><code id="skill-prompt">$discover Define Matchday, a community football app for fixtures, live scores, standings, and match alerts. Clarify the users, observable success, data constraints, accessibility needs, and non-goals before choosing a stack.</code></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="playbook-section" aria-labelledby="loop-heading">
+    <h2 id="loop-heading">After setup, repeat one disciplined loop</h2>
+    <div class="task-loop" aria-label="Feature delivery loop">
+      <div class="loop-node">Outcome</div><div class="loop-arrow" aria-hidden="true">→</div>
+      <div class="loop-node">Smallest skill</div><div class="loop-arrow" aria-hidden="true">→</div>
+      <div class="loop-node">Inspect</div><div class="loop-arrow" aria-hidden="true">→</div>
+      <div class="loop-node">Change</div><div class="loop-arrow" aria-hidden="true">→</div>
+      <div class="loop-node">Focused check</div><div class="loop-arrow" aria-hidden="true">→</div>
+      <div class="loop-node">Full verify</div><div class="loop-arrow" aria-hidden="true">→</div>
+      <div class="loop-node">Report</div>
+    </div>
+  </section>
+
+  <section class="playbook-section" aria-labelledby="context-heading">
+    <div>
+      <h2 id="context-heading">Context expands only when the task needs it</h2>
+      <p class="text-muted">The template keeps ordinary work lean without weakening engineering checks.</p>
+    </div>
+    <div class="context-stack" role="list" aria-label="Progressive context layers">
+      <div class="context-layer" role="listitem">
+        <strong>Always loaded</strong>
+        <span><code>AGENTS.md</code> + skill metadata · kept below the enforced repository context budget</span>
+      </div>
+      <div class="context-layer" role="listitem">
+        <strong>Loaded on demand</strong>
+        <span>One relevant <code>SKILL.md</code> and only the reference it routes to</span>
+      </div>
+      <div class="context-layer" role="listitem">
+        <strong>Task-local evidence</strong>
+        <span>Targeted source, rendered output, focused logs, and <code>scripts/lint.sh</code>, <code>scripts/test.sh</code>, <code>scripts/security.sh</code></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="playbook-section" aria-labelledby="boundaries-heading">
+    <h2 id="boundaries-heading">Durable boundaries stay explicit</h2>
+    <div class="guardrails">
+      <div class="guardrail"><i data-lucide="key-round" aria-hidden="true"></i><span><strong>Credentials stay out</strong><br><span class="text-muted">Protected stores and environment dumps are blocked; local, Git, and CI scans reveal only safe locations.</span></span></div>
+      <div class="guardrail"><i data-lucide="git-branch" aria-hidden="true"></i><span><strong>Git authority is granular</strong><br><span class="text-muted">Commit, push, and pull request actions must be explicitly requested.</span></span></div>
+      <div class="guardrail"><i data-lucide="shield-check" aria-hidden="true"></i><span><strong>Verification is proportional</strong><br><span class="text-muted">Focused checks first; lint, tests, and security before publication; readiness evidence before production.</span></span></div>
+      <div class="guardrail"><i data-lucide="radio-tower" aria-hidden="true"></i><span><strong>External effects are separate</strong><br><span class="text-muted">Publishing, deployment, production changes, spend, and messages need their own authority.</span></span></div>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      const root = document.getElementById('codex-template-playbook');
+      const stages = {
+        discover: {
+          title: 'Discover the project',
+          purpose: 'Define the problem, user, observable outcome, constraints, and non-goals before choosing technology.',
+          command: '$discover',
+          model: 'GPT-5.6 Sol · Medium',
+          modelNote: 'Use High for regulated or unusually ambiguous products; use Extra High when a wrong charter would create major safety, compliance, or investment risk.',
+          evidence: 'An approved charter under agent_docs/briefs/.',
+          avoid: 'Selecting a framework or database before the problem and constraints require one.',
+          example: '$discover We want a mobile-first sports app for community football fans to follow fixtures, live scores, standings, and match alerts. Success means a fan can find today\'s match and understand its current state in under 10 seconds. Constraints: accessible web app, no betting features, no provider selected.'
+        },
+        init: {
+          title: 'Initialise the real environment',
+          purpose: 'Choose the smallest suitable stack and replace every template stub with real setup, development, lint, test, security, Git-gate, and CI commands.',
+          command: '$init',
+          model: 'GPT-5.6 Sol · Medium',
+          modelNote: 'Use High for unfamiliar stacks or complex infrastructure; use Extra High for security, compliance, migration, or production-critical setup.',
+          evidence: 'Project identity, security and operations boundaries are filled; real commands, Git gates, CI, and supported platforms are verified.',
+          avoid: 'Adding providers, dependencies, databases, or deployment services before the charter requires them.',
+          example: '$init Configure Matchday from the approved charter. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting unless requested.'
+        },
+        build: {
+          title: 'Build the first useful slice',
+          purpose: 'Deliver the smallest complete behaviour that proves value, using the least ceremonial workflow that fits.',
+          command: '$quick · $brainstorm · $spec · $execute-plan',
+          model: 'GPT-5.6 Sol · Low',
+          modelNote: 'Use Medium for normal multi-file features, High for architecture or long-context work, and Extra High for security, data integrity, or expensive failure modes.',
+          evidence: 'Observable behaviour, focused tests, canonical lint and tests, and a concise report of residual gaps.',
+          avoid: 'Large scaffolds, speculative abstractions, unrelated cleanup, or plans for a clear one-file change.',
+          example: '$quick Add the Matchday fixture list using the existing API client. Done when upcoming matches show competition, teams, kickoff in the user\'s timezone, loading, empty, and error states, with focused tests and full repository checks.'
+        },
+        creative: {
+          title: 'Strengthen the customer experience',
+          purpose: 'Shape interfaces or marketing from real users, brand context, product truth, reachable states, and approved evidence.',
+          command: '$design-experience · $create-marketing',
+          model: 'GPT-5.6 Sol · Medium',
+          modelNote: 'Use High for a new visual system, complex interaction, or important campaign; use Extra High when trust, accessibility, or brand damage would be costly.',
+          evidence: 'Rendered output, complete states, accessible behaviour, sourced claims, channel fit, and explicit unknowns.',
+          avoid: 'Generic visual systems, fake metrics or proof, decorative dashboards, unsupported claims, and unverified polish.',
+          example: '$design-experience Design Matchday\'s live match centre for fans checking a phone in a noisy stadium. Preserve the current identity, shape the score, clock, incidents, lineups, loading, stale, offline, and final states, then verify rendered mobile and desktop output.'
+        },
+        assure: {
+          title: 'Assure correctness and quality',
+          purpose: 'Review the work against its request, engineering contract, customer task, brand, accessibility, truth, and release risk.',
+          command: '$review · $review-creative',
+          model: 'GPT-5.6 Sol · High',
+          modelNote: 'Use Extra High for security, privacy, payments, migrations, destructive operations, or release-blocking reviews. Do not use a weaker reviewer than the builder.',
+          evidence: 'No unresolved release blockers; verification gaps are visible; lint and the full test suite pass when applicable.',
+          avoid: 'Reviewing only source when rendered behaviour matters, cosmetic scoring, or manufacturing findings.',
+          example: '$review-creative Audit Matchday\'s rendered live match centre for comprehension, responsive behaviour, keyboard access, contrast, stale-score trust, generic sports-app patterns, and fabricated data. Report findings only; do not edit.'
+        },
+        ship: {
+          title: 'Prove readiness, then ship only what was authorised',
+          purpose: 'Run the production gate when applicable, then perform only the explicitly requested Git action. Deployment and external writes remain separate decisions.',
+          command: '$production-readiness (launch) · $ship',
+          model: 'GPT-5.6 Sol · Low for Git / High for production',
+          modelNote: 'Use Medium for a large final diff. Use High for the production gate and Extra High for security, privacy, payments, migrations, destructive operations, or hard-to-reverse releases.',
+          evidence: 'Security, lint, and tests pass; launch evidence is READY or explicitly accepted; only the requested Git action is completed.',
+          avoid: 'Inferring publication, pushing to main, deploying, or sending external messages from a vague request to finish.',
+          example: '$ship Verify the Matchday fixture and live-score work, create a local commit with an appropriate message, and stop. Do not push, open a pull request, deploy, or message anyone.'
+        }
+      };
+
+      const skillDetails = {
+        discover: {
+          title: '$discover',
+          when: 'The copied template has no approved product definition and technical choices should wait.',
+          produces: 'An approved charter covering the problem, user, outcome, constraints, evidence, and non-goals.',
+          next: '$init',
+          prompt: '$discover Define Matchday, a community football app for fixtures, live scores, standings, and match alerts. Clarify the users, observable success, data constraints, accessibility needs, and non-goals before choosing a stack.'
+        },
+        init: {
+          title: '$init',
+          when: 'A charter is approved and the unconfigured template must become a working project.',
+          produces: 'The smallest suitable stack, project identity, real source/test structure, commands, CI, and verified local setup.',
+          next: '$quick or the workflow that fits the first slice',
+          prompt: '$init Configure Matchday from the approved charter. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting unless requested.'
+        },
+        brainstorm: {
+          title: '$brainstorm',
+          when: 'Feature behaviour or approach is genuinely unclear and different choices would change the product.',
+          produces: 'Resolved alternatives and an approved behavioural specification; no premature implementation.',
+          next: '$spec or $write-plan when implementation is non-trivial',
+          prompt: '$brainstorm Decide how Matchday fans subscribe to goal, halftime, and final-score alerts. Resolve team versus match subscriptions, quiet hours, duplicate alerts, permissions, and cancellation before implementation.'
+        },
+        spec: {
+          title: '$spec',
+          when: 'The request is precise but needs a durable executable contract before code changes.',
+          produces: 'Scope, behaviour, states, edge cases, acceptance criteria, and verification requirements.',
+          next: '$quick or $write-plan',
+          prompt: '$spec Specify Matchday offline score handling. Define freshness indicators, cached data, reconnect behaviour, incident ordering, accessibility announcements, analytics boundaries, and acceptance tests.'
+        },
+        'write-plan': {
+          title: '$write-plan',
+          when: 'An approved spec spans dependent tasks, files, or verification stages that benefit from sequencing.',
+          produces: 'Dependency-aware tasks with file scopes, acceptance mapping, and verification for each step.',
+          next: '$execute-plan',
+          prompt: '$write-plan Turn the approved Matchday live-match specification into tasks for API streaming, state management, match UI, accessibility, tests, and browser verification. Map every acceptance criterion to a task and check.'
+        },
+        quick: {
+          title: '$quick',
+          when: 'A clear change affects roughly one to three files and requires no design, dependency, schema, or architecture decision.',
+          produces: 'The smallest complete implementation with focused checks and canonical repository verification.',
+          next: '$review when risk warrants it',
+          prompt: '$quick Add the Matchday fixture timezone label using the existing date utility. Done when kickoff shows the viewer timezone, handles missing timezone data, has focused tests, and full lint/tests pass.'
+        },
+        'execute-plan': {
+          title: '$execute-plan',
+          when: 'An approved plan contains independent implementation work that can be delegated without losing integration control.',
+          produces: 'Integrated implementation of the approved tasks with bounded delegation and final verification.',
+          next: '$review',
+          prompt: '$execute-plan Implement the approved Matchday standings and team-page plan. Delegate only independent tasks, preserve unrelated work, integrate centrally, and run every acceptance check in the plan.'
+        },
+        'design-experience': {
+          title: '$design-experience',
+          when: 'An app or website needs intentional UI/UX, responsive states, accessibility, a visual system, redesign, or frontend polish.',
+          produces: 'A shaped, distinctive, production-grade experience verified in rendered and operational states.',
+          next: '$review-creative',
+          prompt: '$design-experience Design Matchday\'s live match centre for fans checking a phone in a noisy stadium. Preserve the current identity, shape score, clock, incidents, lineups, loading, stale, offline, and final states, then verify mobile and desktop output.'
+        },
+        'create-marketing': {
+          title: '$create-marketing',
+          when: 'Positioning, conversion copy, a campaign, launch, channel adaptation, or measurement needs evidence-backed execution.',
+          produces: 'Channel-native assets plus an evidence ledger, assumptions, approvals, and measurement contract.',
+          next: '$review-creative before publication',
+          prompt: '$create-marketing Create Matchday launch copy for match alerts: one landing-page section and one email. Use only verified product behaviour, label unknown notification coverage, define measurement, and do not publish or send.'
+        },
+        'review-creative': {
+          title: '$review-creative',
+          when: 'Customer-facing design, marketing, documents, presentations, or visuals need an independent anti-slop quality gate.',
+          produces: 'Prioritised evidence-based findings, verification gaps, and a READY or NEEDS WORK verdict; no edits.',
+          next: 'Fix confirmed findings, rerender, then review again',
+          prompt: '$review-creative Audit Matchday\'s rendered live match centre and launch page for comprehension, accessibility, stale-score trust, brand fit, unsupported claims, and generic sports-app patterns. Report findings only.'
+        },
+        investigate: {
+          title: '$investigate',
+          when: 'A reproducible failure or unexplained behaviour has an unknown cause.',
+          produces: 'A root-cause diagnosis with evidence and the smallest credible fix direction; diagnosis only unless a fix is requested.',
+          next: '$quick or $spec after the cause is known',
+          prompt: '$investigate Matchday displays the same goal twice after reconnecting to live updates. Reproduce it, trace event identity and reconnect state, identify the root cause, and do not implement a fix yet.'
+        },
+        'architecture-review': {
+          title: '$architecture-review',
+          when: 'A framework, database, integration, ownership boundary, or other expensive-to-reverse choice needs evaluation.',
+          produces: 'A recommendation with trade-offs, reversibility, evidence, and an ADR only when authorised.',
+          next: '$spec or an authorised ADR',
+          prompt: '$architecture-review Evaluate Server-Sent Events versus WebSockets for Matchday live scores across mobile networks. Compare reliability, scale, hosting, recovery, testing, and operational cost. Do not record an ADR unless I approve the decision.'
+        },
+        retro: {
+          title: '$retro',
+          when: 'A milestone, repeated blockage, scope drift, or invalid plan requires reassessing direction rather than debugging one defect.',
+          produces: 'A continue, stop, or pivot recommendation with evidence and concrete next action.',
+          next: 'Continue, re-specify, or stop based on the decision',
+          prompt: '$retro Matchday has completed two milestones but live-data integration keeps expanding scope and delaying fan-visible value. Assess whether to continue, narrow to scheduled scores, or pivot the delivery sequence.'
+        },
+        review: {
+          title: '$review',
+          when: 'A diff needs a read-only correctness, security, regression, scope, and test review against its request or spec.',
+          produces: 'Prioritised actionable findings and verification gaps; no modifications.',
+          next: 'Fix findings, verify, then $ship if authorised',
+          prompt: '$review Review the Matchday match-reminder diff against its approved spec. Focus on duplicate scheduling, timezone changes, opt-out behaviour, privacy, regressions, and missing tests. Do not edit.'
+        },
+        'production-readiness': {
+          title: '$production-readiness',
+          when: 'A first launch or major production change needs evidence across security, data, recovery, observability, capacity, abuse resistance, and rollback.',
+          produces: 'Prioritised gaps plus a READY, READY WITH ACCEPTED RISK, or NOT READY verdict; no deployment or risk acceptance.',
+          next: 'Close blockers, rerun the gate, then $ship under explicit Git authority',
+          prompt: '$production-readiness Audit Matchday before launch. Verify account and club-admin authorization, live-score provider failure, notification abuse and rate limits, privacy and retention, dependency risk, observability, capacity, backups and restore evidence, migration order, rollback, incident ownership, and canonical security/lint/tests. Do not deploy or accept risk for me.'
+        },
+        ship: {
+          title: '$ship',
+          when: 'The user explicitly requests a commit, push, or draft pull request after the work is ready.',
+          produces: 'Security/lint/test verified changes and only the authorised Git action; never an inferred deployment.',
+          next: 'Deployment only under separate explicit authority',
+          prompt: '$ship Verify the Matchday fixture and live-score work, create a local commit with an appropriate message, and stop. Do not push, open a pull request, deploy, or message anyone.'
+        },
+        'conventional-commit': {
+          title: '$conventional-commit',
+          when: 'A Conventional Commit message is requested without authorising any Git operation.',
+          produces: 'A correctly scoped commit subject and optional body; no commit is created.',
+          next: '$ship only if a Git action is explicitly requested',
+          prompt: '$conventional-commit Draft a commit message for replacing Matchday score polling with reconnect-safe event streaming and adding duplicate-event tests. Do not run Git.'
+        },
+        concise: {
+          title: '$concise',
+          when: 'The user wants shorter progress updates and answers without reducing implementation, reasoning, safety, or verification quality.',
+          produces: 'Dense communication with exact technical evidence preserved.',
+          next: 'Use alongside the task-specific skill',
+          prompt: '$concise Keep updates terse while adding the Matchday competition filter. Preserve exact code, errors, decisions, and test results; do not reduce engineering checks.'
+        },
+        'context-dump': {
+          title: '$context-dump',
+          when: 'A human-readable handoff is requested or a complex session must continue cleanly elsewhere; not for routine completion.',
+          produces: 'A concise checkpoint containing objective, decisions, changed files, verification, open risks, and next action.',
+          next: 'Resume from the checkpoint in a fresh task',
+          prompt: '$context-dump Save a handoff for Matchday\'s live match centre: current objective, approved behaviour, architecture decisions, changed files, test status, unresolved reconnect issue, and the exact next step.'
+        }
+      };
+
+      const title = root.querySelector('#stage-title');
+      const purpose = root.querySelector('#stage-purpose');
+      const command = root.querySelector('#stage-command');
+      const model = root.querySelector('#stage-model');
+      const modelNote = root.querySelector('#stage-model-note');
+      const evidence = root.querySelector('#stage-evidence');
+      const avoid = root.querySelector('#stage-avoid');
+      const stageExample = root.querySelector('#stage-example');
+      const buttons = [...root.querySelectorAll('[data-stage]')];
+      const skillSelect = root.querySelector('#skill-select');
+      const skillTitle = root.querySelector('#skill-title');
+      const skillWhen = root.querySelector('#skill-when');
+      const skillProduces = root.querySelector('#skill-produces');
+      const skillNext = root.querySelector('#skill-next');
+      const skillPrompt = root.querySelector('#skill-prompt');
+
+      const selectStage = (key) => {
+        const stage = stages[key];
+        title.textContent = stage.title;
+        purpose.textContent = stage.purpose;
+        command.textContent = stage.command;
+        model.textContent = stage.model;
+        modelNote.textContent = stage.modelNote;
+        evidence.textContent = stage.evidence;
+        avoid.textContent = stage.avoid;
+        stageExample.textContent = stage.example;
+        buttons.forEach((button) => {
+          const selected = button.dataset.stage === key;
+          button.setAttribute('aria-pressed', String(selected));
+          button.classList.toggle('btn-primary', selected);
+        });
+      };
+
+      const selectSkill = (key) => {
+        const skill = skillDetails[key];
+        skillTitle.textContent = skill.title;
+        skillWhen.textContent = skill.when;
+        skillProduces.textContent = skill.produces;
+        skillNext.textContent = skill.next;
+        skillPrompt.textContent = skill.prompt;
+      };
+
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => selectStage(button.dataset.stage));
+      });
+
+      skillSelect.addEventListener('change', () => selectSkill(skillSelect.value));
+    })();
+  </script>
+</div>

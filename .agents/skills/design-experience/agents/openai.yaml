@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Experience"
+  short_description: "Create distinctive, production-grade interfaces"
+  default_prompt: "Use $design-experience to design and implement a distinctive, production-grade customer experience."
