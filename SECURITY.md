@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Codexicon is a project template. Security fixes are applied to the latest template release; projects created from an earlier release must review and port relevant fixes because generated projects are not updated automatically.
+Codexicon never updates consuming repositories automatically. Security fixes are applied to the latest template release. An adopted repository can inspect a trusted local release with `python scripts/codexicon.py update --source SOURCE` and explicitly apply baseline-unchanged harness files; conflicts and project-owned files still require deliberate review. Repositories without an adoption lock must review and port relevant fixes manually.
 
 ## Report a vulnerability
 

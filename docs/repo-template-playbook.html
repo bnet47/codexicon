@@ -923,6 +923,24 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
   &lt;/style&gt;
 
+  &lt;section class=&quot;playbook-section&quot; aria-labelledby=&quot;entry-heading&quot;&gt;
+    &lt;div&gt;
+      &lt;h2 id=&quot;entry-heading&quot;&gt;Start from the repository you actually have&lt;/h2&gt;
+      &lt;p class=&quot;text-muted&quot;&gt;Codexicon supports a clean template start and plan-first adoption into an established repository.&lt;/p&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;stage-content&quot;&gt;
+      &lt;div&gt;
+        &lt;strong&gt;New repository&lt;/strong&gt;
+        &lt;p&gt;Use the GitHub template or a clean local copy, verify the baseline, then run &lt;code&gt;$discover&lt;/code&gt; and &lt;code&gt;$init&lt;/code&gt;.&lt;/p&gt;
+      &lt;/div&gt;
+      &lt;div&gt;
+        &lt;strong&gt;Established repository&lt;/strong&gt;
+        &lt;p&gt;Keep the Codexicon source separate and run &lt;code&gt;$adopt-codexicon&lt;/code&gt; or &lt;code&gt;python scripts/codexicon.py inspect TARGET&lt;/code&gt; before authorising any writes.&lt;/p&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;p class=&quot;text-small text-muted&quot;&gt;&lt;code&gt;inspect&lt;/code&gt;, &lt;code&gt;doctor&lt;/code&gt;, update planning, and &lt;code&gt;resume&lt;/code&gt; are read-only. Adoption and update mutations require &lt;code&gt;--apply&lt;/code&gt;; local conflicts and project-owned files are preserved for deliberate integration.&lt;/p&gt;
+  &lt;/section&gt;
+
   &lt;section class=&quot;playbook-section&quot; aria-labelledby=&quot;lifecycle-heading&quot;&gt;
     &lt;div&gt;
       &lt;h2 id=&quot;lifecycle-heading&quot;&gt;From intent to a verified project&lt;/h2&gt;
@@ -1025,6 +1043,11 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;span role=&quot;columnheader&quot;&gt;Result&lt;/span&gt;
       &lt;/div&gt;
       &lt;div class=&quot;route-row&quot; role=&quot;row&quot;&gt;
+        &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Signal · &lt;/span&gt;Established repository needs Codexicon&lt;/span&gt;
+        &lt;code role=&quot;cell&quot;&gt;$adopt-codexicon&lt;/code&gt;
+        &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Result · &lt;/span&gt;Read-only compatibility plan before any explicitly authorised integration&lt;/span&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;route-row&quot; role=&quot;row&quot;&gt;
         &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Signal · &lt;/span&gt;Clear, small change&lt;/span&gt;
         &lt;code role=&quot;cell&quot;&gt;$quick&lt;/code&gt;
         &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Result · &lt;/span&gt;Small complete implementation with focused verification&lt;/span&gt;
@@ -1072,6 +1095,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       &lt;optgroup label=&quot;Project start&quot;&gt;
         &lt;option value=&quot;discover&quot;&gt;$discover&lt;/option&gt;
         &lt;option value=&quot;init&quot;&gt;$init&lt;/option&gt;
+        &lt;option value=&quot;adopt-codexicon&quot;&gt;$adopt-codexicon&lt;/option&gt;
       &lt;/optgroup&gt;
       &lt;optgroup label=&quot;Define and plan&quot;&gt;
         &lt;option value=&quot;brainstorm&quot;&gt;$brainstorm&lt;/option&gt;
@@ -1168,6 +1192,8 @@ html&gt;body{padding:0}&lt;/style&gt;
       &lt;div class=&quot;guardrail&quot;&gt;&lt;i data-lucide=&quot;git-branch&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;&lt;strong&gt;Git authority is granular&lt;/strong&gt;&lt;br&gt;&lt;span class=&quot;text-muted&quot;&gt;Commit, push, and pull request actions must be explicitly requested.&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
       &lt;div class=&quot;guardrail&quot;&gt;&lt;i data-lucide=&quot;shield-check&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;&lt;strong&gt;Verification is proportional&lt;/strong&gt;&lt;br&gt;&lt;span class=&quot;text-muted&quot;&gt;Focused checks first; lint, tests, and security before publication; readiness evidence before production.&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
       &lt;div class=&quot;guardrail&quot;&gt;&lt;i data-lucide=&quot;radio-tower&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;&lt;strong&gt;External effects are separate&lt;/strong&gt;&lt;br&gt;&lt;span class=&quot;text-muted&quot;&gt;Publishing, deployment, production changes, spend, and messages need their own authority.&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;guardrail&quot;&gt;&lt;i data-lucide=&quot;files&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;&lt;strong&gt;Project content stays owned&lt;/strong&gt;&lt;br&gt;&lt;span class=&quot;text-muted&quot;&gt;Adoption and updates are plan-first; modified, deleted, and project-owned files remain explicit conflicts.&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;guardrail&quot;&gt;&lt;i data-lucide=&quot;history&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;&lt;strong&gt;Continuity is explicit&lt;/strong&gt;&lt;br&gt;&lt;span class=&quot;text-muted&quot;&gt;Checkpoints are created only on request, and missing local verification state requires fresh lint and tests.&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
     &lt;/div&gt;
   &lt;/section&gt;
 
@@ -1251,6 +1277,13 @@ html&gt;body{padding:0}&lt;/style&gt;
           produces: &#x27;The smallest suitable stack, project identity, real source/test structure, commands, CI, and verified local setup.&#x27;,
           next: &#x27;$quick or the workflow that fits the first slice&#x27;,
           prompt: &#x27;$init Configure Matchday from the approved charter. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting unless requested.&#x27;
+        },
+        &#x27;adopt-codexicon&#x27;: {
+          title: &#x27;$adopt-codexicon&#x27;,
+          when: &#x27;An established repository needs Codexicon guidance, hooks, verification, diagnostics, or a safe local-source update without replacing project-owned content.&#x27;,
+          produces: &#x27;A read-only compatibility plan first, then only explicitly authorised absent-file adoption or baseline-safe updates with conflicts preserved.&#x27;,
+          next: &#x27;Resolve conflicts deliberately, then run doctor and the target repository verification&#x27;,
+          prompt: &#x27;$adopt-codexicon Inspect the existing Matchday repository from this trusted Codexicon source. Report project-owned requirements and conflicts first. Do not apply, commit, push, or replace existing content.&#x27;
         },
         brainstorm: {
           title: &#x27;$brainstorm&#x27;,
@@ -1367,9 +1400,9 @@ html&gt;body{padding:0}&lt;/style&gt;
         &#x27;context-dump&#x27;: {
           title: &#x27;$context-dump&#x27;,
           when: &#x27;A human-readable handoff is requested or a complex session must continue cleanly elsewhere; not for routine completion.&#x27;,
-          produces: &#x27;A concise checkpoint containing objective, decisions, changed files, verification, open risks, and next action.&#x27;,
-          next: &#x27;Resume from the checkpoint in a fresh task&#x27;,
-          prompt: &#x27;$context-dump Save a handoff for Matchday\&#x27;s live match centre: current objective, approved behaviour, architecture decisions, changed files, test status, unresolved reconnect issue, and the exact next step.&#x27;
+          produces: &#x27;An explicit atomic Markdown checkpoint with repository identity, related paths, objective, decisions, verification, open risks, and next action.&#x27;,
+          next: &#x27;Run python scripts/codexicon.py resume in a fresh task and verify the checkpoint against the current diff&#x27;,
+          prompt: &#x27;$context-dump Save an explicit checkpoint for Matchday\&#x27;s live match centre with the current objective, approved behaviour, related project paths, architecture decisions, test status, unresolved reconnect issue, and exact next step.&#x27;
         }
       };
 

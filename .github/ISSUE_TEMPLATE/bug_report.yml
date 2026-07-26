@@ -11,7 +11,7 @@ body:
     attributes:
       label: Codexicon version
       description: Copy the version from TEMPLATE_VERSION.
-      placeholder: 2.5.0
+      placeholder: "paste the exact TEMPLATE_VERSION value"
     validations:
       required: true
   - type: input

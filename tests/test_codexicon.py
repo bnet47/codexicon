@@ -769,11 +769,11 @@ class CodexiconManagerTests(unittest.TestCase):
             if item["policy"] != "project":
                 destination = source / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(ROOT / relative, destination)
+                shutil.copy2(ROOT / relative, destination)
             else:
                 destination = target / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(ROOT / relative, destination)
+                shutil.copy2(ROOT / relative, destination)
         subprocess.run(["git", "init", "-q"], cwd=target, check=True)
 
         result = self.run_quietly(

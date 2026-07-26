@@ -2,11 +2,11 @@
 
 [![Template CI](https://github.com/bnet47/codexicon/actions/workflows/ci.yml/badge.svg)](https://github.com/bnet47/codexicon/actions/workflows/ci.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-0f766e.svg)](LICENSE)
-[![Template version](https://img.shields.io/badge/template-v2.5.0-2563eb.svg)](TEMPLATE_VERSION)
+[![Template version](https://img.shields.io/badge/template-v2.6.0--dev-2563eb.svg)](TEMPLATE_VERSION)
 
 **A production-minded project template for building with Codex.**
 
-Codexicon gives a new repository an explicit path from an idea to verified delivery: durable project guidance, progressively loaded skills, canonical checks, credential safeguards, production-readiness review, and clear authority boundaries for Git, deployment, and external systems.
+Codexicon gives new and established repositories an explicit path from an idea to verified delivery: durable project guidance, progressively loaded skills, canonical checks, credential safeguards, production-readiness review, and clear authority boundaries for Git, deployment, and external systems.
 
 It is intentionally not an application starter or a framework opinion. You define the product first, then Codex configures the smallest suitable stack for that project.
 
@@ -126,6 +126,7 @@ ownership. Do not deploy or accept risk on my behalf.
 
 | Stage | Primary workflow | Evidence before continuing |
 |---|---|---|
+| Adopt (established repository) | `$adopt-codexicon` | Read-only compatibility plan, reviewed conflicts, then explicitly authorized integration |
 | Discover | `$discover` | Approved product charter |
 | Initialize | `$init` | Working stack, commands, CI, and project identity |
 | Build | `$quick`, `$brainstorm`, `$spec`, `$write-plan`, `$execute-plan` | Observable behavior and focused verification |
@@ -139,6 +140,7 @@ The [live visual playbook](https://bnet47.github.io/codexicon/repo-template-play
 
 | Situation | Use |
 |---|---|
+| Established repository needs Codexicon | `$adopt-codexicon` |
 | Unconfigured project | `$discover` → `$init` |
 | Clear change affecting a few files | `$quick` |
 | Unclear feature behavior | `$brainstorm` |
@@ -204,6 +206,7 @@ The root `.codexicon.json` is the source ownership contract used by the reposito
 
 ## Documentation
 
+- [Interactive visual playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html)
 - [Start a project](START_HERE.md)
 - [Codex configuration and hooks](docs/codex.md)
 - [Agent and delegation patterns](docs/agent-patterns.md)

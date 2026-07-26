@@ -173,6 +173,24 @@
     }
   </style>
 
+  <section class="playbook-section" aria-labelledby="entry-heading">
+    <div>
+      <h2 id="entry-heading">Start from the repository you actually have</h2>
+      <p class="text-muted">Codexicon supports a clean template start and plan-first adoption into an established repository.</p>
+    </div>
+    <div class="stage-content">
+      <div>
+        <strong>New repository</strong>
+        <p>Use the GitHub template or a clean local copy, verify the baseline, then run <code>$discover</code> and <code>$init</code>.</p>
+      </div>
+      <div>
+        <strong>Established repository</strong>
+        <p>Keep the Codexicon source separate and run <code>$adopt-codexicon</code> or <code>python scripts/codexicon.py inspect TARGET</code> before authorising any writes.</p>
+      </div>
+    </div>
+    <p class="text-small text-muted"><code>inspect</code>, <code>doctor</code>, update planning, and <code>resume</code> are read-only. Adoption and update mutations require <code>--apply</code>; local conflicts and project-owned files are preserved for deliberate integration.</p>
+  </section>
+
   <section class="playbook-section" aria-labelledby="lifecycle-heading">
     <div>
       <h2 id="lifecycle-heading">From intent to a verified project</h2>
@@ -275,6 +293,11 @@
         <span role="columnheader">Result</span>
       </div>
       <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>Established repository needs Codexicon</span>
+        <code role="cell">$adopt-codexicon</code>
+        <span role="cell"><span class="route-label">Result · </span>Read-only compatibility plan before any explicitly authorised integration</span>
+      </div>
+      <div class="route-row" role="row">
         <span role="cell"><span class="route-label">Signal · </span>Clear, small change</span>
         <code role="cell">$quick</code>
         <span role="cell"><span class="route-label">Result · </span>Small complete implementation with focused verification</span>
@@ -322,6 +345,7 @@
       <optgroup label="Project start">
         <option value="discover">$discover</option>
         <option value="init">$init</option>
+        <option value="adopt-codexicon">$adopt-codexicon</option>
       </optgroup>
       <optgroup label="Define and plan">
         <option value="brainstorm">$brainstorm</option>
@@ -418,6 +442,8 @@
       <div class="guardrail"><i data-lucide="git-branch" aria-hidden="true"></i><span><strong>Git authority is granular</strong><br><span class="text-muted">Commit, push, and pull request actions must be explicitly requested.</span></span></div>
       <div class="guardrail"><i data-lucide="shield-check" aria-hidden="true"></i><span><strong>Verification is proportional</strong><br><span class="text-muted">Focused checks first; lint, tests, and security before publication; readiness evidence before production.</span></span></div>
       <div class="guardrail"><i data-lucide="radio-tower" aria-hidden="true"></i><span><strong>External effects are separate</strong><br><span class="text-muted">Publishing, deployment, production changes, spend, and messages need their own authority.</span></span></div>
+      <div class="guardrail"><i data-lucide="files" aria-hidden="true"></i><span><strong>Project content stays owned</strong><br><span class="text-muted">Adoption and updates are plan-first; modified, deleted, and project-owned files remain explicit conflicts.</span></span></div>
+      <div class="guardrail"><i data-lucide="history" aria-hidden="true"></i><span><strong>Continuity is explicit</strong><br><span class="text-muted">Checkpoints are created only on request, and missing local verification state requires fresh lint and tests.</span></span></div>
     </div>
   </section>
 
@@ -501,6 +527,13 @@
           produces: 'The smallest suitable stack, project identity, real source/test structure, commands, CI, and verified local setup.',
           next: '$quick or the workflow that fits the first slice',
           prompt: '$init Configure Matchday from the approved charter. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting unless requested.'
+        },
+        'adopt-codexicon': {
+          title: '$adopt-codexicon',
+          when: 'An established repository needs Codexicon guidance, hooks, verification, diagnostics, or a safe local-source update without replacing project-owned content.',
+          produces: 'A read-only compatibility plan first, then only explicitly authorised absent-file adoption or baseline-safe updates with conflicts preserved.',
+          next: 'Resolve conflicts deliberately, then run doctor and the target repository verification',
+          prompt: '$adopt-codexicon Inspect the existing Matchday repository from this trusted Codexicon source. Report project-owned requirements and conflicts first. Do not apply, commit, push, or replace existing content.'
         },
         brainstorm: {
           title: '$brainstorm',
@@ -617,9 +650,9 @@
         'context-dump': {
           title: '$context-dump',
           when: 'A human-readable handoff is requested or a complex session must continue cleanly elsewhere; not for routine completion.',
-          produces: 'A concise checkpoint containing objective, decisions, changed files, verification, open risks, and next action.',
-          next: 'Resume from the checkpoint in a fresh task',
-          prompt: '$context-dump Save a handoff for Matchday\'s live match centre: current objective, approved behaviour, architecture decisions, changed files, test status, unresolved reconnect issue, and the exact next step.'
+          produces: 'An explicit atomic Markdown checkpoint with repository identity, related paths, objective, decisions, verification, open risks, and next action.',
+          next: 'Run python scripts/codexicon.py resume in a fresh task and verify the checkpoint against the current diff',
+          prompt: '$context-dump Save an explicit checkpoint for Matchday\'s live match centre with the current objective, approved behaviour, related project paths, architecture decisions, test status, unresolved reconnect issue, and exact next step.'
         }
       };
 
