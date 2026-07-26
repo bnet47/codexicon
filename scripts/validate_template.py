@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import subprocess
@@ -31,6 +32,7 @@ SKILL_INVOCATIONS = (
     "architecture-review",
     "retro",
     "context-dump",
+    "adopt-codexicon",
     "conventional-commit",
     "concise",
     "design-experience",
@@ -41,7 +43,7 @@ SKILL_INVOCATIONS = (
 
 MAX_PROJECT_GUIDANCE_CHARS = 8192
 MAX_SKILL_DESCRIPTION_CHARS = 200
-MAX_REPO_SKILL_CATALOG_CHARS = 3500
+MAX_REPO_SKILL_CATALOG_CHARS = 3800
 
 
 def rel(path: Path) -> str:
@@ -134,7 +136,7 @@ def context_budget() -> tuple[int, int]:
     return guidance_chars, catalog_chars
 
 
-def validate() -> list[str]:
+def validate(*, release: bool = False) -> list[str]:
     errors: list[str] = []
 
     guidance_chars = len((ROOT / "AGENTS.md").read_text(encoding="utf-8"))
@@ -155,6 +157,9 @@ def validate() -> list[str]:
         ".codex/config.toml",
         ".codex/hooks.json",
         ".codex/hooks/codex_hook.py",
+        ".codexicon.json",
+        ".gitattributes",
+        "scripts/codexicon.py",
         "scripts/lint.sh",
         "scripts/lint.ps1",
         "scripts/test.sh",
@@ -182,6 +187,7 @@ def validate() -> list[str]:
         "agent_docs/security.md",
         "agent_docs/operations.md",
         ".agents/skills/production-readiness/SKILL.md",
+        ".agents/skills/adopt-codexicon/SKILL.md",
         ".agents/skills/production-readiness/agents/openai.yaml",
         ".agents/skills/design-experience/references/interface-craft.md",
         ".agents/skills/design-experience/references/hardening.md",
@@ -191,6 +197,7 @@ def validate() -> list[str]:
         ".agents/skills/review-creative/references/review-rubric.md",
         ".agents/skills/review-creative/scripts/scan_interface.py",
         "tests/test_ui_scanner.py",
+        "tests/test_codexicon.py",
     ]
     for item in required:
         if not (ROOT / item).is_file():
@@ -246,6 +253,21 @@ def validate() -> list[str]:
     if not all(name in hook_text for name in ("^Read$", "^read_file$", "^read_text_file$")):
         errors.append(".codex/hooks.json does not protect direct file-reading tools")
     for event, groups in hooks.get("hooks", {}).items():
+        supported_hook_events = {
+            "PermissionRequest",
+            "PostCompact",
+            "PostToolUse",
+            "PreCompact",
+            "PreToolUse",
+            "SessionEnd",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop",
+            "UserPromptSubmit",
+        }
+        if event not in supported_hook_events:
+            errors.append(f".codex/hooks.json uses unsupported event: {event}")
         for group in groups:
             for handler in group.get("hooks", []):
                 if handler.get("type") == "command" and not handler.get("commandWindows"):
@@ -282,6 +304,8 @@ def validate() -> list[str]:
             errors.append("CI action is not pinned to an immutable commit SHA")
         if "windows-latest" not in workflow or "scripts/test.ps1" not in workflow:
             errors.append("CI does not exercise the native Windows verification path")
+        if "macos-latest" not in workflow:
+            errors.append("CI does not exercise the claimed macOS verification path")
         if '"3.10"' not in workflow or '"3.13"' not in workflow:
             errors.append("CI does not test both the minimum and current supported Python versions")
         if "persist-credentials: false" not in workflow:
@@ -290,13 +314,20 @@ def validate() -> list[str]:
             errors.append("CI jobs do not define timeouts")
         if "scripts/security.sh" not in workflow:
             errors.append("CI does not run the canonical local security gate")
+        if "scripts/security.ps1" not in workflow:
+            errors.append("CI does not exercise the native Windows security gate")
+        if "./.githooks/pre-commit" not in workflow or "./.githooks/pre-push" not in workflow:
+            errors.append("CI does not execute the tracked POSIX Git hooks")
 
+    config_value: dict = {}
     for toml_path in [ROOT / ".codex/config.toml", *sorted((ROOT / ".codex/agents").glob("*.toml"))]:
         try:
             value = parse_template_toml(toml_path)
         except (OSError, ValueError) as exc:
             errors.append(f"invalid TOML {rel(toml_path)}: {exc}")
             continue
+        if toml_path.name == "config.toml":
+            config_value = value
         if toml_path.parent.name == "agents":
             for field in ("name", "description", "developer_instructions"):
                 if not value.get(field):
@@ -305,6 +336,90 @@ def validate() -> list[str]:
             for stale in ("haiku", "sonnet", "opus", "mcp__mem0"):
                 if stale in lowered:
                     errors.append(f"{rel(toml_path)} contains stale agent assumption: {stale}")
+
+    if config_value:
+        markers = config_value.get("project_root_markers")
+        if not isinstance(markers, list) or ".git" not in markers:
+            errors.append(".codex/config.toml requires .git in project_root_markers")
+        features = config_value.get("features")
+        if not isinstance(features, dict) or features.get("hooks") is not True:
+            errors.append(".codex/config.toml must enable documented features.hooks")
+        if not isinstance(features, dict) or features.get("multi_agent") is not True:
+            errors.append(".codex/config.toml must enable documented features.multi_agent")
+        agents = config_value.get("agents")
+        if not isinstance(agents, dict):
+            errors.append(".codex/config.toml requires an agents table")
+        else:
+            concurrency = agents.get("max_concurrent_threads_per_session")
+            if not isinstance(concurrency, int) or isinstance(concurrency, bool) or concurrency < 1:
+                errors.append(
+                    ".codex/config.toml requires a positive agents.max_concurrent_threads_per_session"
+                )
+            for unsupported in ("max_depth", "max_threads"):
+                if unsupported in agents:
+                    errors.append(f".codex/config.toml uses unsupported or legacy agents.{unsupported}")
+
+    agent_names = {path.stem for path in (ROOT / ".codex/agents").glob("*.toml")}
+    missing_agents = {"implementer", "researcher", "reviewer"} - agent_names
+    if missing_agents:
+        errors.append(f"missing expected project agents: {', '.join(sorted(missing_agents))}")
+
+    manifest_path = ROOT / ".codexicon.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        errors.append(f"invalid .codexicon.json: {exc}")
+        manifest = {}
+    manifest_files = manifest.get("files") if isinstance(manifest, dict) else None
+    manifest_schema = manifest.get("schema_version") if isinstance(manifest, dict) else None
+    manifest_version = manifest.get("version") if isinstance(manifest, dict) else None
+    if manifest_schema != 1 or not isinstance(manifest_files, list):
+        errors.append(".codexicon.json requires schema_version 1 and a files list")
+    else:
+        expected_version = (ROOT / "TEMPLATE_VERSION").read_text(encoding="utf-8").splitlines()[0]
+        if manifest_version != expected_version:
+            errors.append(".codexicon.json version must match TEMPLATE_VERSION")
+        seen_manifest_paths: set[str] = set()
+        for item in manifest_files:
+            if not isinstance(item, dict):
+                errors.append(".codexicon.json file entries must be objects")
+                continue
+            path_value = item.get("path")
+            policy = item.get("policy")
+            executable = item.get("executable", False)
+            if (
+                not isinstance(path_value, str)
+                or not path_value
+                or "\\" in path_value
+                or path_value.startswith("/")
+                or ".." in Path(path_value).parts
+            ):
+                errors.append(f".codexicon.json contains unsafe path: {path_value!r}")
+                continue
+            if path_value in seen_manifest_paths:
+                errors.append(f".codexicon.json contains duplicate path: {path_value}")
+            seen_manifest_paths.add(path_value)
+            if policy not in {"managed", "merge", "project"}:
+                errors.append(f".codexicon.json contains invalid policy for {path_value}")
+            if not isinstance(executable, bool):
+                errors.append(f".codexicon.json contains invalid executable flag for {path_value}")
+            if (
+                path_value.endswith(".sh") or path_value.startswith(".githooks/")
+            ) and executable is not True:
+                errors.append(f".codexicon.json must mark POSIX entry point executable: {path_value}")
+            if policy != "project" and not (ROOT / path_value).is_file():
+                errors.append(f".codexicon.json references missing source file: {path_value}")
+        for required_manifest_path in (
+            ".codexicon.json",
+            "scripts/codexicon.py",
+            ".codex/hooks/codex_hook.py",
+            "AGENTS.md",
+            "scripts/lint.sh",
+            "scripts/test.sh",
+            "scripts/security.sh",
+        ):
+            if required_manifest_path not in seen_manifest_paths:
+                errors.append(f".codexicon.json omits required path: {required_manifest_path}")
 
     skill_names: dict[str, str] = {}
     skill_catalog_chars = 0
@@ -372,9 +487,11 @@ def validate() -> list[str]:
 
     for directory in ("briefs", "plans", "sessions"):
         task_records = sorted((ROOT / "agent_docs" / directory).glob("*.md"))
+        if not release:
+            task_records = [path for path in task_records if path.name.startswith("task-")]
         if task_records:
             errors.append(
-                f"template-development records remain in agent_docs/{directory}: "
+                f"{'release ' if release else ''}task records remain in agent_docs/{directory}: "
                 + ", ".join(path.name for path in task_records)
             )
 
@@ -387,9 +504,48 @@ def validate() -> list[str]:
         errors.append("SECURITY.md lacks a private reporting route")
 
     hook_policy = (ROOT / ".codex/hooks/codex_hook.py").read_text(encoding="utf-8")
-    for required_policy in (".npmrc", ".aws", ".ssh", ".kube", ".docker", "ENV_ENUMERATION", "prune_receipts"):
+    for required_policy in (
+        ".npmrc",
+        ".aws",
+        ".ssh",
+        ".kube",
+        ".docker",
+        "ENV_ENUMERATION",
+        "prune_receipts",
+        "StateLoadError",
+        "session-resume",
+    ):
         if required_policy not in hook_policy:
             errors.append(f"credential hook policy is missing {required_policy}")
+
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+    for required_attribute in ("/scripts/*.sh text eol=lf", "/.githooks/* text eol=lf"):
+        if required_attribute not in attributes:
+            errors.append(f".gitattributes is missing {required_attribute}")
+    posix_paths = sorted((ROOT / "scripts").glob("*.sh")) + sorted((ROOT / ".githooks").glob("*"))
+    for path in posix_paths:
+        if b"\r\n" in path.read_bytes():
+            errors.append(f"POSIX entry point contains CRLF: {rel(path)}")
+    try:
+        mode_result = subprocess.run(
+            ["git", "ls-files", "--stage", "--", "scripts/*.sh", ".githooks/*"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        mode_result = None
+    if mode_result is not None and mode_result.returncode == 0:
+        modes = {
+            line.split(maxsplit=3)[3]: line.split(maxsplit=1)[0]
+            for line in mode_result.stdout.splitlines()
+            if len(line.split(maxsplit=3)) == 4
+        }
+        for path in posix_paths:
+            relative = rel(path)
+            if modes.get(relative) != "100755":
+                errors.append(f"POSIX entry point is not executable in Git: {relative}")
 
     playbook_source = (ROOT / "docs/repo-template-playbook.source.html").read_text(encoding="utf-8")
     if not playbook_source.lstrip().startswith('<div id="codex-template-playbook">'):
@@ -424,8 +580,15 @@ def validate() -> list[str]:
     return errors
 
 
-def main() -> int:
-    errors = validate()
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="also reject repository-local briefs, plans, and checkpoints",
+    )
+    args = parser.parse_args(argv)
+    errors = validate(release=args.release)
     if errors:
         print("Template validation failed:", file=sys.stderr)
         for error in errors:

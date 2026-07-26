@@ -2,6 +2,8 @@
 
 Use subagents when independent context or parallelism materially improves the task. Every subagent consumes additional tokens and introduces coordination cost, so file counts and token guesses are not sufficient reasons by themselves.
 
+Use Codex's built-in `explorer` for read-heavy repository mapping. The project `researcher` is narrower: it verifies current external documentation and specifications from primary sources. The primary agent integrates both forms of evidence.
+
 ## Pattern 1: parallel exploration
 
 Use for unfamiliar repositories, broad reviews, test-failure clusters, or several independent research questions.
@@ -48,6 +50,8 @@ For a large or high-risk diff, use separate read-only review passes for correctn
 Codex app tasks can use managed worktrees for independent background work. Prefer that isolation over manually creating branches for every subagent. Do not run simultaneous writers in the same checkout unless their file scopes are provably disjoint and the primary agent is prepared to integrate conflicts.
 
 Ignored files are not copied into managed worktrees by default. Add only the minimum required local files to `.worktreeinclude`, and never track secrets.
+
+`.codex-state/` intentionally remains ignored, so a handoff may not carry hook verification state. On resume, the hook conservatively requires fresh checks whenever state is missing, including when Git cannot see ignored project changes; use `$context-dump` when semantic continuation context must persist.
 
 ## Brief template
 

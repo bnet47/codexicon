@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import contextlib
+import importlib.util
+import io
 import json
 import os
 import shutil
@@ -8,6 +11,7 @@ import sys
 import unittest
 import uuid
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +19,11 @@ HOOK = ROOT / ".codex" / "hooks" / "codex_hook.py"
 HOOKS_JSON = ROOT / ".codex" / "hooks.json"
 VALIDATOR = ROOT / "scripts" / "validate_template.py"
 TEST_TEMP_ROOT = ROOT / ".codex-state" / "tests"
+HOOK_SPEC = importlib.util.spec_from_file_location("codex_hook_test_module", HOOK)
+assert HOOK_SPEC and HOOK_SPEC.loader
+HOOK_MODULE = importlib.util.module_from_spec(HOOK_SPEC)
+sys.modules[HOOK_SPEC.name] = HOOK_MODULE
+HOOK_SPEC.loader.exec_module(HOOK_MODULE)
 
 
 def make_test_directory() -> Path:
@@ -37,7 +46,7 @@ class TemplateValidationTests(unittest.TestCase):
     def test_every_registered_hook_bootstraps_from_a_subdirectory_without_git(self) -> None:
         hooks = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))
         expected_matchers = {
-            "SessionStart": ["startup|clear"],
+            "SessionStart": ["startup|clear", "resume|compact"],
             "PreToolUse": ["^Bash$|^apply_patch$|^Read$|^read_file$|^read_text_file$|Edit|Write"],
             "PostToolUse": ["^apply_patch$|Edit|Write", "^Bash$"],
             "PreCompact": [None],
@@ -79,6 +88,20 @@ class TemplateValidationTests(unittest.TestCase):
                                 payload["trigger"] = "manual"
                             elif event == "Stop":
                                 payload["stop_hook_active"] = False
+                                initialized = subprocess.run(
+                                    [sys.executable, str(HOOK), "session-start"],
+                                    cwd=ROOT,
+                                    input=json.dumps({"session_id": "bootstrap"}),
+                                    text=True,
+                                    capture_output=True,
+                                    env=env,
+                                    check=False,
+                                )
+                                self.assertEqual(
+                                    initialized.returncode,
+                                    0,
+                                    initialized.stdout + initialized.stderr,
+                                )
 
                             result = subprocess.run(
                                 command,
@@ -129,6 +152,28 @@ class CodexHookTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_manager_verify_consumes_lint_and_test_receipts(self) -> None:
+        self.run_hook("session-start", {"session_id": "s1"})
+        self.run_hook(
+            "record-write",
+            {"session_id": "s1", "tool_input": {"file_path": "src/example.py"}},
+        )
+        response = self.receipt("lint") + self.receipt("test")
+        recorded = self.run_hook(
+            "record-shell",
+            {
+                "session_id": "s1",
+                "tool_input": {"command": "python scripts/codexicon.py verify"},
+                "tool_response": response,
+            },
+        )
+        self.assertEqual(recorded.returncode, 0, recorded.stderr)
+        allowed = self.run_hook(
+            "verify-stop",
+            {"session_id": "s1", "stop_hook_active": False},
+        )
+        self.assertEqual(allowed.returncode, 0, allowed.stderr)
+
     def test_secret_policy_blocks_operator_bypasses_but_allows_example(self) -> None:
         blocked_commands = [
             "Get-Content .env.local",
@@ -157,6 +202,19 @@ class CodexHookTests(unittest.TestCase):
             "compgen -e",
             "python -c \"import os; print(dict(os.environ))\"",
             "node -e \"console.log(JSON.stringify(process.env))\"",
+            "env > dump.txt",
+            "printenv 1>>dump.txt",
+            "set 1>dump.txt",
+            "export -p > dump.txt",
+            "declare -x 1>dump.txt",
+            "compgen -e > dump.txt",
+            "Get-Content *",
+            "Get-Content .*",
+            "cat .??*",
+            "head *",
+            "Select-String token *",
+            "& Get-Content *",
+            "command cat .??*",
         ]
         for command in blocked_commands:
             with self.subTest(command=command):
@@ -199,9 +257,27 @@ class CodexHookTests(unittest.TestCase):
             "protect-secrets",
             {"tool_name": "Bash", "tool_input": {"command": r"rg -n '\.env' ."}},
         )
+        execution_bearing_search = self.run_hook(
+            "protect-secrets",
+            {
+                "tool_name": "Bash",
+                "tool_input": {
+                    "command": 'rg --pre="cat .env" password README.md',
+                },
+            },
+        )
+        unknown_option_search = self.run_hook(
+            "protect-secrets",
+            {
+                "tool_name": "Bash",
+                "tool_input": {"command": r"rg --unknown '\.env' README.md"},
+            },
+        )
         self.assertEqual(safe_search.returncode, 0, safe_search.stderr)
         self.assertEqual(protected_search.returncode, 2)
         self.assertEqual(broad_search.returncode, 2)
+        self.assertEqual(execution_bearing_search.returncode, 2)
+        self.assertEqual(unknown_option_search.returncode, 2)
 
         documentation_patch = self.run_hook(
             "protect-secrets",
@@ -259,6 +335,167 @@ class CodexHookTests(unittest.TestCase):
 
         allowed = self.run_hook("verify-stop", {"session_id": "s1", "stop_hook_active": False})
         self.assertEqual(allowed.returncode, 0, allowed.stderr)
+
+    def test_execution_bearing_read_only_prefixes_invalidate_verification(self) -> None:
+        commands = [
+            "git status $(python generate.py)",
+            "Get-Content README.md $(python generate.py)",
+            "rg needle README.md `python generate.py`",
+            "git status & python generate.py",
+            "Get-Content README.md (python generate.py)",
+            "rg --pre 'python generate.py' needle README.md",
+            "cat <(python generate.py)",
+            "git branch new-branch",
+            "git branch -D old-branch",
+            "git branch --edit-description",
+            "git show --output=owned.txt HEAD",
+            "git log --output owned.txt",
+        ]
+        for command in commands:
+            with self.subTest(command=command):
+                self.run_hook("session-start", {"session_id": "s1"})
+                self.run_hook(
+                    "record-write",
+                    {"session_id": "s1", "tool_input": {"file_path": "src/example.py"}},
+                )
+                self.record_success("lint")
+                self.record_success("test")
+                recorded = self.run_hook(
+                    "record-shell",
+                    {"session_id": "s1", "tool_input": {"command": command}, "tool_response": ""},
+                )
+                self.assertEqual(recorded.returncode, 0, recorded.stderr)
+                blocked = self.run_hook(
+                    "verify-stop",
+                    {"session_id": "s1", "stop_hook_active": False},
+                )
+                self.assertEqual(blocked.returncode, 2)
+
+    def test_security_verification_does_not_invalidate_lint_and_test(self) -> None:
+        self.run_hook("session-start", {"session_id": "s1"})
+        self.run_hook(
+            "record-write",
+            {"session_id": "s1", "tool_input": {"file_path": "src/example.py"}},
+        )
+        self.record_success("lint")
+        self.record_success("test")
+        for command in (
+            "./scripts/security.sh",
+            "python scripts/codexicon.py verify security",
+        ):
+            with self.subTest(command=command):
+                recorded = self.run_hook(
+                    "record-shell",
+                    {
+                        "session_id": "s1",
+                        "tool_input": {"command": command},
+                        "tool_response": "",
+                    },
+                )
+                self.assertEqual(recorded.returncode, 0, recorded.stderr)
+                allowed = self.run_hook(
+                    "verify-stop",
+                    {"session_id": "s1", "stop_hook_active": False},
+                )
+                self.assertEqual(allowed.returncode, 0, allowed.stderr)
+
+    def test_missing_malformed_and_wrong_schema_state_fail_closed(self) -> None:
+        cases = [
+            None,
+            "{",
+            json.dumps({"schema_version": 1, "has_writes": False}),
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "has_writes": "no",
+                    "lint_passed": False,
+                    "test_passed": False,
+                    "test_required": False,
+                }
+            ),
+        ]
+        for content in cases:
+            with self.subTest(content=content):
+                self.state_file.unlink(missing_ok=True)
+                if content is not None:
+                    self.state_file.write_text(content, encoding="utf-8")
+                result = self.run_hook(
+                    "verify-stop",
+                    {"session_id": "s1", "stop_hook_active": False},
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("cannot be trusted", result.stderr)
+
+        active = self.run_hook(
+            "verify-stop",
+            {"session_id": "s1", "stop_hook_active": True},
+        )
+        self.assertEqual(active.returncode, 0)
+        self.assertIn("systemMessage", active.stdout)
+
+    def test_resume_recovers_missing_state_conservatively(self) -> None:
+        with (
+            mock.patch.object(HOOK_MODULE, "STATE_FILE", self.state_file),
+            mock.patch.object(HOOK_MODULE, "STATE_DIR", self.temp_dir),
+            mock.patch.object(HOOK_MODULE, "latest_compatible_checkpoint", return_value=None),
+            contextlib.redirect_stdout(io.StringIO()) as output,
+        ):
+            result = HOOK_MODULE.resume_state({"session_id": "resumed", "source": "resume"})
+
+        self.assertEqual(result, 0)
+        state = json.loads(self.state_file.read_text(encoding="utf-8"))
+        self.assertTrue(state["has_writes"])
+        self.assertTrue(state["test_required"])
+        self.assertFalse(state["lint_passed"])
+        self.assertFalse(state["test_passed"])
+        self.assertIn("required again", output.getvalue())
+
+    def test_resume_ignores_malformed_newest_checkpoint(self) -> None:
+        root = self.temp_dir / "project"
+        sessions = root / "agent_docs" / "sessions"
+        sessions.mkdir(parents=True)
+        with mock.patch.object(HOOK_MODULE, "ROOT", root):
+            repository_id = HOOK_MODULE.repository_identity()
+            valid = {
+                "schema_version": 1,
+                "checkpoint_id": "a" * 16,
+                "created_at": HOOK_MODULE.utc_now()[1],
+                "repository_id": repository_id,
+                "branch": "none",
+                "head": "none",
+                "related": [],
+            }
+            malformed = {**valid, "checkpoint_id": "b" * 16, "created_at": "zzzz"}
+            duplicate = {
+                **valid,
+                "checkpoint_id": "c" * 16,
+                "related": ["README.md", "README.md"],
+            }
+            drive = {
+                **valid,
+                "checkpoint_id": "d" * 16,
+                "related": ["C:/outside"],
+            }
+            (sessions / "valid.md").write_text(
+                f"<!-- codexicon-checkpoint: {json.dumps(valid)} -->\n",
+                encoding="utf-8",
+            )
+            (sessions / "malformed.md").write_text(
+                f"<!-- codexicon-checkpoint: {json.dumps(malformed)} -->\n",
+                encoding="utf-8",
+            )
+            (sessions / "duplicate.md").write_text(
+                f"<!-- codexicon-checkpoint: {json.dumps(duplicate)} -->\n",
+                encoding="utf-8",
+            )
+            (sessions / "drive.md").write_text(
+                f"<!-- codexicon-checkpoint: {json.dumps(drive)} -->\n",
+                encoding="utf-8",
+            )
+
+            selected = HOOK_MODULE.latest_compatible_checkpoint()
+
+        self.assertEqual(selected, "agent_docs/sessions/valid.md")
 
     def test_code_write_requires_fresh_lint_and_test_receipts(self) -> None:
         self.assertEqual(self.run_hook("session-start", {"session_id": "s1"}).returncode, 0)

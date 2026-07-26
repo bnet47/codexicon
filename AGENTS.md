@@ -23,6 +23,8 @@ Run commands from the repository root.
 ./scripts/lint.sh --fix         # apply safe lint/format fixes
 ./scripts/test.sh               # run the full test suite
 ./scripts/security.sh           # scan tracked/non-ignored safe files for credentials
+python scripts/codexicon.py doctor  # diagnose harness/configuration drift
+python scripts/codexicon.py verify  # run lint, tests, and security in canonical order
 ./scripts/deploy.sh staging     # deploy to staging
 ./scripts/deploy.sh prod        # production; requires DEPLOY_APPROVED=true
 ```
@@ -43,7 +45,7 @@ Before initialization, native Windows can run `./scripts/lint.ps1` and `./script
 
 Codex sees skill metadata first and loads full instructions only when relevant.
 
-- Project lifecycle: `$discover` → `$init`; unclear feature: `$brainstorm`; precise written requirement: `$spec` → `$write-plan` when needed.
+- Project lifecycle: `$discover` → `$init`; established-repository harness adoption: `$adopt-codexicon`; unclear feature: `$brainstorm`; precise written requirement: `$spec` → `$write-plan` when needed.
 - Implementation: `$quick` for clear small work; `$execute-plan` for an approved plan with independent tasks.
 - Assurance: `$investigate` for unknown causes; `$architecture-review` for costly choices; `$review` after building; `$ship` only on an explicit Git request.
 - Release safety: `$production-readiness` before a first launch or material production change.

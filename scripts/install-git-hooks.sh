@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "[git-hooks] Initialize Git before installing repository hooks." >&2
-  exit 1
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+  PYTHON_BIN=python
 fi
 
-root="$(git rev-parse --show-toplevel)"
-cd "$root"
-chmod +x .githooks/pre-commit .githooks/pre-push
-git config --local core.hooksPath .githooks
-echo "[git-hooks] Installed repository pre-commit and pre-push gates."
+"$PYTHON_BIN" scripts/codexicon.py install-git-hooks
 

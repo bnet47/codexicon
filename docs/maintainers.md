@@ -16,12 +16,13 @@ This guide covers the public template itself, not projects created from it.
 1. Update the version and dated notes in `TEMPLATE_VERSION`.
 2. Confirm `README.md`, `START_HERE.md`, the visual playbook, and skill catalog describe the same lifecycle.
 3. Run Windows and POSIX lint, tests, and security checks.
-4. Run the production-readiness skill validator and creative scanner when those surfaces changed.
-5. Confirm the playbook source and standalone output match.
-6. Search for machine-specific paths, credentials, obsolete harness files, placeholders outside intentional project templates, and internal task records.
-7. Open a pull request and require CI before merging.
-8. Tag the exact merge commit as `vX.Y.Z` and publish release notes from `TEMPLATE_VERSION`.
-9. Confirm the repository remains public, marked as a template, and private vulnerability reporting is enabled.
+4. Run `python scripts/validate_template.py --release` to reject repository-local briefs, plans, and checkpoints before tagging.
+5. Run the production-readiness skill validator and creative scanner when those surfaces changed.
+6. Confirm the playbook source and standalone output match.
+7. Search for machine-specific paths, credentials, obsolete harness files, placeholders outside intentional project templates, and internal task records.
+8. Open a pull request and require CI before merging.
+9. Tag the exact merge commit as `vX.Y.Z` and publish release notes from `TEMPLATE_VERSION`.
+10. Confirm the repository remains public, marked as a template, and private vulnerability reporting is enabled.
 
 ## Updating the playbook
 
@@ -40,5 +41,7 @@ Keep the `SKILL.md` body procedural and concise. Put detailed variant guidance i
 
 ## Supporting generated projects
 
-Projects created from Codexicon have independent histories and do not receive automatic updates. Release notes should identify safeguards worth porting and avoid instructions that overwrite project-specific commands, architecture, or accepted decisions.
+Projects created from Codexicon have independent histories and do not receive automatic updates. Keep `.codexicon.json` limited to real harness integration points and assign project-owned commands/guidance conservatively. Test adoption and update from the prior release: unchanged managed files update, retired unchanged files recoverably remove, local modifications conflict, malformed state fails safely, and no plan mode writes.
+
+Release notes should identify safeguards worth porting and avoid instructions that overwrite project-specific commands, architecture, or accepted decisions. Update schema 1 only compatibly; a provenance or ownership semantic change requires a new schema and migration tests.
 

@@ -17,6 +17,8 @@ Do not add provider accounts, API keys, databases, or deployment services before
 
 Use your normal template or repository creation flow. For a new local project, start with a fresh Git repository rather than retaining template history. Git initialization, remotes, commits, and pushes are explicit actions: ask Codex for them when wanted.
 
+For an established repository, do not copy the template over it. From a separate trusted Codexicon source, invoke `$adopt-codexicon` or run `python scripts/codexicon.py inspect TARGET`. Review the read-only inventory, especially existing guidance, hooks, canonical scripts, CI, and project facts. Run `adopt TARGET --apply` only after authorizing those repository writes; conflicts remain untouched for deliberate integration.
+
 Open the resulting directory in Codex from its root. Review and trust `.codex/config.toml` and `.codex/hooks.json`; project configuration and hooks do not run until the project is trusted.
 
 Before changing the template, confirm its baseline:
@@ -36,6 +38,8 @@ On native Windows:
 ```
 
 All three commands should pass. At this stage they validate the template and its Codex safeguards, not an application stack.
+
+`python scripts/codexicon.py doctor` diagnoses harness structure without assuming the project is still an unconfigured template. `python scripts/codexicon.py verify` runs the platform-native lint, test, and security scripts in canonical order.
 
 ## 2. Define the project before the technology
 
@@ -105,6 +109,7 @@ Choose only the workflow the change needs:
 | Precise requirement needs a durable contract | `$spec` |
 | Approved multi-step spec needs task decomposition | `$write-plan` |
 | Approved plan contains independent implementation tasks | `$execute-plan` |
+| Existing repository needs Codexicon inspection, adoption, or update | `$adopt-codexicon` |
 | Reproducible failure has an unknown cause | `$investigate` |
 | Expensive-to-reverse technical choice | `$architecture-review` |
 | App or website experience needs intentional visual execution | `$design-experience` |
@@ -187,7 +192,7 @@ Use each location for one kind of truth:
 | Requested handoff checkpoints and retrospectives | `agent_docs/sessions/` |
 | Codex configuration and extension details | `docs/codex.md` |
 
-Do not put temporary task state or long explanations in `AGENTS.md`; it is loaded into every task. Do not treat `.codex-state/` as project memory—it is ephemeral verification state.
+Do not put temporary task state or long explanations in `AGENTS.md`; it is loaded into every task. `.codex-state/` is local verification state, not project memory. Use `$context-dump` for an explicit atomic Markdown checkpoint and `python scripts/codexicon.py resume` to select the newest compatible checkpoint.
 
 ## 8. Verify and ship deliberately
 

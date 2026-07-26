@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python: ["3.10", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:
@@ -31,10 +31,15 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Lint and structural checks (POSIX)
         if: runner.os != 'Windows'
-        run: bash ./scripts/lint.sh
+        run: ./scripts/lint.sh
       - name: Tests (POSIX)
         if: runner.os != 'Windows'
-        run: bash ./scripts/test.sh
+        run: ./scripts/test.sh
+      - name: Tracked Git-hook smoke tests (POSIX)
+        if: runner.os != 'Windows'
+        run: |
+          ./.githooks/pre-commit
+          ./.githooks/pre-push
       - name: Lint and structural checks (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -43,6 +48,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/test.ps1
+      - name: Security (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/security.ps1
 
   security:
     name: Security gates
@@ -57,7 +66,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Canonical local security gate
-        run: bash ./scripts/security.sh
+        run: ./scripts/security.sh
       - uses: trufflesecurity/trufflehog@27b0417c16317ca9a472a9a8092acce143b49c55 # v3.95.9
         with:
           version: 3.95.9

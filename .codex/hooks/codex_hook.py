@@ -9,12 +9,13 @@ import os
 import re
 import secrets
 import shlex
+import subprocess
 import sys
 import tempfile
 import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterator
 
 
@@ -53,9 +54,9 @@ RECEIPT_MARKER = re.compile(
 SECRET_ENV_NAME = r"[A-Z0-9_]*(?:API[_-]?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE[_-]?KEY|ACCESS[_-]?KEY|SESSION|COOKIE)[A-Z0-9_]*"
 ENV_ENUMERATION = re.compile(
     r"(?ix)(?:"
-    r"(?:^|[;&|\n])\s*(?:env|printenv)\s*(?=$|[;&|\n])|"
-    r"(?:^|[;&|\n])\s*(?:export\s+-p|declare\s+-x|compgen\s+-e)\s*(?=$|[;&|\n])|"
-    r"(?:^|[;&|\n])\s*(?:cmd(?:\.exe)?\s+/[dqs]+\s+/c\s+)?set\s*(?=$|[;&|\n])|"
+    r"(?:^|[;&|\n])\s*(?:env|printenv)\s*(?=$|[;&|\n]|(?:\d+\s*)?[<>])|"
+    r"(?:^|[;&|\n])\s*(?:export\s+-p|declare\s+-x|compgen\s+-e)\s*(?=$|[;&|\n]|(?:\d+\s*)?[<>])|"
+    r"(?:^|[;&|\n])\s*(?:cmd(?:\.exe)?\s+/[dqs]+\s+/c\s+)?set\s*(?=$|[;&|\n]|(?:\d+\s*)?[<>])|"
     r"(?:get-childitem|gci|dir|ls)\s+(?:-path\s+)?env:\*?|"
     r"get-item\s+(?:-path\s+)?env:\*|"
     r"getenvironmentvariables\s*\(|"
@@ -95,6 +96,88 @@ SEARCH_OPTIONS_WITH_VALUES = {
     "--type-not",
 }
 SEARCH_PATTERN_OPTIONS = {"-e", "--regexp"}
+SEARCH_BOOLEAN_OPTIONS = {
+    "-F",
+    "--fixed-strings",
+    "-H",
+    "--with-filename",
+    "-h",
+    "--no-filename",
+    "-i",
+    "--ignore-case",
+    "-l",
+    "--files-with-matches",
+    "-n",
+    "--line-number",
+    "-N",
+    "--no-line-number",
+    "-o",
+    "--only-matching",
+    "-q",
+    "--quiet",
+    "-s",
+    "--case-sensitive",
+    "-S",
+    "--smart-case",
+    "-U",
+    "--multiline",
+    "-v",
+    "--invert-match",
+    "-w",
+    "--word-regexp",
+    "-x",
+    "--line-regexp",
+    "--heading",
+    "--hidden",
+    "--multiline-dotall",
+    "--no-heading",
+    "--no-ignore",
+    "--no-messages",
+    "--pcre2",
+    "--stats",
+}
+CHECKPOINT_MARKER = re.compile(r"^<!--\s*codexicon-checkpoint:\s*(\{.*\})\s*-->$")
+READ_ONLY_COMMANDS = {
+    "cat",
+    "get-childitem",
+    "get-command",
+    "get-content",
+    "get-date",
+    "get-item",
+    "get-location",
+    "get-process",
+    "get-variable",
+    "gci",
+    "head",
+    "ls",
+    "measure-object",
+    "out-string",
+    "pwd",
+    "resolve-path",
+    "select-object",
+    "select-string",
+    "sort-object",
+    "stat",
+    "tail",
+    "test-path",
+    "where",
+    "where.exe",
+    "which",
+    "write-output",
+}
+READ_ONLY_GIT_COMMANDS = {"ls-files", "log", "rev-parse", "show", "status"}
+UNSAFE_READ_ONLY_TOKENS = {
+    "--ext-diff",
+    "--exec",
+    "--output",
+    "--pre",
+    "--pre-glob",
+    "--textconv",
+}
+
+
+class StateLoadError(RuntimeError):
+    """Raised when verification state is absent or cannot be trusted."""
 
 
 def utc_now() -> tuple[float, str]:
@@ -157,11 +240,30 @@ def state_lock() -> Iterator[None]:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
-def load_state_unlocked() -> dict[str, Any]:
+def valid_state(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and value.get("schema_version") == 2
+        and isinstance(value.get("has_writes"), bool)
+        and isinstance(value.get("lint_passed"), bool)
+        and isinstance(value.get("test_passed"), bool)
+        and isinstance(value.get("test_required"), bool)
+    )
+
+
+def load_state_unlocked(strict: bool = False) -> dict[str, Any]:
     try:
         value = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
+    except FileNotFoundError as exc:
+        if strict:
+            raise StateLoadError("verification state is missing") from exc
         return {}
+    except (json.JSONDecodeError, OSError) as exc:
+        if strict:
+            raise StateLoadError("verification state is unreadable or malformed") from exc
+        return {}
+    if strict and not valid_state(value):
+        raise StateLoadError("verification state has an unsupported or incomplete schema")
     return value if isinstance(value, dict) else {}
 
 
@@ -184,15 +286,17 @@ def save_json_atomic(path: Path, value: dict[str, Any]) -> None:
 def mutate_state(mutator: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
     with state_lock():
         state = load_state_unlocked()
+        if state and not valid_state(state):
+            state = {}
         state.setdefault("schema_version", 2)
         mutator(state)
         save_json_atomic(STATE_FILE, state)
         return dict(state)
 
 
-def read_state() -> dict[str, Any]:
+def read_state(strict: bool = False) -> dict[str, Any]:
     with state_lock():
-        return dict(load_state_unlocked())
+        return dict(load_state_unlocked(strict=strict))
 
 
 def reset_state(payload: dict[str, Any]) -> int:
@@ -215,6 +319,134 @@ def reset_state(payload: dict[str, Any]) -> int:
         )
 
     mutate_state(reset)
+    return 0
+
+
+def repository_identity() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        result = None
+    if result is not None and result.returncode == 0 and result.stdout.strip():
+        common = Path(result.stdout.strip())
+        if not common.is_absolute():
+            common = ROOT / common
+        material = str(common.resolve())
+    else:
+        material = str(ROOT.resolve())
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()[:20]
+
+
+def latest_compatible_checkpoint() -> str | None:
+    sessions = ROOT / "agent_docs" / "sessions"
+    if not sessions.is_dir() or sessions.is_symlink():
+        return None
+    repo_id = repository_identity()
+    candidates: list[tuple[datetime, str]] = []
+    for path in sessions.glob("*.md"):
+        if path.is_symlink():
+            continue
+        try:
+            path.resolve().relative_to(ROOT.resolve())
+        except (OSError, ValueError):
+            continue
+        try:
+            with path.open("r", encoding="utf-8") as handle:
+                first = handle.readline().strip()
+            match = CHECKPOINT_MARKER.fullmatch(first)
+            metadata = json.loads(match.group(1)) if match else None
+        except (OSError, json.JSONDecodeError):
+            continue
+        if (
+            not isinstance(metadata, dict)
+            or metadata.get("schema_version") != 1
+            or metadata.get("repository_id") != repo_id
+            or not isinstance(metadata.get("checkpoint_id"), str)
+            or not re.fullmatch(r"[a-f0-9]{16}", metadata["checkpoint_id"])
+            or not isinstance(metadata.get("branch"), str)
+            or not isinstance(metadata.get("head"), str)
+            or not isinstance(metadata.get("related"), list)
+        ):
+            continue
+        try:
+            created = datetime.fromisoformat(str(metadata["created_at"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if created.tzinfo is None:
+            continue
+        related_valid = True
+        normalized_related: set[str] = set()
+        for raw in metadata["related"]:
+            normalized = str(raw).replace("\\", "/")
+            relative = PurePosixPath(normalized)
+            if (
+                not isinstance(raw, str)
+                or not normalized
+                or relative.is_absolute()
+                or re.match(r"^[A-Za-z]:", normalized)
+                or any(part in {"", ".", ".."} for part in relative.parts)
+                or relative.as_posix() in normalized_related
+            ):
+                related_valid = False
+                break
+            normalized_related.add(relative.as_posix())
+        if not related_valid:
+            continue
+        candidates.append((created, path.relative_to(ROOT).as_posix()))
+    return max(candidates)[1] if candidates else None
+
+
+def resume_state(payload: dict[str, Any]) -> int:
+    stamp, rendered = utc_now()
+    recovered = False
+    with state_lock():
+        try:
+            state = load_state_unlocked(strict=True)
+        except StateLoadError:
+            recovered = True
+            state = {
+                "schema_version": 2,
+                "session_id": payload.get("session_id"),
+                "session_started_at": rendered,
+                "session_started_epoch": stamp,
+                "has_writes": True,
+                "lint_passed": False,
+                "test_passed": False,
+                "test_required": True,
+            }
+            state.update(
+                last_write_at=rendered,
+                last_write_epoch=stamp,
+                last_test_relevant_write_at=rendered,
+                last_test_relevant_write_epoch=stamp,
+            )
+        state.update(
+            session_id=payload.get("session_id") or state.get("session_id"),
+            last_resume_at=rendered,
+            last_resume_epoch=stamp,
+            last_resume_source=payload.get("source"),
+        )
+        save_json_atomic(STATE_FILE, state)
+
+    checkpoint = latest_compatible_checkpoint()
+    messages: list[str] = []
+    if recovered:
+        messages.append(
+            "Local verification state was unavailable; lint and tests are required again."
+        )
+    if checkpoint:
+        messages.append(
+            f"Compatible checkpoint: {checkpoint}. Run `python scripts/codexicon.py resume` "
+            "and verify it against the current diff before continuing."
+        )
+    if messages:
+        print(json.dumps({"systemMessage": " ".join(messages)}))
     return 0
 
 
@@ -265,6 +497,9 @@ def safely_scoped_search(command: str) -> bool:
             pattern_seen = True
             index += 1
             continue
+        if token in SEARCH_BOOLEAN_OPTIONS:
+            index += 1
+            continue
         if token in SEARCH_OPTIONS_WITH_VALUES:
             if index + 1 >= len(tokens):
                 return False
@@ -273,8 +508,7 @@ def safely_scoped_search(command: str) -> bool:
             index += 2
             continue
         if token.startswith("-"):
-            index += 1
-            continue
+            return False
         if not pattern_seen:
             pattern_seen = True
         else:
@@ -298,14 +532,32 @@ def protect_secrets(payload: dict[str, Any]) -> int:
     text = protected_text(payload)
     if not text:
         return 0
+    if wildcard_file_read(payload, text):
+        print(
+            "Blocked protected credential path: wildcard file reads can expand to credentials. "
+            "Name a verified non-secret file explicitly.",
+            file=sys.stderr,
+        )
+        return 2
     patch_paths = changed_paths(payload)
     if patch_paths:
         text = "\n".join(str(path) for path in patch_paths)
     scrubbed = SAFE_PLACEHOLDER.sub("ENV_EXAMPLE", text)
+    resolved_sensitive = False
+    for path in changed_paths(payload):
+        try:
+            resolved = path.expanduser().resolve(strict=False)
+        except OSError:
+            continue
+        resolved_text = SAFE_PLACEHOLDER.sub("ENV_EXAMPLE", str(resolved))
+        if SENSITIVE_PATH.search(resolved_text):
+            resolved_sensitive = True
+            break
     if not (
         SENSITIVE_PATH.search(scrubbed)
         or ENV_ENUMERATION.search(scrubbed)
         or SECRET_ENV_REFERENCE.search(scrubbed)
+        or resolved_sensitive
     ):
         return 0
     if safely_scoped_search(text):
@@ -315,6 +567,42 @@ def protect_secrets(payload: dict[str, Any]) -> int:
         file=sys.stderr,
     )
     return 2
+
+
+def wildcard_file_read(payload: dict[str, Any], text: str) -> bool:
+    tool_name = str(payload.get("tool_name", "")).lower()
+    if tool_name in {"read", "read_file", "read_text_file"}:
+        return any(character in text for character in "*?[")
+    read_commands = {
+        "cat",
+        "gc",
+        "get-content",
+        "head",
+        "more",
+        "select-string",
+        "tail",
+        "type",
+    }
+    segments = re.split(r"(?:\r?\n|;|&&|\|\||(?<!\|)\|(?!\|))", text)
+    for segment in segments:
+        try:
+            tokens = shlex.split(segment, posix=True)
+        except ValueError:
+            continue
+        if not tokens:
+            continue
+        if tokens[0] == "&":
+            tokens = tokens[1:]
+        if tokens and tokens[0].lower() == "command":
+            tokens = tokens[1:]
+        if not tokens:
+            continue
+        executable = Path(tokens[0]).name.lower()
+        if executable in read_commands and any(
+            any(character in token for character in "*?[") for token in tokens[1:]
+        ):
+            return True
+    return False
 
 
 def changed_paths(payload: dict[str, Any]) -> list[Path]:
@@ -386,7 +674,7 @@ def command_text(payload: dict[str, Any]) -> str:
     return command if isinstance(command, str) else ""
 
 
-def canonical_check(command: str) -> str | None:
+def canonical_checks(command: str) -> list[str] | None:
     patterns = {
         "lint": [
             r"\s*(?:bash\s+)?(?:\./)?scripts/lint\.sh\s*",
@@ -396,15 +684,43 @@ def canonical_check(command: str) -> str | None:
             r"\s*(?:bash\s+)?(?:\./)?scripts/test\.sh\s*",
             r"\s*(?:&\s*)?(?:\.\\|\./)?scripts[\\/]test\.ps1\s*",
         ],
+        "security": [
+            r"\s*(?:bash\s+)?(?:\./)?scripts/security\.sh\s*",
+            r"\s*(?:&\s*)?(?:\.\\|\./)?scripts[\\/]security\.ps1\s*",
+        ],
     }
+    checks: list[str] = []
     for check, candidates in patterns.items():
         if any(re.fullmatch(pattern, command, flags=re.IGNORECASE) for pattern in candidates):
-            return check
-    return None
+            checks.append(check)
+    if checks:
+        return checks
+    try:
+        tokens = shlex.split(command.strip(), posix=True)
+    except ValueError:
+        return None
+    if tokens and tokens[0] == "&":
+        tokens = tokens[1:]
+    if not tokens:
+        return None
+    executable = Path(tokens[0]).name.lower()
+    if executable in {"python", "python3", "python.exe"}:
+        tokens = tokens[1:]
+    if len(tokens) < 2:
+        return None
+    script = tokens[0].replace("\\", "/").removeprefix("./").lower()
+    if script != "scripts/codexicon.py" or tokens[1].lower() != "verify":
+        return None
+    requested = [token.lower() for token in tokens[2:]]
+    if any(token not in {"lint", "test", "security"} for token in requested):
+        return None
+    return [check for check in ("lint", "test") if not requested or check in requested]
 
 
 def definitely_read_only(command: str) -> bool:
     if re.search(r">>|(?<![<>=])>|(?<![<>=])<", command):
+        return False
+    if re.search(r"(?:`|\$\(|[&{}()]|@\(|<\(|>\()", command):
         return False
     segments = re.split(r"(?:\r?\n|;|&&|\|\||(?<!\|)\|(?!\|))", command)
     return bool(segments) and all(definitely_read_only_segment(segment) for segment in segments)
@@ -413,27 +729,33 @@ def definitely_read_only(command: str) -> bool:
 def definitely_read_only_segment(command: str) -> bool:
     if not command.strip():
         return True
-    if re.fullmatch(
-        r"\s*git\s+branch(?:\s+(?:--show-current|-a|--all|-r|--remotes|-v|--verbose|--list))*\s*",
-        command,
-        flags=re.IGNORECASE,
-    ):
+    try:
+        tokens = shlex.split(command, posix=True)
+    except ValueError:
+        return False
+    if not tokens:
         return True
-    return bool(
-        re.match(
-            r"\s*(?:"
-            r"rg(?:\.exe)?|git\s+(?:status|diff|log|show|rev-parse|ls-files)|"
-            r"Get-(?:Content|ChildItem|Item|Command|Location|Date|Process|Variable)|"
-            r"Select-(?:String|Object)|Sort-Object|Measure-Object|Format-(?:List|Table|Wide)|"
-            r"Test-Path|Resolve-Path|Write-Output|Out-String|"
-            r"cat|head|tail|ls|pwd|stat|which|where(?:\.exe)?|"
-            r"(?:python|python3|node)\s+(?:--version|-V)|"
-            r"(?:npm|pnpm|yarn)\s+(?:list|ls|view|info|why)"
-            r")\b",
-            command,
-            flags=re.IGNORECASE,
-        )
-    )
+    lowered = [token.lower() for token in tokens]
+    executable = Path(lowered[0]).name
+    if any(
+        token == unsafe or token.startswith(f"{unsafe}=")
+        for token in lowered[1:]
+        for unsafe in UNSAFE_READ_ONLY_TOKENS
+    ):
+        return False
+    if executable in READ_ONLY_COMMANDS:
+        return True
+    if executable in {"rg", "rg.exe"}:
+        return True
+    if executable == "git":
+        if len(lowered) >= 2 and lowered[1] == "branch":
+            return lowered[2:] in ([], ["--show-current"], ["--list"])
+        return len(lowered) >= 2 and lowered[1] in READ_ONLY_GIT_COMMANDS
+    if executable in {"python", "python3", "node"}:
+        return lowered[1:] in (["--version"], ["-v"])
+    if executable in {"npm", "pnpm", "yarn"}:
+        return len(lowered) >= 2 and lowered[1] in {"info", "list", "ls", "view", "why"}
+    return False
 
 
 def prune_receipts(now: float | None = None) -> None:
@@ -506,9 +828,10 @@ def set_check_result(check: str, passed: bool) -> None:
 
 def record_shell(payload: dict[str, Any]) -> int:
     command = command_text(payload)
-    check = canonical_check(command)
-    if check:
-        set_check_result(check, consume_receipt(check, payload.get("tool_response", "")))
+    checks = canonical_checks(command)
+    if checks is not None:
+        for check in checks:
+            set_check_result(check, consume_receipt(check, payload.get("tool_response", "")))
         return 0
     if definitely_read_only(command):
         return 0
@@ -516,7 +839,18 @@ def record_shell(payload: dict[str, Any]) -> int:
 
 
 def verify_stop(payload: dict[str, Any]) -> int:
-    state = read_state()
+    try:
+        state = read_state(strict=True)
+    except StateLoadError as exc:
+        message = (
+            f"Verification state cannot be trusted ({exc}). Run ./scripts/lint.sh and "
+            "./scripts/test.sh from the repository root before stopping."
+        )
+        if payload.get("stop_hook_active"):
+            print(json.dumps({"systemMessage": message}))
+            return 0
+        print(message, file=sys.stderr)
+        return 2
     if not state.get("has_writes"):
         return 0
 
@@ -550,7 +884,7 @@ def verify_stop(payload: dict[str, Any]) -> int:
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print(
-            "Usage: codex_hook.py [session-start|protect-secrets|record-write|record-shell|record-compact|verify-stop|emit-success]",
+            "Usage: codex_hook.py [session-start|session-resume|protect-secrets|record-write|record-shell|record-compact|verify-stop|emit-success]",
             file=sys.stderr,
         )
         return 2
@@ -563,6 +897,7 @@ def main(argv: list[str]) -> int:
     configure_state_file(payload)
     handlers = {
         "session-start": reset_state,
+        "session-resume": resume_state,
         "protect-secrets": protect_secrets,
         "record-write": record_write,
         "record-shell": record_shell,

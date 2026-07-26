@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "version": "2.6.0-dev",
+  "files": [
+    {
+      "path": ".codexicon.json",
+      "policy": "managed"
+    },
+    {
+      "path": "scripts/codexicon.py",
+      "policy": "managed"
+    },
+    {
+      "path": ".codex/hooks/codex_hook.py",
+      "policy": "managed"
+    },
+    {
+      "path": "scripts/security_scan.py",
+      "policy": "merge"
+    },
+    {
+      "path": ".gitattributes",
+      "policy": "merge"
+    },
+    {
+      "path": ".gitignore",
+      "policy": "merge"
+    },
+    {
+      "path": ".githooks/pre-commit",
+      "policy": "merge",
+      "executable": true
+    },
+    {
+      "path": ".githooks/pre-push",
+      "policy": "merge",
+      "executable": true
+    },
+    {
+      "path": "scripts/install-git-hooks.sh",
+      "policy": "merge",
+      "executable": true
+    },
+    {
+      "path": "scripts/install-git-hooks.ps1",
+      "policy": "merge"
+    },
+    {
+      "path": ".codex/config.toml",
+      "policy": "merge"
+    },
+    {
+      "path": ".codex/hooks.json",
+      "policy": "merge"
+    },
+    {
+      "path": ".codex/agents/implementer.toml",
+      "policy": "merge"
+    },
+    {
+      "path": ".codex/agents/researcher.toml",
+      "policy": "merge"
+    },
+    {
+      "path": ".codex/agents/reviewer.toml",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/context-dump/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/adopt-codexicon/SKILL.md",
+      "policy": "managed"
+    },
+    {
+      "path": ".agents/skills/execute-plan/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": "docs/codex.md",
+      "policy": "merge"
+    },
+    {
+      "path": "docs/agent-patterns.md",
+      "policy": "merge"
+    },
+    {
+      "path": "AGENTS.md",
+      "policy": "project"
+    },
+    {
+      "path": "scripts/lint.sh",
+      "policy": "project",
+      "executable": true
+    },
+    {
+      "path": "scripts/lint.ps1",
+      "policy": "project"
+    },
+    {
+      "path": "scripts/test.sh",
+      "policy": "project",
+      "executable": true
+    },
+    {
+      "path": "scripts/test.ps1",
+      "policy": "project"
+    },
+    {
+      "path": "scripts/security.sh",
+      "policy": "project",
+      "executable": true
+    },
+    {
+      "path": "scripts/security.ps1",
+      "policy": "project"
+    }
+  ]
+}

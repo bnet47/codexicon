@@ -11,7 +11,7 @@ Announce: "I'm using execute-plan to implement the approved plan with bounded ta
 
 Read the selected plan and linked spec. Inspect `git status` and preserve existing user changes. Confirm task paths still exist and dependencies remain accurate; update the plan only when reality invalidates it, and explain material changes.
 
-If resuming, use the plan, current diff, and relevant checkpoint as truth. `.codex-state/` is only ephemeral verification state.
+If resuming, run `python scripts/codexicon.py resume`, then verify the selected checkpoint against the plan and current diff. `.codex-state/` is local verification state, not project memory.
 
 ## 2. Choose execution shape
 

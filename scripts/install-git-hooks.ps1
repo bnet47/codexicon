@@ -1,17 +1,12 @@
 $ErrorActionPreference = "Stop"
+$Root = Split-Path -Parent $PSScriptRoot
+$PythonBin = if ($env:PYTHON_BIN) { $env:PYTHON_BIN } else { "python" }
+$PythonCommand = (Get-Command $PythonBin -ErrorAction Stop).Source
 
-& git rev-parse --is-inside-work-tree *> $null
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "[git-hooks] Initialize Git before installing repository hooks."
-    exit 1
-}
-
-$Root = (& git rev-parse --show-toplevel).Trim()
 Push-Location $Root
 try {
-    & git config --local core.hooksPath .githooks
+    & $PythonCommand scripts/codexicon.py install-git-hooks
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    Write-Output "[git-hooks] Installed repository pre-commit and pre-push gates."
 }
 finally {
     Pop-Location

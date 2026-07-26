@@ -1,6 +1,18 @@
-2.5.0
+2.6.0-dev
 
-Released: 2026-07-18
+Status: Unreleased
+
+## 2.6.0 — Repository-harness hardening
+
+- Added a dependency-free repository manager for read-only adoption inspection, post-init diagnostics, canonical verification, explicit checkpoints, safe local-source updates, and Git-hook installation.
+- Added schema-1 whole-file ownership and installed baseline locks with explicit apply, atomic writes, rollback, interrupted-transaction recovery, and conflict preservation.
+- Recovered missing resume/handoff verification state conservatively, made checkpoint selection repository-compatible, and narrowed the external researcher away from built-in explorer work.
+- Removed undocumented Codex configuration, hardened hook mutation classification and malformed-state behavior, and strengthened credential scanning against placeholder and unreadable-file bypasses.
+- Enforced executable LF POSIX entry points, macOS/Linux/Windows CI coverage, native Windows security execution, and tracked Git-hook smoke tests.
+
+Released versions:
+
+**2.5.0 — 2026-07-18**
 
 ## 2.5.0 — Codexicon public release
 

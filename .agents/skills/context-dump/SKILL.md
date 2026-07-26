@@ -1,55 +1,46 @@
 ---
 name: context-dump
-description: Save a human-readable checkpoint when requested or needed for session handoff. Primary agent only; not routine completion.
+description: Create or resume an explicit human-readable checkpoint across compaction, sessions, or handoff. Primary agent only.
 ---
 
 # Context checkpoint
 
-Create a concise checkpoint that lets a fresh Codex task continue without transcript archaeology.
+Create or resume a concise checkpoint without transcript archaeology. Semantic checkpoints are explicit project writes; hooks never create or commit them automatically.
 
-## 1. Gather current evidence
+## 1. Choose the branch
 
-Inspect the active request/spec/plan, current diff or changed files, latest verification, and blockers. Do not copy secrets, large logs, or code that already exists in tracked files.
+- For a checkpoint or handoff request, continue with **Create**.
+- For a resume or continuation request, continue with **Resume**.
 
-## 2. Write the checkpoint
+## 2. Create
 
-Save `agent_docs/sessions/[YYYY-MM-DD]-[slug].md`:
+Inspect the active request/spec/plan, current diff or changed files, latest verification, and blockers. Do not copy secrets, large logs, transcript content, or code that already exists in tracked files.
 
-```markdown
-# Checkpoint: [Short title]
+Run the repository manager from the root:
 
-**Date:** [YYYY-MM-DD]
-**Related spec/plan:** [relative links or none]
-
-## Completed
-- [Outcome with file or task reference.]
-
-## Current state
-- Working: [verified behavior]
-- Partial: [specific incomplete work]
-- Broken: [known failure, or none]
-
-## Verification
-- `[command]` — [result and when run]
-
-## Next actions
-1. [Immediate concrete action.]
-
-## Blockers and decisions needed
-- [Blocker, owner, and needed input, or none]
-
-## Decisions and assumptions
-- [Decision plus rationale.]
-
-## Dead ends
-- [Attempt] — [evidence it failed] — [better next approach]
-
-## Resume note
-[One paragraph with the minimum critical context.]
+```text
+python scripts/codexicon.py checkpoint --slug [short-slug] --title "[short title]" --summary "[working, partial, and broken state]" --resume-note "[minimum critical continuation context]" --next "[immediate concrete action]" --related [relative spec or plan path] --verification "[exact command — result and time]" --blocker "[blocker and required input]" --decision "[decision and rationale]"
 ```
 
-## 3. Keep durable and ephemeral guidance separate
+Repeat `--next`, `--related`, `--verification`, `--blocker`, and `--decision` as needed. Omit optional categories that are empty. Quote values for the active shell; never interpolate command output or untrusted text into the command.
 
-Do not place session state in `AGENTS.md`; it is always-loaded repository guidance. Do not require an MCP memory service. If a connected memory tool is available and the user wants cross-project memory, store only the compact resume note.
+The manager validates related paths, captures only dirty path names plus Git identity, and atomically writes `agent_docs/sessions/[YYYY-MM-DD]-[slug].md`. It refuses an existing filename. Do not hand-edit the first metadata line.
+
+## 3. Resume
+
+Run:
+
+```text
+python scripts/codexicon.py resume
+python scripts/codexicon.py doctor
+```
+
+Use the newest repository-compatible checkpoint as orientation, then verify its HEAD, related paths, current diff, and verification claims before acting. A checkpoint is evidence, not authority to discard later user changes or repeat external side effects.
+
+If no compatible checkpoint exists, inspect the latest plan and current diff directly; do not select a checkpoint from a different clone by filename alone.
+
+## 4. Keep durable and ephemeral guidance separate
+
+Do not place session state in `AGENTS.md`; it is always-loaded repository guidance. `.codex-state/` remains local verification state, not project memory. Do not require an MCP memory service. If the user explicitly wants cross-project memory, store only the compact resume note.
 
 Do not commit or push the checkpoint unless the user asks to ship or explicitly requests a checkpoint commit.

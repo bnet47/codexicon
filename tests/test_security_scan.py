@@ -62,14 +62,91 @@ class SecurityScanTests(unittest.TestCase):
 
     def test_scanner_allows_documented_placeholders(self) -> None:
         source = self.root / "config.example.py"
+        token_name = "auth_" + "token"
+        environment_reference = "process.env." + "AUTH_TOKEN"
         source.write_text(
-            'api_key = "your_api_key_here"\npassword = "changeme-before-use"\n',
+            'api_key = "your_api_key_here"\n'
+            'password = "changeme-before-use"\n'
+            f"{token_name} = {environment_reference}\n",
             encoding="utf-8",
         )
 
         findings = SECURITY_SCAN.scan_repository(self.root)
 
         self.assertEqual(findings, [])
+
+    def test_safe_first_assignment_does_not_hide_later_secret(self) -> None:
+        source = self.root / "config.py"
+        key_name = "API_" + "KEY"
+        password_name = "PASS" + "WORD"
+        source.write_text(
+            f"{key_name}=placeholder; {password_name}=ActualSecret123\n",
+            encoding="utf-8",
+        )
+
+        findings = SECURITY_SCAN.scan_repository(self.root)
+
+        self.assertIn(
+            SECURITY_SCAN.Finding("config.py", 1, "literal-secret-assignment"),
+            findings,
+        )
+
+    def test_placeholder_words_do_not_suppress_real_assignments(self) -> None:
+        source = self.root / "config.py"
+        api_name = "api_" + "key"
+        password_name = "pass" + "word"
+        token_name = "auth_" + "token"
+        first_value = "latest-" + "production-secret"
+        second_value = "contest-" + "winner-credential"
+        third_value = "realproduction" + "credential"
+        source.write_text(
+            f'{api_name} = "{first_value}"\n'
+            f'{password_name} = "{second_value}"\n'
+            f"{token_name}={third_value}\n",
+            encoding="utf-8",
+        )
+
+        findings = SECURITY_SCAN.scan_repository(self.root)
+
+        self.assertEqual(
+            [(finding.line, finding.detector) for finding in findings],
+            [
+                (1, "literal-secret-assignment"),
+                (2, "literal-secret-assignment"),
+                (3, "literal-secret-assignment"),
+            ],
+        )
+
+    def test_unreadable_candidate_fails_closed_without_value_output(self) -> None:
+        source = self.root / "restricted.txt"
+        source.write_text("safe\n", encoding="utf-8")
+
+        with mock.patch.object(Path, "open", side_effect=PermissionError("denied")):
+            findings = list(SECURITY_SCAN.scan_lines(source, self.root))
+
+        self.assertEqual(
+            findings,
+            [SECURITY_SCAN.Finding("restricted.txt", 0, "unreadable-file")],
+        )
+
+    def test_failed_git_enumeration_is_reported_and_falls_back(self) -> None:
+        source = self.root / "app.py"
+        source.write_text("print('safe')\n", encoding="utf-8")
+        with (
+            mock.patch.object(SECURITY_SCAN, "is_git_root", return_value=True),
+            mock.patch.object(
+                SECURITY_SCAN,
+                "git_paths",
+                side_effect=[["app.py"], None],
+            ),
+        ):
+            files, findings = SECURITY_SCAN.repository_files(self.root)
+
+        self.assertEqual(files, [source])
+        self.assertIn(
+            SECURITY_SCAN.Finding(".", 0, "git-enumeration-failed"),
+            findings,
+        )
 
     def test_tracked_protected_path_fails_without_opening_it(self) -> None:
         safe_source = self.root / "app.py"

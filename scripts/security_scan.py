@@ -61,26 +61,23 @@ TOKEN_PATTERNS = (
 )
 SECRET_ASSIGNMENT = re.compile(
     r"(?ix)\b(?:api[_-]?key|client[_-]?secret|password|passwd|secret|access[_-]?token|auth[_-]?token)"
-    r"\s*[:=]\s*['\"]([^'\"]{8,})['\"]"
+    r"\s*[:=]\s*(?:['\"]([^'\"]{8,})['\"]|([^\s#;,]{8,}))"
 )
-SAFE_VALUE_MARKERS = (
-    "${",
-    "$env:",
-    "<",
-    "[",
-    "changeme",
-    "dummy",
-    "example",
-    "fake",
-    "getenv",
-    "placeholder",
-    "process.env",
-    "redacted",
-    "replace",
-    "sample",
-    "test",
-    "your_",
-    "xxxx",
+SAFE_VALUE = re.compile(
+    r"(?ix)^(?:"
+    r"\$\{[^}]+\}|"
+    r"\$env:[a-z0-9_]+|"
+    r"<[^>]+>|"
+    r"\[[^\]]+\]|"
+    r"process\.env(?:\.[a-z0-9_]+|\[[^\]]+\])|"
+    r"os\.environ\[[^\]]+\]|"
+    r"(?:os\.getenv|getenv)\s*\([^)]*\)|"
+    r"change[-_ ]?me(?:[-_ ]before[-_ ]use)?|"
+    r"dummy|example|fake|placeholder|redacted|"
+    r"replace(?:[-_ ]?me)?|sample|test|"
+    r"your(?:[-_ ][a-z0-9]+)+|"
+    r"x{4,}"
+    r")$"
 )
 
 
@@ -169,7 +166,10 @@ def repository_files(root: Path) -> tuple[list[Path], list[Finding]]:
         findings.extend(
             Finding(path, 0, "protected-tracked-path") for path in tracked if is_protected_path(path)
         )
-        candidates = git_paths(root, "ls-files", "--cached", "--others", "--exclude-standard") or []
+        candidates = git_paths(root, "ls-files", "--cached", "--others", "--exclude-standard")
+        if candidates is None:
+            findings.append(Finding(".", 0, "git-enumeration-failed"))
+            return filesystem_files(root, findings)
         files = []
         for relative in candidates:
             path = root / relative
@@ -180,7 +180,11 @@ def repository_files(root: Path) -> tuple[list[Path], list[Finding]]:
                 files.append(candidate)
         return sorted(set(files)), findings
 
-    files = []
+    return filesystem_files(root, findings)
+
+
+def filesystem_files(root: Path, findings: list[Finding]) -> tuple[list[Path], list[Finding]]:
+    files: list[Path] = []
     for path in root.rglob("*"):
         relative = normalized_relative(path, root)
         if EXCLUDED_DIRS.intersection(Path(relative).parts) or is_protected_path(relative):
@@ -199,6 +203,7 @@ def scan_lines(path: Path, root: Path) -> Iterable[Finding]:
                 return
             content = prefix + raw.read()
     except (OSError, PermissionError):
+        yield Finding(normalized_relative(path, root), 0, "unreadable-file")
         return
 
     text = content.decode("utf-8", errors="replace")
@@ -207,10 +212,9 @@ def scan_lines(path: Path, root: Path) -> Iterable[Finding]:
         for detector, pattern in TOKEN_PATTERNS:
             if pattern.search(line):
                 yield Finding(relative, line_number, detector)
-        assignment = SECRET_ASSIGNMENT.search(line)
-        if assignment:
-            value = assignment.group(1).lower()
-            if not any(marker in value for marker in SAFE_VALUE_MARKERS):
+        for assignment in SECRET_ASSIGNMENT.finditer(line):
+            value = next(group for group in assignment.groups() if group is not None).strip()
+            if not SAFE_VALUE.fullmatch(value):
                 yield Finding(relative, line_number, "literal-secret-assignment")
 
 

@@ -22,6 +22,7 @@ application_default_credentials.json
 
 # Codex local state (kept outside protected .codex/ so sandboxed commands can update it)
 .codex-state/
+.codexicon/
 .codex/config.local.toml
 .codex-log/
 
