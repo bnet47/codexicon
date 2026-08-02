@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="480" viewBox="0 0 1280 480" role="img" aria-labelledby="title desc">
+  <title id="title">Codexicon — a production-minded Codex agent harness</title>
+  <desc id="desc">A technical field-manual graphic showing Codexicon moving work from project context through deliberate workflow routing and verification to explicitly authorized effects.</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#ffffff" stroke-opacity=".045"/>
+    </pattern>
+    <filter id="blueGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="greenGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="480" rx="24" fill="#0d1016"/>
+  <rect width="1280" height="480" rx="24" fill="url(#grid)"/>
+  <path d="M0 406H1280" stroke="#ffffff" stroke-opacity=".08"/>
+  <path d="M838 0V406" stroke="#ffffff" stroke-opacity=".08"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.8">
+      <text x="58" y="55" fill="#83c3ff">FIELD MANUAL / CX-01</text>
+      <text x="1218" y="55" fill="#8c96a8" text-anchor="end">CODEX AGENT HARNESS</text>
+    </g>
+
+    <rect x="58" y="82" width="46" height="5" rx="2.5" fill="#339cff"/>
+    <rect x="110" y="82" width="18" height="5" rx="2.5" fill="#f39a56"/>
+    <rect x="134" y="82" width="18" height="5" rx="2.5" fill="#74d58b"/>
+
+    <text x="52" y="187" fill="#f8fafc" font-size="82" font-weight="760" letter-spacing="-4">CODEXICON</text>
+    <text x="58" y="232" fill="#c8d0dc" font-size="25" font-weight="520">A production-minded harness for agent-driven development.</text>
+
+    <text x="58" y="284" fill="#8c96a8" font-size="17">
+      Durable context. Progressive workflows. Repeatable verification.
+    </text>
+    <text x="58" y="312" fill="#8c96a8" font-size="17">
+      Explicit authority at every boundary.
+    </text>
+
+    <g transform="translate(58 354)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700" letter-spacing=".8">
+      <rect width="190" height="32" rx="5" fill="#151b24" stroke="#2b3544"/>
+      <circle cx="17" cy="16" r="4" fill="#339cff"/>
+      <text x="30" y="20" fill="#d8dee8">NEW + EXISTING REPOS</text>
+
+      <rect x="202" width="185" height="32" rx="5" fill="#151b24" stroke="#2b3544"/>
+      <circle cx="219" cy="16" r="4" fill="#f39a56"/>
+      <text x="232" y="20" fill="#d8dee8">CROSS-PLATFORM CHECKS</text>
+
+      <rect x="399" width="180" height="32" rx="5" fill="#151b24" stroke="#2b3544"/>
+      <circle cx="416" cy="16" r="4" fill="#74d58b"/>
+      <text x="429" y="20" fill="#d8dee8">EXPLICIT AUTHORITY</text>
+    </g>
+
+    <g transform="translate(884 82)">
+      <text x="0" y="0" fill="#8c96a8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" letter-spacing="1.6">OPERATING SIGNAL</text>
+
+      <path d="M29 42V263" stroke="#283342" stroke-width="2"/>
+      <path d="M29 63V263" stroke="#339cff" stroke-width="3" stroke-linecap="round" filter="url(#blueGlow)"/>
+
+      <g transform="translate(0 42)">
+        <circle cx="29" cy="21" r="20" fill="#101b28" stroke="#339cff" stroke-width="2"/>
+        <text x="29" y="26" text-anchor="middle" fill="#83c3ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700">01</text>
+        <text x="70" y="17" fill="#f8fafc" font-size="18" font-weight="700">ADOPT OR DEFINE</text>
+        <text x="70" y="39" fill="#8c96a8" font-size="13">inspect the repo · establish the outcome</text>
+      </g>
+
+      <g transform="translate(0 122)">
+        <circle cx="29" cy="21" r="20" fill="#211a14" stroke="#f39a56" stroke-width="2"/>
+        <text x="29" y="26" text-anchor="middle" fill="#f6b783" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700">02</text>
+        <text x="70" y="17" fill="#f8fafc" font-size="18" font-weight="700">ROUTE DELIBERATELY</text>
+        <text x="70" y="39" fill="#8c96a8" font-size="13">load only the workflow the task needs</text>
+      </g>
+
+      <g transform="translate(0 202)">
+        <circle cx="29" cy="21" r="20" fill="#132019" stroke="#74d58b" stroke-width="2" filter="url(#greenGlow)"/>
+        <text x="29" y="26" text-anchor="middle" fill="#9ee1ad" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700">03</text>
+        <text x="70" y="17" fill="#f8fafc" font-size="18" font-weight="700">VERIFY BEFORE EFFECT</text>
+        <text x="70" y="39" fill="#8c96a8" font-size="13">fresh evidence · explicit authorization</text>
+      </g>
+    </g>
+
+    <g transform="translate(0 406)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+      <rect x="0" y="0" width="1280" height="74" fill="#090c11"/>
+      <text x="58" y="30" fill="#667184" font-size="11" letter-spacing="1.2">SIGNAL PATH</text>
+      <text x="58" y="53" fill="#d8dee8" font-size="13">CONTEXT</text>
+      <path d="M137 49H214" stroke="#339cff" stroke-width="2"/>
+      <path d="M208 44L214 49L208 54" fill="none" stroke="#339cff" stroke-width="2"/>
+      <text x="232" y="53" fill="#d8dee8" font-size="13">WORKFLOW</text>
+      <path d="M320 49H397" stroke="#f39a56" stroke-width="2"/>
+      <path d="M391 44L397 49L391 54" fill="none" stroke="#f39a56" stroke-width="2"/>
+      <text x="415" y="53" fill="#d8dee8" font-size="13">EVIDENCE</text>
+      <path d="M503 49H580" stroke="#74d58b" stroke-width="2"/>
+      <path d="M574 44L580 49L574 54" fill="none" stroke="#74d58b" stroke-width="2"/>
+      <text x="598" y="53" fill="#d8dee8" font-size="13">AUTHORIZED EFFECT</text>
+
+      <text x="1218" y="50" fill="#667184" font-size="11" letter-spacing="1.2" text-anchor="end">INSPECTABLE / REVERSIBLE / VERIFIED</text>
+    </g>
+  </g>
+</svg>

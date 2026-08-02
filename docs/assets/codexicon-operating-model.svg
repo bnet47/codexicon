@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-labelledby="title desc">
+  <title id="title">The Codexicon operating model</title>
+  <desc id="desc">A four-stage flow from durable repository context, through task-specific workflow routing and canonical verification, to an explicit authority gate before external effects.</desc>
+  <defs>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0V28" fill="none" stroke="#182130" stroke-opacity=".06"/>
+    </pattern>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#339cff"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#f39a56"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#46a862"/>
+    </marker>
+  </defs>
+
+  <rect width="1280" height="420" rx="22" fill="#f7f8f6"/>
+  <rect width="1280" height="420" rx="22" fill="url(#grid)"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
+    <text x="54" y="55" fill="#172033" font-size="24" font-weight="760">THE OPERATING MODEL</text>
+    <text x="1226" y="52" fill="#697386" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" letter-spacing="1.4" text-anchor="end">ONE SIGNAL · FOUR CONTROL POINTS</text>
+
+    <path d="M278 205H351" stroke="#339cff" stroke-width="3" marker-end="url(#arrowBlue)"/>
+    <path d="M588 205H661" stroke="#f39a56" stroke-width="3" marker-end="url(#arrowOrange)"/>
+    <path d="M898 205H971" stroke="#46a862" stroke-width="3" marker-end="url(#arrowGreen)"/>
+
+    <g transform="translate(54 104)">
+      <rect width="224" height="202" rx="12" fill="#ffffff" stroke="#d9dee6"/>
+      <rect width="224" height="8" rx="4" fill="#339cff"/>
+      <text x="24" y="45" fill="#339cff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700" letter-spacing="1.4">01 / CONTEXT</text>
+      <text x="24" y="80" fill="#172033" font-size="22" font-weight="750">Know the ground</text>
+      <text x="24" y="111" fill="#697386" font-size="14">Durable repository rules</text>
+      <text x="24" y="136" fill="#697386" font-size="14">Selective project facts</text>
+      <text x="24" y="161" fill="#697386" font-size="14">Read-only inspection first</text>
+      <rect x="24" y="177" width="75" height="2" fill="#339cff"/>
+    </g>
+
+    <g transform="translate(364 104)">
+      <rect width="224" height="202" rx="12" fill="#ffffff" stroke="#d9dee6"/>
+      <rect width="224" height="8" rx="4" fill="#f39a56"/>
+      <text x="24" y="45" fill="#d66f27" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700" letter-spacing="1.4">02 / ROUTE</text>
+      <text x="24" y="80" fill="#172033" font-size="22" font-weight="750">Choose the work</text>
+      <text x="24" y="111" fill="#697386" font-size="14">Smallest relevant workflow</text>
+      <text x="24" y="136" fill="#697386" font-size="14">Bounded tools and context</text>
+      <text x="24" y="161" fill="#697386" font-size="14">Risk-matched process</text>
+      <rect x="24" y="177" width="75" height="2" fill="#f39a56"/>
+    </g>
+
+    <g transform="translate(674 104)">
+      <rect width="224" height="202" rx="12" fill="#ffffff" stroke="#d9dee6"/>
+      <rect width="224" height="8" rx="4" fill="#46a862"/>
+      <text x="24" y="45" fill="#32824a" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700" letter-spacing="1.4">03 / VERIFY</text>
+      <text x="24" y="80" fill="#172033" font-size="22" font-weight="750">Prove the result</text>
+      <text x="24" y="111" fill="#697386" font-size="14">Canonical local commands</text>
+      <text x="24" y="136" fill="#697386" font-size="14">Freshness-aware hooks</text>
+      <text x="24" y="161" fill="#697386" font-size="14">Cross-platform CI</text>
+      <rect x="24" y="177" width="75" height="2" fill="#46a862"/>
+    </g>
+
+    <g transform="translate(984 104)">
+      <rect width="242" height="202" rx="12" fill="#111721" stroke="#111721"/>
+      <rect width="242" height="8" rx="4" fill="#83c3ff"/>
+      <text x="24" y="45" fill="#83c3ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700" letter-spacing="1.4">04 / EFFECT</text>
+      <text x="24" y="80" fill="#f8fafc" font-size="22" font-weight="750">Cross the boundary</text>
+      <text x="24" y="111" fill="#aab4c3" font-size="14">Commit, push, deploy</text>
+      <text x="24" y="136" fill="#aab4c3" font-size="14">Message, purchase, produce</text>
+      <text x="24" y="161" fill="#aab4c3" font-size="14">Only with explicit authority</text>
+      <rect x="24" y="177" width="104" height="2" fill="#83c3ff"/>
+    </g>
+
+    <g transform="translate(54 344)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700" letter-spacing=".8">
+      <rect width="284" height="36" rx="5" fill="#e9f4ff" stroke="#c8e4ff"/>
+      <circle cx="19" cy="18" r="4" fill="#339cff"/>
+      <text x="34" y="22" fill="#28577f">PROGRESSIVE CONTEXT</text>
+
+      <rect x="298" width="284" height="36" rx="5" fill="#fff1e7" stroke="#f7d8bf"/>
+      <circle cx="317" cy="18" r="4" fill="#f39a56"/>
+      <text x="332" y="22" fill="#80502f">REVERSIBLE BY DEFAULT</text>
+
+      <rect x="596" width="284" height="36" rx="5" fill="#eaf7ed" stroke="#cce9d3"/>
+      <circle cx="615" cy="18" r="4" fill="#46a862"/>
+      <text x="630" y="22" fill="#315f3c">EVIDENCE BEFORE CLAIMS</text>
+
+      <rect x="894" width="332" height="36" rx="5" fill="#e9edf3" stroke="#d6dce5"/>
+      <circle cx="913" cy="18" r="4" fill="#172033"/>
+      <text x="928" y="22" fill="#354052">FAIL CLOSED AT THE EDGE</text>
+    </g>
+  </g>
+</svg>

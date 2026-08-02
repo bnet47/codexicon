@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1160" viewBox="0 0 720 1160" role="img" aria-labelledby="title desc">
+  <title id="title">The Codexicon operating model</title>
+  <desc id="desc">A mobile four-stage flow from durable repository context, through task-specific workflow routing and canonical verification, to an explicit authority gate before external effects.</desc>
+  <defs>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0V28" fill="none" stroke="#182130" stroke-opacity=".06"/>
+    </pattern>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#339cff"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#f39a56"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#46a862"/>
+    </marker>
+  </defs>
+
+  <rect width="720" height="1160" rx="22" fill="#f7f8f6"/>
+  <rect width="720" height="1160" rx="22" fill="url(#grid)"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
+    <text x="42" y="54" fill="#172033" font-size="27" font-weight="760">THE OPERATING MODEL</text>
+    <text x="678" y="84" fill="#697386" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" letter-spacing="1.2" text-anchor="end">ONE SIGNAL · FOUR CONTROL POINTS</text>
+
+    <g transform="translate(42 118)">
+      <rect width="636" height="188" rx="12" fill="#ffffff" stroke="#d9dee6"/>
+      <rect width="10" height="188" rx="5" fill="#339cff"/>
+      <text x="40" y="45" fill="#339cff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700" letter-spacing="1.4">01 / CONTEXT</text>
+      <text x="40" y="82" fill="#172033" font-size="25" font-weight="750">Know the ground</text>
+      <text x="332" y="50" fill="#697386" font-size="16">Durable repository rules</text>
+      <text x="332" y="81" fill="#697386" font-size="16">Selective project facts</text>
+      <text x="332" y="112" fill="#697386" font-size="16">Read-only inspection first</text>
+      <rect x="40" y="151" width="92" height="3" fill="#339cff"/>
+    </g>
+
+    <path d="M360 306V345" stroke="#339cff" stroke-width="3" marker-end="url(#arrowBlue)"/>
+
+    <g transform="translate(42 358)">
+      <rect width="636" height="188" rx="12" fill="#ffffff" stroke="#d9dee6"/>
+      <rect width="10" height="188" rx="5" fill="#f39a56"/>
+      <text x="40" y="45" fill="#d66f27" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700" letter-spacing="1.4">02 / ROUTE</text>
+      <text x="40" y="82" fill="#172033" font-size="25" font-weight="750">Choose the work</text>
+      <text x="332" y="50" fill="#697386" font-size="16">Smallest relevant workflow</text>
+      <text x="332" y="81" fill="#697386" font-size="16">Bounded tools and context</text>
+      <text x="332" y="112" fill="#697386" font-size="16">Risk-matched process</text>
+      <rect x="40" y="151" width="92" height="3" fill="#f39a56"/>
+    </g>
+
+    <path d="M360 546V585" stroke="#f39a56" stroke-width="3" marker-end="url(#arrowOrange)"/>
+
+    <g transform="translate(42 598)">
+      <rect width="636" height="188" rx="12" fill="#ffffff" stroke="#d9dee6"/>
+      <rect width="10" height="188" rx="5" fill="#46a862"/>
+      <text x="40" y="45" fill="#32824a" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700" letter-spacing="1.4">03 / VERIFY</text>
+      <text x="40" y="82" fill="#172033" font-size="25" font-weight="750">Prove the result</text>
+      <text x="332" y="50" fill="#697386" font-size="16">Canonical local commands</text>
+      <text x="332" y="81" fill="#697386" font-size="16">Freshness-aware hooks</text>
+      <text x="332" y="112" fill="#697386" font-size="16">Cross-platform CI</text>
+      <rect x="40" y="151" width="92" height="3" fill="#46a862"/>
+    </g>
+
+    <path d="M360 786V825" stroke="#46a862" stroke-width="3" marker-end="url(#arrowGreen)"/>
+
+    <g transform="translate(42 838)">
+      <rect width="636" height="188" rx="12" fill="#111721" stroke="#111721"/>
+      <rect width="10" height="188" rx="5" fill="#83c3ff"/>
+      <text x="40" y="45" fill="#83c3ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700" letter-spacing="1.4">04 / EFFECT</text>
+      <text x="40" y="82" fill="#f8fafc" font-size="25" font-weight="750">Cross the boundary</text>
+      <text x="332" y="50" fill="#aab4c3" font-size="16">Commit, push, deploy</text>
+      <text x="332" y="81" fill="#aab4c3" font-size="16">Message, purchase, produce</text>
+      <text x="332" y="112" fill="#aab4c3" font-size="16">Only with explicit authority</text>
+      <rect x="40" y="151" width="124" height="3" fill="#83c3ff"/>
+    </g>
+
+    <g transform="translate(42 1063)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="700" letter-spacing=".6">
+      <circle cx="6" cy="10" r="4" fill="#339cff"/>
+      <text x="20" y="14" fill="#28577f">PROGRESSIVE CONTEXT</text>
+      <circle cx="242" cy="10" r="4" fill="#f39a56"/>
+      <text x="256" y="14" fill="#80502f">REVERSIBLE</text>
+      <circle cx="389" cy="10" r="4" fill="#46a862"/>
+      <text x="403" y="14" fill="#315f3c">EVIDENCE FIRST</text>
+      <circle cx="556" cy="10" r="4" fill="#172033"/>
+      <text x="570" y="14" fill="#354052">FAIL CLOSED</text>
+    </g>
+  </g>
+</svg>
