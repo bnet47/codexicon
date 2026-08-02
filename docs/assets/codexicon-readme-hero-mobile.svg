@@ -1,73 +1,66 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="840" viewBox="0 0 720 840" role="img" aria-labelledby="title desc">
-  <title id="title">Codexicon — a production-minded Codex agent harness</title>
-  <desc id="desc">A mobile technical field-manual graphic showing Codexicon moving work from project context through deliberate workflow routing and verification to explicitly authorized effects.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="560" viewBox="0 0 720 560" role="img" aria-labelledby="title desc">
+  <title id="title">Codexicon — the Codex agent harness for production software</title>
+  <desc id="desc">A mobile dark teal and navy banner with a code shield, the Codexicon name, a production-software tagline, and badges for Codex-native workflows, token efficiency, and verifiable delivery.</desc>
   <defs>
-    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
-      <path d="M28 0H0V28" fill="none" stroke="#ffffff" stroke-opacity=".045"/>
-    </pattern>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071a1c"/>
+      <stop offset=".52" stop-color="#10283a"/>
+      <stop offset="1" stop-color="#0b1324"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5ee5a6"/>
+      <stop offset=".55" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#83c3ff"/>
+    </linearGradient>
+    <radialGradient id="tealGlow">
+      <stop offset="0" stop-color="#34d399" stop-opacity=".24"/>
+      <stop offset="1" stop-color="#34d399" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blueGlow">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="720" height="840" rx="24" fill="#0d1016"/>
-  <rect width="720" height="840" rx="24" fill="url(#grid)"/>
 
-  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
-    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" letter-spacing="1.6">
-      <text x="42" y="49" fill="#83c3ff">FIELD MANUAL / CX-01</text>
-      <text x="678" y="49" fill="#8c96a8" text-anchor="end">CODEX HARNESS</text>
-    </g>
-    <rect x="42" y="74" width="44" height="5" rx="2.5" fill="#339cff"/>
-    <rect x="92" y="74" width="18" height="5" rx="2.5" fill="#f39a56"/>
-    <rect x="116" y="74" width="18" height="5" rx="2.5" fill="#74d58b"/>
+  <rect x="1" y="1" width="718" height="558" rx="24" fill="url(#background)" stroke="#294657" stroke-width="2"/>
+  <circle cx="92" cy="48" r="150" fill="url(#tealGlow)"/>
+  <circle cx="650" cy="500" r="180" fill="url(#blueGlow)"/>
 
-    <text x="38" y="162" fill="#f8fafc" font-size="64" font-weight="760" letter-spacing="-3">CODEXICON</text>
-    <text x="42" y="205" fill="#c8d0dc" font-size="23" font-weight="520">A production-minded Codex agent harness.</text>
-    <text x="42" y="248" fill="#8c96a8" font-size="17">Durable context · Progressive workflows</text>
-    <text x="42" y="275" fill="#8c96a8" font-size="17">Repeatable checks · Explicit authority</text>
+  <text x="674" y="45" fill="#7f98a9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" letter-spacing="1.5" text-anchor="end">CODEX AGENT HARNESS</text>
 
-    <path d="M0 314H720" stroke="#ffffff" stroke-opacity=".08"/>
-    <text x="42" y="354" fill="#8c96a8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.6">OPERATING SIGNAL</text>
-    <path d="M73 394V638" stroke="#283342" stroke-width="2"/>
+  <g transform="translate(46 92)">
+    <path d="M58 4L112 30V88C112 137 58 170 58 170S4 137 4 88V30Z" fill="url(#accent)"/>
+    <path d="M58 20L96 39V84C96 116 73 138 58 149C43 138 20 116 20 84V39Z" fill="#091824"/>
+    <path d="M47 57L32 72L47 87" fill="none" stroke="#5ee5a6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M69 57L84 72L69 87" fill="none" stroke="#83c3ff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M64 50L52 95" stroke="#d7f9ff" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="58" cy="121" r="5" fill="#5ee5a6"/>
+  </g>
 
-    <g transform="translate(42 378)">
-      <circle cx="31" cy="31" r="29" fill="#101b28" stroke="#339cff" stroke-width="2"/>
-      <text x="31" y="36" text-anchor="middle" fill="#83c3ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700">01</text>
-      <text x="84" y="26" fill="#f8fafc" font-size="21" font-weight="700">ADOPT OR DEFINE</text>
-      <text x="84" y="51" fill="#8c96a8" font-size="15">inspect the repo · establish the outcome</text>
-    </g>
-    <g transform="translate(42 475)">
-      <circle cx="31" cy="31" r="29" fill="#211a14" stroke="#f39a56" stroke-width="2"/>
-      <text x="31" y="36" text-anchor="middle" fill="#f6b783" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700">02</text>
-      <text x="84" y="26" fill="#f8fafc" font-size="21" font-weight="700">ROUTE DELIBERATELY</text>
-      <text x="84" y="51" fill="#8c96a8" font-size="15">load only the workflow the task needs</text>
-    </g>
-    <g transform="translate(42 572)">
-      <circle cx="31" cy="31" r="29" fill="#132019" stroke="#74d58b" stroke-width="2"/>
-      <text x="31" y="36" text-anchor="middle" fill="#9ee1ad" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700">03</text>
-      <text x="84" y="26" fill="#f8fafc" font-size="21" font-weight="700">VERIFY BEFORE EFFECT</text>
-      <text x="84" y="51" fill="#8c96a8" font-size="15">fresh evidence · explicit authorization</text>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">
+    <text x="184" y="166" fill="#f8fafc" font-size="62" font-weight="800" letter-spacing="-1.8">Codexicon</text>
+    <g transform="translate(497 119)">
+      <rect width="46" height="46" rx="11" fill="#102f32" stroke="#5ee5a6" stroke-opacity=".7"/>
+      <path d="M14 15L22 23L14 31M27 31H34" fill="none" stroke="#7cf0b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
 
-    <g transform="translate(0 676)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-      <rect width="720" height="164" fill="#090c11"/>
-      <text x="42" y="34" fill="#667184" font-size="12" letter-spacing="1.2">SIGNAL PATH</text>
-      <text x="42" y="68" fill="#d8dee8" font-size="14">CONTEXT</text>
-      <path d="M125 64H194" stroke="#339cff" stroke-width="2"/>
-      <path d="M188 59L194 64L188 69" fill="none" stroke="#339cff" stroke-width="2"/>
-      <text x="212" y="68" fill="#d8dee8" font-size="14">WORKFLOW</text>
-      <path d="M311 64H380" stroke="#f39a56" stroke-width="2"/>
-      <path d="M374 59L380 64L374 69" fill="none" stroke="#f39a56" stroke-width="2"/>
-      <text x="398" y="68" fill="#d8dee8" font-size="14">EVIDENCE</text>
-      <path d="M488 64H557" stroke="#74d58b" stroke-width="2"/>
-      <path d="M551 59L557 64L551 69" fill="none" stroke="#74d58b" stroke-width="2"/>
-      <text x="575" y="68" fill="#d8dee8" font-size="14">EFFECT</text>
+    <text x="46" y="304" fill="#a9bac8" font-size="26" font-weight="520">The #1 Codex Agent Harness</text>
+    <text x="46" y="340" fill="#a9bac8" font-size="26" font-weight="520">for Production Software</text>
 
-      <g transform="translate(42 101)" font-size="12" font-weight="700" letter-spacing=".6">
-        <circle cx="6" cy="12" r="4" fill="#339cff"/>
-        <text x="19" y="16" fill="#aab4c3">NEW + EXISTING REPOS</text>
-        <circle cx="243" cy="12" r="4" fill="#f39a56"/>
-        <text x="256" y="16" fill="#aab4c3">CROSS-PLATFORM</text>
-        <circle cx="442" cy="12" r="4" fill="#74d58b"/>
-        <text x="455" y="16" fill="#aab4c3">EXPLICIT AUTHORITY</text>
-      </g>
+    <g transform="translate(46 390)" font-size="19" font-weight="650">
+      <rect width="190" height="48" rx="24" fill="#102332" stroke="#5ee5a6" stroke-width="1.5"/>
+      <circle cx="27" cy="24" r="5" fill="#5ee5a6"/>
+      <text x="105" y="30" fill="#7cf0b8" text-anchor="middle">Codex-Native</text>
+
+      <rect x="202" width="196" height="48" rx="24" fill="#102332" stroke="#38bdf8" stroke-width="1.5"/>
+      <circle cx="229" cy="24" r="5" fill="#38bdf8"/>
+      <text x="300" y="30" fill="#7dd3fc" text-anchor="middle">Token Efficient</text>
+
+      <rect x="410" width="252" height="48" rx="24" fill="#102332" stroke="#4ade80" stroke-width="1.5"/>
+      <circle cx="437" cy="24" r="5" fill="#4ade80"/>
+      <text x="536" y="30" fill="#86efac" text-anchor="middle">Verifiable Delivery</text>
     </g>
+
+    <text x="46" y="505" fill="#6e8797" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" letter-spacing="1.2">NEW + ESTABLISHED REPOSITORIES</text>
   </g>
 </svg>
