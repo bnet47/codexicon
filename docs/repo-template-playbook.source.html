@@ -173,6 +173,13 @@
     }
   </style>
 
+  <section class="playbook-section" aria-labelledby="playbook-heading">
+    <div>
+      <h1 id="playbook-heading">Codexicon Playbook</h1>
+      <p class="text-muted">A practical guide to adopting and operating Codexicon across the complete agent-development lifecycle.</p>
+    </div>
+  </section>
+
   <section class="playbook-section" aria-labelledby="entry-heading">
     <div>
       <h2 id="entry-heading">Start from the repository you actually have</h2>
@@ -439,6 +446,7 @@
     <h2 id="boundaries-heading">Durable boundaries stay explicit</h2>
     <div class="guardrails">
       <div class="guardrail"><i data-lucide="key-round" aria-hidden="true"></i><span><strong>Credentials stay out</strong><br><span class="text-muted">Protected stores and environment dumps are blocked; local, Git, and CI scans reveal only safe locations.</span></span></div>
+      <div class="guardrail"><i data-lucide="shield-alert" aria-hidden="true"></i><span><strong>External context stays untrusted</strong><br><span class="text-muted">MCP integrations remain disabled until reviewed, and web pages, documentation, issues, and tool output cannot override repository rules or grant authority for external writes.</span></span></div>
       <div class="guardrail"><i data-lucide="git-branch" aria-hidden="true"></i><span><strong>Git authority is granular</strong><br><span class="text-muted">Commit, push, and pull request actions must be explicitly requested.</span></span></div>
       <div class="guardrail"><i data-lucide="shield-check" aria-hidden="true"></i><span><strong>Verification is proportional</strong><br><span class="text-muted">Focused checks first; lint, tests, and security before publication; readiness evidence before production.</span></span></div>
       <div class="guardrail"><i data-lucide="radio-tower" aria-hidden="true"></i><span><strong>External effects are separate</strong><br><span class="text-muted">Publishing, deployment, production changes, spend, and messages need their own authority.</span></span></div>

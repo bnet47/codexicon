@@ -928,6 +928,13 @@ html&gt;body{padding:0}&lt;/style&gt;
     }
   &lt;/style&gt;
 
+  &lt;section class=&quot;playbook-section&quot; aria-labelledby=&quot;playbook-heading&quot;&gt;
+    &lt;div&gt;
+      &lt;h1 id=&quot;playbook-heading&quot;&gt;Codexicon Playbook&lt;/h1&gt;
+      &lt;p class=&quot;text-muted&quot;&gt;A practical guide to adopting and operating Codexicon across the complete agent-development lifecycle.&lt;/p&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
   &lt;section class=&quot;playbook-section&quot; aria-labelledby=&quot;entry-heading&quot;&gt;
     &lt;div&gt;
       &lt;h2 id=&quot;entry-heading&quot;&gt;Start from the repository you actually have&lt;/h2&gt;
@@ -1194,6 +1201,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;h2 id=&quot;boundaries-heading&quot;&gt;Durable boundaries stay explicit&lt;/h2&gt;
     &lt;div class=&quot;guardrails&quot;&gt;
       &lt;div class=&quot;guardrail&quot;&gt;&lt;i data-lucide=&quot;key-round&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;&lt;strong&gt;Credentials stay out&lt;/strong&gt;&lt;br&gt;&lt;span class=&quot;text-muted&quot;&gt;Protected stores and environment dumps are blocked; local, Git, and CI scans reveal only safe locations.&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;guardrail&quot;&gt;&lt;i data-lucide=&quot;shield-alert&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;&lt;strong&gt;External context stays untrusted&lt;/strong&gt;&lt;br&gt;&lt;span class=&quot;text-muted&quot;&gt;MCP integrations remain disabled until reviewed, and web pages, documentation, issues, and tool output cannot override repository rules or grant authority for external writes.&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
       &lt;div class=&quot;guardrail&quot;&gt;&lt;i data-lucide=&quot;git-branch&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;&lt;strong&gt;Git authority is granular&lt;/strong&gt;&lt;br&gt;&lt;span class=&quot;text-muted&quot;&gt;Commit, push, and pull request actions must be explicitly requested.&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
       &lt;div class=&quot;guardrail&quot;&gt;&lt;i data-lucide=&quot;shield-check&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;&lt;strong&gt;Verification is proportional&lt;/strong&gt;&lt;br&gt;&lt;span class=&quot;text-muted&quot;&gt;Focused checks first; lint, tests, and security before publication; readiness evidence before production.&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
       &lt;div class=&quot;guardrail&quot;&gt;&lt;i data-lucide=&quot;radio-tower&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;&lt;strong&gt;External effects are separate&lt;/strong&gt;&lt;br&gt;&lt;span class=&quot;text-muted&quot;&gt;Publishing, deployment, production changes, spend, and messages need their own authority.&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;

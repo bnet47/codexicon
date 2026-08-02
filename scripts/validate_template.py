@@ -633,7 +633,13 @@ def validate(*, release: bool = False) -> list[str]:
         errors.append("playbook editable source is not an HTML fragment")
     if len(playbook_source.encode("utf-8")) >= 2 * 1024 * 1024:
         errors.append("playbook editable source exceeds the 2 MB visualization limit")
-    for required_copy in ("$production-readiness", "READY WITH ACCEPTED RISK", "scripts/security.sh"):
+    for required_copy in (
+        "$production-readiness",
+        "READY WITH ACCEPTED RISK",
+        "scripts/security.sh",
+        "Codexicon Playbook",
+        "External context stays untrusted",
+    ):
         if required_copy not in playbook_source:
             errors.append(f"playbook source is missing production guidance: {required_copy}")
     render_check = subprocess.run(
