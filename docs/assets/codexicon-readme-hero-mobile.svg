@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="840" viewBox="0 0 720 840" role="img" aria-labelledby="title desc">
+  <title id="title">Codexicon — a production-minded Codex agent harness</title>
+  <desc id="desc">A mobile technical field-manual graphic showing Codexicon moving work from project context through deliberate workflow routing and verification to explicitly authorized effects.</desc>
+  <defs>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0V28" fill="none" stroke="#ffffff" stroke-opacity=".045"/>
+    </pattern>
+  </defs>
+  <rect width="720" height="840" rx="24" fill="#0d1016"/>
+  <rect width="720" height="840" rx="24" fill="url(#grid)"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" letter-spacing="1.6">
+      <text x="42" y="49" fill="#83c3ff">FIELD MANUAL / CX-01</text>
+      <text x="678" y="49" fill="#8c96a8" text-anchor="end">CODEX HARNESS</text>
+    </g>
+    <rect x="42" y="74" width="44" height="5" rx="2.5" fill="#339cff"/>
+    <rect x="92" y="74" width="18" height="5" rx="2.5" fill="#f39a56"/>
+    <rect x="116" y="74" width="18" height="5" rx="2.5" fill="#74d58b"/>
+
+    <text x="38" y="162" fill="#f8fafc" font-size="64" font-weight="760" letter-spacing="-3">CODEXICON</text>
+    <text x="42" y="205" fill="#c8d0dc" font-size="23" font-weight="520">A production-minded Codex agent harness.</text>
+    <text x="42" y="248" fill="#8c96a8" font-size="17">Durable context · Progressive workflows</text>
+    <text x="42" y="275" fill="#8c96a8" font-size="17">Repeatable checks · Explicit authority</text>
+
+    <path d="M0 314H720" stroke="#ffffff" stroke-opacity=".08"/>
+    <text x="42" y="354" fill="#8c96a8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.6">OPERATING SIGNAL</text>
+    <path d="M73 394V638" stroke="#283342" stroke-width="2"/>
+
+    <g transform="translate(42 378)">
+      <circle cx="31" cy="31" r="29" fill="#101b28" stroke="#339cff" stroke-width="2"/>
+      <text x="31" y="36" text-anchor="middle" fill="#83c3ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700">01</text>
+      <text x="84" y="26" fill="#f8fafc" font-size="21" font-weight="700">ADOPT OR DEFINE</text>
+      <text x="84" y="51" fill="#8c96a8" font-size="15">inspect the repo · establish the outcome</text>
+    </g>
+    <g transform="translate(42 475)">
+      <circle cx="31" cy="31" r="29" fill="#211a14" stroke="#f39a56" stroke-width="2"/>
+      <text x="31" y="36" text-anchor="middle" fill="#f6b783" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700">02</text>
+      <text x="84" y="26" fill="#f8fafc" font-size="21" font-weight="700">ROUTE DELIBERATELY</text>
+      <text x="84" y="51" fill="#8c96a8" font-size="15">load only the workflow the task needs</text>
+    </g>
+    <g transform="translate(42 572)">
+      <circle cx="31" cy="31" r="29" fill="#132019" stroke="#74d58b" stroke-width="2"/>
+      <text x="31" y="36" text-anchor="middle" fill="#9ee1ad" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700">03</text>
+      <text x="84" y="26" fill="#f8fafc" font-size="21" font-weight="700">VERIFY BEFORE EFFECT</text>
+      <text x="84" y="51" fill="#8c96a8" font-size="15">fresh evidence · explicit authorization</text>
+    </g>
+
+    <g transform="translate(0 676)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+      <rect width="720" height="164" fill="#090c11"/>
+      <text x="42" y="34" fill="#667184" font-size="12" letter-spacing="1.2">SIGNAL PATH</text>
+      <text x="42" y="68" fill="#d8dee8" font-size="14">CONTEXT</text>
+      <path d="M125 64H194" stroke="#339cff" stroke-width="2"/>
+      <path d="M188 59L194 64L188 69" fill="none" stroke="#339cff" stroke-width="2"/>
+      <text x="212" y="68" fill="#d8dee8" font-size="14">WORKFLOW</text>
+      <path d="M311 64H380" stroke="#f39a56" stroke-width="2"/>
+      <path d="M374 59L380 64L374 69" fill="none" stroke="#f39a56" stroke-width="2"/>
+      <text x="398" y="68" fill="#d8dee8" font-size="14">EVIDENCE</text>
+      <path d="M488 64H557" stroke="#74d58b" stroke-width="2"/>
+      <path d="M551 59L557 64L551 69" fill="none" stroke="#74d58b" stroke-width="2"/>
+      <text x="575" y="68" fill="#d8dee8" font-size="14">EFFECT</text>
+
+      <g transform="translate(42 101)" font-size="12" font-weight="700" letter-spacing=".6">
+        <circle cx="6" cy="12" r="4" fill="#339cff"/>
+        <text x="19" y="16" fill="#aab4c3">NEW + EXISTING REPOS</text>
+        <circle cx="243" cy="12" r="4" fill="#f39a56"/>
+        <text x="256" y="16" fill="#aab4c3">CROSS-PLATFORM</text>
+        <circle cx="442" cy="12" r="4" fill="#74d58b"/>
+        <text x="455" y="16" fill="#aab4c3">EXPLICIT AUTHORITY</text>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,14 +1,352 @@
 <div id="codex-template-playbook">
   <style>
     #codex-template-playbook {
+      --manual-bg: light-dark(rgb(247 248 246), rgb(14 16 20));
+      --manual-panel: light-dark(rgb(255 255 255), rgb(23 26 32));
+      --manual-panel-strong: light-dark(rgb(236 240 244), rgb(30 35 43));
+      --manual-ink: light-dark(rgb(17 23 33), rgb(244 247 250));
+      --manual-muted: light-dark(rgb(76 86 101), rgb(166 176 188));
+      --manual-line: light-dark(rgb(17 23 33 / 12%), rgb(255 255 255 / 12%));
+      --manual-accent: light-dark(rgb(0 98 232), rgb(100 174 255));
+      --manual-accent-soft: light-dark(rgb(226 239 255), rgb(15 49 82));
+      --manual-signal: light-dark(rgb(220 90 34), rgb(255 145 94));
+      --manual-safe: light-dark(rgb(24 135 84), rgb(84 207 145));
+      --manual-radius: 12px;
+      position: relative;
       display: grid;
-      gap: 2.5rem;
-      color: var(--foreground);
+      gap: 0;
+      max-width: 1120px;
+      margin: 0 auto;
+      overflow: clip;
+      color: var(--manual-ink);
+      background: var(--manual-bg);
+      border: 1px solid var(--manual-line);
+      border-radius: var(--manual-radius);
+      counter-reset: chapter;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    #codex-template-playbook * {
+      scroll-margin-top: 5.5rem;
+    }
+
+    #codex-template-playbook h1,
+    #codex-template-playbook h2,
+    #codex-template-playbook h3,
+    #codex-template-playbook p {
+      max-width: 72ch;
+    }
+
+    #codex-template-playbook h1,
+    #codex-template-playbook h2,
+    #codex-template-playbook h3 {
+      color: var(--manual-ink);
+      letter-spacing: -0.025em;
+    }
+
+    #codex-template-playbook h1 {
+      max-width: 12ch;
+      margin: 0;
+      font-size: clamp(3rem, 7vw, 6.5rem);
+      line-height: 0.92;
+    }
+
+    #codex-template-playbook h2 {
+      margin: 0;
+      font-size: clamp(1.8rem, 3.4vw, 3rem);
+      line-height: 1.05;
+    }
+
+    #codex-template-playbook h3 {
+      margin-top: 0;
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      line-height: 1.2;
+    }
+
+    #codex-template-playbook .text-muted {
+      color: var(--manual-muted);
+    }
+
+    #codex-template-playbook code {
+      border: 1px solid var(--manual-line);
+      color: light-dark(rgb(19 62 115), rgb(193 220 255));
+      background: light-dark(rgb(236 241 247), rgb(11 14 19));
+      overflow-wrap: anywhere;
+    }
+
+    #codex-template-playbook .playbook-nav {
+      position: sticky;
+      z-index: 20;
+      top: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.75rem clamp(1rem, 4vw, 3rem);
+      overflow-x: auto;
+      background: light-dark(rgb(247 248 246 / 96%), rgb(14 16 20 / 96%));
+      border-bottom: 1px solid var(--manual-line);
+      scrollbar-width: none;
+    }
+
+    #codex-template-playbook .playbook-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    #codex-template-playbook .nav-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin-right: auto;
+      color: var(--manual-ink);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+
+    #codex-template-playbook .nav-mark::before {
+      width: 0.7rem;
+      height: 0.7rem;
+      background: var(--manual-accent);
+      content: "";
+      box-shadow: 0.9rem 0 0 var(--manual-signal);
+      transform: rotate(45deg);
+    }
+
+    #codex-template-playbook .playbook-nav a {
+      min-height: 36px;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--manual-muted);
+      font-size: 0.78rem;
+      font-weight: 650;
+      line-height: 1.4;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    #codex-template-playbook .playbook-nav a:is(:hover, :focus-visible) {
+      border-color: var(--manual-line);
+      color: var(--manual-ink);
+      background: var(--manual-panel);
+      outline: 3px solid color-mix(in srgb, var(--manual-accent) 35%, transparent);
+      outline-offset: 1px;
     }
 
     #codex-template-playbook .playbook-section {
+      position: relative;
       display: grid;
+      gap: 1.5rem;
+      padding: clamp(4rem, 8vw, 7rem) clamp(1.25rem, 5vw, 4.75rem);
+      border-top: 1px solid var(--manual-line);
+      counter-increment: chapter;
+    }
+
+    #codex-template-playbook .playbook-section[data-chapter]::before {
+      position: absolute;
+      top: 2rem;
+      left: clamp(1.25rem, 5vw, 4.75rem);
+      color: var(--manual-accent);
+      content: attr(data-chapter) " / 08";
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+    }
+
+    #codex-template-playbook .playbook-hero {
+      min-height: min(760px, calc(100dvh - 4rem));
+      padding-top: clamp(3.5rem, 8vw, 7rem);
+      color: rgb(242 246 251);
+      background: rgb(13 18 26);
+      border-top: 5px solid transparent;
+      border-image: linear-gradient(90deg, rgb(0 118 255) 0 42%, rgb(255 116 59) 42% 68%, rgb(46 183 118) 68%) 1;
+      counter-increment: none;
+    }
+
+    #codex-template-playbook .playbook-hero::after {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, transparent 0 74%, rgb(255 255 255 / 5%) 74% 74.1%, transparent 74.1%),
+        linear-gradient(0deg, transparent 0 68%, rgb(255 255 255 / 5%) 68% 68.1%, transparent 68.1%);
+      content: "";
+    }
+
+    #codex-template-playbook .hero-kicker {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      color: rgb(155 194 237);
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    #codex-template-playbook .hero-kicker::before {
+      width: 2.5rem;
+      height: 2px;
+      background: rgb(72 156 255);
+      content: "";
+    }
+
+    #codex-template-playbook .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(18rem, 0.75fr);
+      gap: clamp(2.5rem, 6vw, 6rem);
+      align-items: end;
+    }
+
+    #codex-template-playbook .playbook-hero h1 {
+      color: rgb(248 250 252);
+    }
+
+    #codex-template-playbook .hero-lede {
+      max-width: 54ch;
+      margin: 1.5rem 0 0;
+      color: rgb(181 193 207);
+      font-size: clamp(1.05rem, 2vw, 1.35rem);
+      line-height: 1.55;
+    }
+
+    #codex-template-playbook .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 2rem;
+    }
+
+    #codex-template-playbook .hero-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0.65rem 1rem;
+      border: 1px solid rgb(255 255 255 / 18%);
+      border-radius: 7px;
+      color: rgb(236 242 248);
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    #codex-template-playbook .hero-action-primary {
+      border-color: rgb(78 158 255);
+      color: rgb(7 19 34);
+      background: rgb(91 169 255);
+    }
+
+    #codex-template-playbook .hero-action:is(:hover, :focus-visible) {
+      outline: 3px solid rgb(91 169 255 / 38%);
+      outline-offset: 3px;
+      transform: translateY(-1px);
+    }
+
+    #codex-template-playbook .hero-manifest {
+      position: relative;
+      padding: 1rem;
+      border: 1px solid rgb(255 255 255 / 14%);
+      background: rgb(255 255 255 / 4%);
+      box-shadow: 12px 12px 0 rgb(0 0 0 / 24%);
+    }
+
+    #codex-template-playbook .manifest-head {
+      display: flex;
+      justify-content: space-between;
       gap: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgb(255 255 255 / 12%);
+      color: rgb(132 151 171);
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    #codex-template-playbook .manifest-flow {
+      display: grid;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    #codex-template-playbook .manifest-flow li {
+      display: grid;
+      grid-template-columns: 2.4rem 1fr;
+      gap: 0.75rem;
+      padding: 1rem 0;
+      border-bottom: 1px solid rgb(255 255 255 / 10%);
+    }
+
+    #codex-template-playbook .manifest-flow li:last-child {
+      border-bottom: 0;
+    }
+
+    #codex-template-playbook .manifest-index {
+      color: rgb(98 176 255);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+    }
+
+    #codex-template-playbook .manifest-flow strong {
+      display: block;
+      color: rgb(244 247 250);
+      font-size: 0.9rem;
+    }
+
+    #codex-template-playbook .manifest-flow small {
+      display: block;
+      margin-top: 0.15rem;
+      color: rgb(151 166 182);
+      line-height: 1.45;
+    }
+
+    #codex-template-playbook .hero-proof {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: clamp(2rem, 5vw, 4rem);
+      border-top: 1px solid rgb(255 255 255 / 13%);
+      border-bottom: 1px solid rgb(255 255 255 / 13%);
+    }
+
+    #codex-template-playbook .proof-item {
+      padding: 1rem 1rem 1rem 0;
+      border-right: 1px solid rgb(255 255 255 / 13%);
+    }
+
+    #codex-template-playbook .proof-item:not(:first-child) {
+      padding-left: 1rem;
+    }
+
+    #codex-template-playbook .proof-item:last-child {
+      border-right: 0;
+    }
+
+    #codex-template-playbook .proof-item strong {
+      display: block;
+      color: rgb(242 246 251);
+      font-size: 0.88rem;
+    }
+
+    #codex-template-playbook .proof-item span {
+      display: block;
+      margin-top: 0.2rem;
+      color: rgb(137 153 169);
+      font-size: 0.76rem;
     }
 
     #codex-template-playbook .stage-content {
@@ -25,8 +363,169 @@
       margin-bottom: 0;
     }
 
+    #codex-template-playbook .entry-grid {
+      gap: 1rem;
+    }
+
+    #codex-template-playbook .entry-card {
+      position: relative;
+      min-height: 13rem;
+      padding: 1.4rem;
+      overflow: hidden;
+      border: 1px solid var(--manual-line);
+      border-top: 4px solid var(--entry-color);
+      background: var(--manual-panel);
+    }
+
+    #codex-template-playbook .entry-card:first-child {
+      --entry-color: var(--manual-accent);
+    }
+
+    #codex-template-playbook .entry-card:last-child {
+      --entry-color: var(--manual-signal);
+    }
+
+    #codex-template-playbook .entry-watermark {
+      position: absolute;
+      right: -1rem;
+      bottom: -2.5rem;
+      color: color-mix(in srgb, var(--entry-color) 12%, transparent);
+      font-family: var(--font-mono);
+      font-size: 6rem;
+      font-weight: 800;
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    #codex-template-playbook .entry-tag {
+      display: block;
+      margin-bottom: 2.5rem;
+      color: var(--entry-color);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    #codex-template-playbook .entry-card strong {
+      position: relative;
+      z-index: 1;
+      display: block;
+      margin-bottom: 0.55rem;
+      font-size: 1.25rem;
+    }
+
+    #codex-template-playbook .entry-card p {
+      position: relative;
+      z-index: 1;
+    }
+
+    #codex-template-playbook .entry-note {
+      margin: 0;
+      padding: 1rem 1.1rem;
+      border-left: 3px solid var(--manual-safe);
+      color: var(--manual-muted);
+      background: color-mix(in srgb, var(--manual-safe) 7%, transparent);
+    }
+
+    #codex-template-playbook .viz-controls {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+
+    #codex-template-playbook .viz-controls::before {
+      position: absolute;
+      z-index: 0;
+      top: 50%;
+      right: 3%;
+      left: 3%;
+      height: 2px;
+      background: var(--manual-line);
+      content: "";
+    }
+
+    #codex-template-playbook .viz-controls .btn {
+      position: relative;
+      z-index: 1;
+      min-height: 48px;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--manual-line);
+      border-radius: 7px;
+      color: var(--manual-muted);
+      background: var(--manual-panel);
+      box-shadow: none;
+      font-size: 0.78rem;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+
+    #codex-template-playbook .viz-controls .btn:is(:hover, :focus-visible) {
+      border-color: var(--manual-accent);
+      color: var(--manual-ink);
+      outline: 3px solid color-mix(in srgb, var(--manual-accent) 28%, transparent);
+      outline-offset: 2px;
+    }
+
+    #codex-template-playbook .viz-controls .btn[aria-pressed="true"] {
+      border-color: var(--manual-accent);
+      color: white;
+      background: var(--manual-accent);
+      box-shadow: 0 7px 0 color-mix(in srgb, var(--manual-accent) 25%, transparent);
+    }
+
+    #codex-template-playbook .card {
+      padding: clamp(1.25rem, 3vw, 2rem);
+      border: 1px solid var(--manual-line);
+      border-radius: var(--manual-radius);
+      background: var(--manual-panel);
+      box-shadow: none;
+    }
+
+    #codex-template-playbook .stage-panel {
+      border-left: 5px solid var(--manual-accent);
+      border-radius: 0 var(--manual-radius) var(--manual-radius) 0;
+    }
+
+    #codex-template-playbook .stage-panel.is-refreshed,
+    #codex-template-playbook .skill-panel.is-refreshed {
+      animation: panel-refresh 260ms ease-out;
+    }
+
+    #codex-template-playbook .stage-panel .stage-content > div,
+    #codex-template-playbook .skill-panel .stage-content > div {
+      padding-top: 0.9rem;
+      border-top: 1px solid var(--manual-line);
+    }
+
+    #codex-template-playbook .capability-panel {
+      background: var(--manual-panel-strong);
+    }
+
+    #codex-template-playbook .economy-panel {
+      padding: 1.5rem;
+      border: 1px dashed var(--manual-line);
+    }
+
+    @keyframes panel-refresh {
+      from {
+        opacity: 0.7;
+        transform: translateY(5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     #codex-template-playbook .route-list {
       display: grid;
+      overflow: hidden;
+      border: 1px solid var(--manual-line);
+      border-radius: var(--manual-radius);
+      background: var(--manual-panel);
     }
 
     #codex-template-playbook .route-head,
@@ -35,12 +534,30 @@
       grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.9fr) minmax(0, 1.25fr);
       gap: 1rem;
       align-items: start;
-      padding: 0.8rem 0;
+      padding: 1rem 1.15rem;
       border-bottom: 1px solid var(--border);
     }
 
     #codex-template-playbook .route-head {
-      color: var(--muted-foreground);
+      color: var(--manual-muted);
+      background: var(--manual-panel-strong);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    #codex-template-playbook .route-row {
+      transition: background-color 160ms ease;
+    }
+
+    #codex-template-playbook .route-row:last-child {
+      border-bottom: 0;
+    }
+
+    #codex-template-playbook .route-row:hover {
+      background: color-mix(in srgb, var(--manual-accent) 5%, transparent);
     }
 
     #codex-template-playbook .route-row code {
@@ -50,6 +567,57 @@
     #codex-template-playbook .route-label {
       display: none;
       color: var(--muted-foreground);
+    }
+
+    #codex-template-playbook .skill-explorer {
+      display: grid;
+      grid-template-columns: minmax(13rem, 0.35fr) minmax(0, 1fr);
+      gap: 1rem;
+      align-items: start;
+    }
+
+    #codex-template-playbook .skill-picker {
+      position: sticky;
+      top: 5.5rem;
+      padding: 1.25rem;
+      border: 1px solid var(--manual-line);
+      background: var(--manual-panel-strong);
+    }
+
+    #codex-template-playbook .skill-picker .form-label {
+      color: var(--manual-accent);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    #codex-template-playbook .skill-picker .form-select {
+      min-height: 46px;
+      margin-top: 0.5rem;
+      border-color: var(--manual-line);
+      color: var(--manual-ink);
+      background-color: var(--manual-panel);
+    }
+
+    #codex-template-playbook .skill-picker .form-select:focus-visible {
+      border-color: var(--manual-accent);
+      outline: 3px solid color-mix(in srgb, var(--manual-accent) 28%, transparent);
+      outline-offset: 2px;
+    }
+
+    #codex-template-playbook .skill-picker-note {
+      margin: 1rem 0 0;
+      color: var(--manual-muted);
+      font-size: 0.78rem;
+    }
+
+    #codex-template-playbook .skill-panel h3 code {
+      display: inline-block;
+      padding: 0.35rem 0.55rem;
+      border-color: color-mix(in srgb, var(--manual-accent) 35%, var(--manual-line));
+      color: var(--manual-accent);
+      background: var(--manual-accent-soft);
     }
 
     #codex-template-playbook .context-stack {
@@ -62,8 +630,10 @@
       grid-template-columns: minmax(8rem, 0.8fr) minmax(0, 1.6fr);
       gap: 1rem;
       align-items: center;
-      padding: 0.9rem 1rem;
-      background: color-mix(in srgb, var(--layer-color) 13%, transparent);
+      min-height: 5rem;
+      padding: 1rem 1.25rem;
+      border: 1px solid color-mix(in srgb, var(--layer-color) 28%, var(--manual-line));
+      background: color-mix(in srgb, var(--layer-color) 9%, var(--manual-panel));
     }
 
     #codex-template-playbook .context-layer:nth-child(1) {
@@ -85,16 +655,22 @@
       grid-template-columns: repeat(13, minmax(0, auto));
       align-items: center;
       gap: 0.35rem;
+      padding: 1.25rem;
+      border: 1px solid var(--manual-line);
+      background: var(--manual-panel-strong);
     }
 
     #codex-template-playbook .loop-node {
       display: grid;
       place-items: center;
-      min-height: 4rem;
-      padding: 0.55rem;
+      min-height: 5rem;
+      padding: 0.75rem;
+      border: 1px solid var(--manual-line);
       text-align: center;
-      background: color-mix(in srgb, var(--viz-series-1) 10%, transparent);
-      border-bottom: 2px solid var(--viz-series-1);
+      background: var(--manual-panel);
+      border-bottom: 3px solid var(--manual-accent);
+      font-size: 0.8rem;
+      font-weight: 700;
     }
 
     #codex-template-playbook .loop-arrow {
@@ -105,40 +681,175 @@
     #codex-template-playbook .guardrails {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0 1.5rem;
+      gap: 0.75rem;
     }
 
     #codex-template-playbook .guardrail {
+      --guard-color: var(--manual-accent);
       display: flex;
       gap: 0.75rem;
       align-items: flex-start;
-      padding: 0.9rem 0;
-      border-top: 1px solid var(--border);
+      min-height: 8.5rem;
+      padding: 1.1rem;
+      border: 1px solid var(--manual-line);
+      border-left: 4px solid var(--guard-color);
+      background: var(--manual-panel);
+    }
+
+    #codex-template-playbook .guardrail:nth-child(3n + 2) {
+      --guard-color: var(--manual-signal);
+    }
+
+    #codex-template-playbook .guardrail:nth-child(3n) {
+      --guard-color: var(--manual-safe);
+    }
+
+    #codex-template-playbook .guardrail:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
     }
 
     #codex-template-playbook .guardrail svg {
       flex: 0 0 auto;
-      color: var(--viz-series-1);
+      color: var(--guard-color);
     }
 
     #codex-template-playbook .prompt-anatomy {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 0.6rem;
+      gap: 0;
+      border: 1px solid var(--manual-line);
+      counter-reset: truth;
     }
 
     #codex-template-playbook .prompt-part {
+      position: relative;
       min-width: 0;
-      padding: 0.8rem;
-      background: color-mix(in srgb, var(--muted) 70%, transparent);
-      border-top: 2px solid var(--viz-series-2);
+      min-height: 12rem;
+      padding: 3.2rem 1.1rem 1.1rem;
+      border-right: 1px solid var(--manual-line);
+      background: var(--manual-panel);
+      counter-increment: truth;
+    }
+
+    #codex-template-playbook .prompt-part:last-child {
+      border-right: 0;
+    }
+
+    #codex-template-playbook .prompt-part::before {
+      position: absolute;
+      top: 1rem;
+      left: 1.1rem;
+      color: var(--manual-signal);
+      content: "0" counter(truth);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    #codex-template-playbook .prompt-part strong {
+      display: block;
+      margin-bottom: 0.45rem;
+      font-size: 1rem;
+    }
+
+    @media (max-width: 820px) {
+      #codex-template-playbook .hero-grid,
+      #codex-template-playbook .skill-explorer {
+        grid-template-columns: 1fr;
+      }
+
+      #codex-template-playbook .hero-manifest {
+        max-width: 36rem;
+      }
+
+      #codex-template-playbook .skill-picker {
+        position: static;
+      }
+
+      #codex-template-playbook .viz-controls {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      #codex-template-playbook .viz-controls::before {
+        display: none;
+      }
+
+      #codex-template-playbook .prompt-anatomy {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #codex-template-playbook .prompt-part:nth-child(2) {
+        border-right: 0;
+      }
+
+      #codex-template-playbook .prompt-part:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--manual-line);
+      }
     }
 
     @media (max-width: 560px) {
+      #codex-template-playbook {
+        border: 0;
+        border-radius: 0;
+      }
+
+      #codex-template-playbook .playbook-nav {
+        padding-inline: 1rem;
+      }
+
+      #codex-template-playbook .nav-mark {
+        display: none;
+      }
+
+      #codex-template-playbook .playbook-section {
+        padding: 4.5rem 1rem 3.5rem;
+      }
+
+      #codex-template-playbook .playbook-section[data-chapter]::before {
+        top: 1.5rem;
+        left: 1rem;
+      }
+
+      #codex-template-playbook .playbook-hero {
+        min-height: auto;
+        padding-top: 3.5rem;
+      }
+
+      #codex-template-playbook h1 {
+        font-size: clamp(2.8rem, 16vw, 4.5rem);
+      }
+
+      #codex-template-playbook .hero-proof,
       #codex-template-playbook .stage-content,
       #codex-template-playbook .guardrails,
       #codex-template-playbook .prompt-anatomy {
         grid-template-columns: 1fr;
+      }
+
+      #codex-template-playbook .proof-item,
+      #codex-template-playbook .proof-item:not(:first-child) {
+        padding: 0.85rem 0;
+        border-right: 0;
+        border-bottom: 1px solid rgb(255 255 255 / 13%);
+      }
+
+      #codex-template-playbook .proof-item:last-child {
+        border-bottom: 0;
+      }
+
+      #codex-template-playbook .viz-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #codex-template-playbook .prompt-part,
+      #codex-template-playbook .prompt-part:nth-child(2) {
+        min-height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--manual-line);
+      }
+
+      #codex-template-playbook .prompt-part:last-child {
+        border-bottom: 0;
       }
 
       #codex-template-playbook .route-head {
@@ -148,7 +859,7 @@
       #codex-template-playbook .route-row {
         grid-template-columns: 1fr;
         gap: 0.25rem;
-        padding: 1rem 0;
+        padding: 1rem;
       }
 
       #codex-template-playbook .route-label {
@@ -170,35 +881,83 @@
       #codex-template-playbook .loop-arrow {
         transform: rotate(90deg);
       }
+
+      #codex-template-playbook .guardrail:last-child:nth-child(odd) {
+        grid-column: auto;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #codex-template-playbook *,
+      #codex-template-playbook *::before,
+      #codex-template-playbook *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 
-  <section class="playbook-section" aria-labelledby="playbook-heading">
-    <div>
-      <h1 id="playbook-heading">Codexicon Playbook</h1>
-      <p class="text-muted">A practical guide to adopting and operating Codexicon across the complete agent-development lifecycle.</p>
+  <nav class="playbook-nav" aria-label="Playbook sections">
+    <span class="nav-mark" aria-hidden="true">Codexicon</span>
+    <a href="#entry-heading">Start</a>
+    <a href="#lifecycle-heading">Lifecycle</a>
+    <a href="#routing-heading">Routing</a>
+    <a href="#skills-heading">Skills</a>
+    <a href="#boundaries-heading">Guardrails</a>
+  </nav>
+
+  <section class="playbook-section playbook-hero" aria-labelledby="playbook-heading">
+    <div class="hero-kicker">Agent operations manual</div>
+    <div class="hero-grid">
+      <div>
+        <h1 id="playbook-heading">Codexicon Playbook</h1>
+        <p class="hero-lede">A practical field guide for adopting and operating a production-minded Codex agent harness—from the first project decision to verified delivery.</p>
+        <div class="hero-actions">
+          <a class="hero-action hero-action-primary" href="#lifecycle-heading">Explore the lifecycle</a>
+          <a class="hero-action" href="#skills-heading">Browse every skill</a>
+        </div>
+      </div>
+      <div class="hero-manifest" aria-label="Codexicon operating model">
+        <div class="manifest-head"><span>Operating model</span><span>Local-first</span></div>
+        <ol class="manifest-flow">
+          <li><span class="manifest-index">01</span><div><strong>Adopt or define</strong><small>Start from the repository and product truth you actually have.</small></div></li>
+          <li><span class="manifest-index">02</span><div><strong>Route deliberately</strong><small>Use the smallest workflow that matches uncertainty and risk.</small></div></li>
+          <li><span class="manifest-index">03</span><div><strong>Verify before effect</strong><small>Require evidence before Git, deployment, or other external action.</small></div></li>
+        </ol>
+      </div>
+    </div>
+    <div class="hero-proof" role="list" aria-label="Codexicon characteristics">
+      <div class="proof-item" role="listitem"><strong>New + established repositories</strong><span>Clean starts and plan-first adoption</span></div>
+      <div class="proof-item" role="listitem"><strong>Progressive workflows</strong><span>More process only when the task warrants it</span></div>
+      <div class="proof-item" role="listitem"><strong>Explicit authority</strong><span>Verification, Git, and deployment remain separate decisions</span></div>
     </div>
   </section>
 
-  <section class="playbook-section" aria-labelledby="entry-heading">
+  <section class="playbook-section" data-chapter="01" aria-labelledby="entry-heading">
     <div>
       <h2 id="entry-heading">Start from the repository you actually have</h2>
       <p class="text-muted">Codexicon supports a clean template start and plan-first adoption into an established repository.</p>
     </div>
-    <div class="stage-content">
-      <div>
+    <div class="stage-content entry-grid">
+      <div class="entry-card">
+        <span class="entry-watermark" aria-hidden="true">NEW</span>
+        <span class="entry-tag">Start clean</span>
         <strong>New repository</strong>
         <p>Use the GitHub template or a clean local copy, verify the baseline, then run <code>$discover</code> and <code>$init</code>.</p>
       </div>
-      <div>
+      <div class="entry-card">
+        <span class="entry-watermark" aria-hidden="true">ADOPT</span>
+        <span class="entry-tag">Integrate safely</span>
         <strong>Established repository</strong>
         <p>Keep the Codexicon source separate and run <code>$adopt-codexicon</code> or <code>python scripts/codexicon.py inspect TARGET</code> before authorising any writes. Use <code>docs/upgrading.md</code> for the manual migration boundaries.</p>
       </div>
     </div>
-    <p class="text-small text-muted"><code>inspect</code>, <code>doctor</code>, update planning, and <code>resume</code> are read-only. Adoption and update mutations require <code>--apply</code>; local conflicts and project-owned files are preserved for deliberate integration.</p>
+    <p class="text-small entry-note"><code>inspect</code>, <code>doctor</code>, update planning, and <code>resume</code> are read-only. Adoption and update mutations require <code>--apply</code>; local conflicts and project-owned files are preserved for deliberate integration.</p>
   </section>
 
-  <section class="playbook-section" aria-labelledby="lifecycle-heading">
+  <section class="playbook-section" data-chapter="02" aria-labelledby="lifecycle-heading">
     <div>
       <h2 id="lifecycle-heading">From intent to a verified project</h2>
       <span class="viz-badge">Codexicon · Matchday sports app</span>
@@ -214,7 +973,7 @@
       <button type="button" class="btn" data-stage="ship" aria-pressed="false">6 · Ship</button>
     </div>
 
-    <div class="card" aria-live="polite" aria-atomic="true">
+    <div class="card stage-panel" aria-live="polite" aria-atomic="true">
       <h3 id="stage-title">Discover the project</h3>
       <div class="stage-content">
         <div>
@@ -248,13 +1007,13 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card capability-panel">
       <h3>How to choose a capability tier</h3>
       <p><strong>Reliability-first policy:</strong> use a high-reasoning tier for project gates and expensive-to-reverse decisions. A fast, low-cost tier may assist with narrow, reversible work after requirements are fixed, but should not own a gate.</p>
       <p class="text-small text-muted">Choose the lowest reasoning effort that reliably satisfies the task, then raise it when ambiguity, risk, or review depth requires more. A model never replaces explicit done conditions, lint, tests, rendered inspection, or human approval. Leave the concrete model choice to the user’s current Codex configuration.</p>
     </div>
 
-    <div aria-labelledby="communication-economy-heading">
+    <div class="economy-panel" aria-labelledby="communication-economy-heading">
       <h3 id="communication-economy-heading">Communication economy</h3>
       <div class="stage-content">
         <div>
@@ -278,7 +1037,7 @@
     </div>
   </section>
 
-  <section class="playbook-section" aria-labelledby="prompt-heading">
+  <section class="playbook-section" data-chapter="03" aria-labelledby="prompt-heading">
     <h2 id="prompt-heading">Give Codex four pieces of task truth</h2>
     <div class="prompt-anatomy" role="list" aria-label="Effective prompt structure">
       <div class="prompt-part" role="listitem"><strong>Outcome</strong><br><span class="text-muted">Fans can follow a live match without refreshing.</span></div>
@@ -288,7 +1047,7 @@
     </div>
   </section>
 
-  <section class="playbook-section" aria-labelledby="routing-heading">
+  <section class="playbook-section" data-chapter="04" aria-labelledby="routing-heading">
     <div>
       <h2 id="routing-heading">Choose the smallest workflow that fits</h2>
       <p class="text-muted">More ceremony only when uncertainty or reversibility requires it.</p>
@@ -342,73 +1101,78 @@
     </div>
   </section>
 
-  <section class="playbook-section" aria-labelledby="skills-heading">
+  <section class="playbook-section" data-chapter="05" aria-labelledby="skills-heading">
     <div>
       <h2 id="skills-heading">Explore every repository skill</h2>
       <p class="text-muted">Choose by the shape of the work, not by how important it feels.</p>
     </div>
-    <label class="form-label" for="skill-select">Skill</label>
-    <select id="skill-select" class="form-select">
-      <optgroup label="Project start">
-        <option value="discover">$discover</option>
-        <option value="init">$init</option>
-        <option value="adopt-codexicon">$adopt-codexicon</option>
-      </optgroup>
-      <optgroup label="Define and plan">
-        <option value="brainstorm">$brainstorm</option>
-        <option value="spec">$spec</option>
-        <option value="write-plan">$write-plan</option>
-      </optgroup>
-      <optgroup label="Implement">
-        <option value="quick">$quick</option>
-        <option value="execute-plan">$execute-plan</option>
-      </optgroup>
-      <optgroup label="Customer experience">
-        <option value="design-experience">$design-experience</option>
-        <option value="create-marketing">$create-marketing</option>
-        <option value="review-creative">$review-creative</option>
-      </optgroup>
-      <optgroup label="Diagnose and decide">
-        <option value="investigate">$investigate</option>
-        <option value="architecture-review">$architecture-review</option>
-        <option value="retro">$retro</option>
-      </optgroup>
-      <optgroup label="Review and ship">
-        <option value="review">$review</option>
-        <option value="production-readiness">$production-readiness</option>
-        <option value="ship">$ship</option>
-        <option value="conventional-commit">$conventional-commit</option>
-      </optgroup>
-      <optgroup label="Communication and continuity">
-        <option value="concise">$concise</option>
-        <option value="context-dump">$context-dump</option>
-      </optgroup>
-    </select>
+    <div class="skill-explorer">
+      <div class="skill-picker">
+        <label class="form-label" for="skill-select">Choose a skill</label>
+        <select id="skill-select" class="form-select">
+          <optgroup label="Project start">
+            <option value="discover">$discover</option>
+            <option value="init">$init</option>
+            <option value="adopt-codexicon">$adopt-codexicon</option>
+          </optgroup>
+          <optgroup label="Define and plan">
+            <option value="brainstorm">$brainstorm</option>
+            <option value="spec">$spec</option>
+            <option value="write-plan">$write-plan</option>
+          </optgroup>
+          <optgroup label="Implement">
+            <option value="quick">$quick</option>
+            <option value="execute-plan">$execute-plan</option>
+          </optgroup>
+          <optgroup label="Customer experience">
+            <option value="design-experience">$design-experience</option>
+            <option value="create-marketing">$create-marketing</option>
+            <option value="review-creative">$review-creative</option>
+          </optgroup>
+          <optgroup label="Diagnose and decide">
+            <option value="investigate">$investigate</option>
+            <option value="architecture-review">$architecture-review</option>
+            <option value="retro">$retro</option>
+          </optgroup>
+          <optgroup label="Review and ship">
+            <option value="review">$review</option>
+            <option value="production-readiness">$production-readiness</option>
+            <option value="ship">$ship</option>
+            <option value="conventional-commit">$conventional-commit</option>
+          </optgroup>
+          <optgroup label="Communication and continuity">
+            <option value="concise">$concise</option>
+            <option value="context-dump">$context-dump</option>
+          </optgroup>
+        </select>
+        <p class="skill-picker-note">The shape of the work chooses the workflow—not its perceived importance.</p>
+      </div>
 
-    <div class="card" aria-live="polite" aria-atomic="true">
-      <h3><code id="skill-title">$discover</code></h3>
-      <div class="stage-content">
-        <div>
-          <span class="text-small text-muted">Use when</span>
-          <p id="skill-when">The copied template has no approved product definition and technical choices should wait.</p>
-        </div>
-        <div>
-          <span class="text-small text-muted">Produces</span>
-          <p id="skill-produces">An approved charter covering the problem, user, outcome, constraints, evidence, and non-goals.</p>
-        </div>
-        <div>
-          <span class="text-small text-muted">Usually followed by</span>
-          <p><code id="skill-next">$init</code></p>
-        </div>
-        <div>
-          <span class="text-small text-muted">Sports app prompt</span>
-          <p><code id="skill-prompt">$discover Define Matchday, a community football app for fixtures, live scores, standings, and match alerts. Clarify the users, observable success, data constraints, accessibility needs, and non-goals before choosing a stack.</code></p>
+      <div class="card skill-panel" aria-live="polite" aria-atomic="true">
+        <h3><code id="skill-title">$discover</code></h3>
+        <div class="stage-content">
+          <div>
+            <span class="text-small text-muted">Use when</span>
+            <p id="skill-when">The copied template has no approved product definition and technical choices should wait.</p>
+          </div>
+          <div>
+            <span class="text-small text-muted">Produces</span>
+            <p id="skill-produces">An approved charter covering the problem, user, outcome, constraints, evidence, and non-goals.</p>
+          </div>
+          <div>
+            <span class="text-small text-muted">Usually followed by</span>
+            <p><code id="skill-next">$init</code></p>
+          </div>
+          <div>
+            <span class="text-small text-muted">Sports app prompt</span>
+            <p><code id="skill-prompt">$discover Define Matchday, a community football app for fixtures, live scores, standings, and match alerts. Clarify the users, observable success, data constraints, accessibility needs, and non-goals before choosing a stack.</code></p>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="playbook-section" aria-labelledby="loop-heading">
+  <section class="playbook-section" data-chapter="06" aria-labelledby="loop-heading">
     <h2 id="loop-heading">After setup, repeat one disciplined loop</h2>
     <div class="task-loop" aria-label="Feature delivery loop">
       <div class="loop-node">Outcome</div><div class="loop-arrow" aria-hidden="true">→</div>
@@ -421,7 +1185,7 @@
     </div>
   </section>
 
-  <section class="playbook-section" aria-labelledby="context-heading">
+  <section class="playbook-section" data-chapter="07" aria-labelledby="context-heading">
     <div>
       <h2 id="context-heading">Context expands only when the task needs it</h2>
       <p class="text-muted">The template keeps ordinary work lean without weakening engineering checks.</p>
@@ -442,7 +1206,7 @@
     </div>
   </section>
 
-  <section class="playbook-section" aria-labelledby="boundaries-heading">
+  <section class="playbook-section" data-chapter="08" aria-labelledby="boundaries-heading">
     <h2 id="boundaries-heading">Durable boundaries stay explicit</h2>
     <div class="guardrails">
       <div class="guardrail"><i data-lucide="key-round" aria-hidden="true"></i><span><strong>Credentials stay out</strong><br><span class="text-muted">Protected stores and environment dumps are blocked; local, Git, and CI scans reveal only safe locations.</span></span></div>
@@ -458,6 +1222,8 @@
   <script>
     (() => {
       const root = document.getElementById('codex-template-playbook');
+      const inPageLinks = [...root.querySelectorAll('a[href^="#"]')];
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       const stages = {
         discover: {
           title: 'Discover the project',
@@ -673,7 +1439,9 @@
       const avoid = root.querySelector('#stage-avoid');
       const stageExample = root.querySelector('#stage-example');
       const buttons = [...root.querySelectorAll('[data-stage]')];
+      const stagePanel = root.querySelector('.stage-panel');
       const skillSelect = root.querySelector('#skill-select');
+      const skillPanel = root.querySelector('.skill-panel');
       const skillTitle = root.querySelector('#skill-title');
       const skillWhen = root.querySelector('#skill-when');
       const skillProduces = root.querySelector('#skill-produces');
@@ -695,6 +1463,8 @@
           button.setAttribute('aria-pressed', String(selected));
           button.classList.toggle('btn-primary', selected);
         });
+        stagePanel.classList.remove('is-refreshed');
+        requestAnimationFrame(() => stagePanel.classList.add('is-refreshed'));
       };
 
       const selectSkill = (key) => {
@@ -704,6 +1474,8 @@
         skillProduces.textContent = skill.produces;
         skillNext.textContent = skill.next;
         skillPrompt.textContent = skill.prompt;
+        skillPanel.classList.remove('is-refreshed');
+        requestAnimationFrame(() => skillPanel.classList.add('is-refreshed'));
       };
 
       buttons.forEach((button) => {
@@ -711,6 +1483,18 @@
       });
 
       skillSelect.addEventListener('change', () => selectSkill(skillSelect.value));
+
+      inPageLinks.forEach((link) => {
+        link.addEventListener('click', (event) => {
+          const target = root.querySelector(link.getAttribute('href'));
+          if (!target) return;
+          event.preventDefault();
+          target.scrollIntoView({
+            behavior: reduceMotion.matches ? 'auto' : 'smooth',
+            block: 'start'
+          });
+        });
+      });
     })();
   </script>
 </div>

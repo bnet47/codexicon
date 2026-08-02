@@ -1,69 +1,101 @@
+<p align="center">
+  <picture>
+    <source media="(max-width: 640px)" srcset="docs/assets/codexicon-readme-hero-mobile.svg">
+    <img src="docs/assets/codexicon-readme-hero.svg" alt="Codexicon — a production-minded Codex agent harness for new and established repositories" width="100%">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="https://github.com/bnet47/codexicon/actions/workflows/ci.yml"><img src="https://github.com/bnet47/codexicon/actions/workflows/ci.yml/badge.svg" alt="Template CI"></a>
+  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.6.1--dev-339cff.svg" alt="Template version 2.6.1-dev"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-46a862.svg" alt="MIT License"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-f39a56.svg" alt="Python 3.10 or newer"></a>
+</p>
+
 # Codexicon
 
-[![Template CI](https://github.com/bnet47/codexicon/actions/workflows/ci.yml/badge.svg)](https://github.com/bnet47/codexicon/actions/workflows/ci.yml)
-[![MIT License](https://img.shields.io/badge/license-MIT-0f766e.svg)](LICENSE)
-[![Template version](https://img.shields.io/badge/template-v2.6.1--dev-2563eb.svg)](TEMPLATE_VERSION)
+<p align="center">
+  <strong>A production-minded Codex agent harness for new and established repositories.</strong>
+  <br>
+  Turn agent-driven development into an inspectable path from project context to verified, explicitly authorized delivery.
+</p>
 
-**A production-minded Codex agent harness for new and established repositories.**
+<p align="center">
+  <a href="https://github.com/new?template_name=codexicon&template_owner=bnet47"><strong>Use this template</strong></a>
+  ·
+  <a href="#adopt-into-an-existing-repository"><strong>Adopt into an existing repo</strong></a>
+  ·
+  <a href="https://bnet47.github.io/codexicon/repo-template-playbook.html"><strong>Explore the visual playbook</strong></a>
+  ·
+  <a href="#06--security-and-authority"><strong>Review the security model</strong></a>
+</p>
 
-Codexicon makes agent-driven development inspectable from project discovery through verified delivery. It combines durable project guidance, progressively loaded skills, repeatable verification, credential safeguards, safe adoption and upgrades, and explicit authority boundaries for Git, deployments, MCP tools, and other external systems.
+> [!IMPORTANT]
+> Codexicon improves the development process; it does not make an unfinished application production-ready by itself. Every project must still supply and verify its own architecture, security, data, operations, and release evidence.
 
-It is intentionally not an application starter or a framework opinion. You define the product first, then Codex configures the smallest suitable stack for that project.
+## 01 — Start from where your repository is
 
-> Codexicon improves the development process; it does not make an unfinished application production-ready by itself. Each project must supply and verify its own architecture, security, data, operations, and release evidence.
+| Create a new project | Adopt into an established repository |
+|---|---|
+| Begin with a clean harness, define the product before the stack, then initialize only what the project needs. | Inspect compatibility first, preserve project-owned work, and apply only reviewed harness files. |
+| **[Create from the GitHub template →](https://github.com/new?template_name=codexicon&template_owner=bnet47)** | **[Read the adoption guide →](docs/codex.md#adoption-diagnostics-and-updates)** |
 
-## Why use it
+Codexicon is intentionally not an application starter or a framework opinion. It gives Codex durable operating rules, progressive workflows, canonical checks, and clear authority boundaries—then leaves product and technology choices to the evidence in the project.
 
-Starting from an empty repository leaves every Codex task to rediscover how the project should be understood, changed, checked, and shipped. Codexicon makes those expectations inspectable and reusable without loading every workflow into every prompt.
+## 02 — What the harness changes
 
-- **Start with the problem:** `$discover` defines the user, outcome, constraints, evidence, and non-goals before technology is selected.
-- **Configure deliberately:** `$init` turns the template into a real stack with working setup, development, lint, test, security, and CI commands.
-- **Adopt without replacing project-owned work:** read-only inspection, explicit apply, baseline tracking, and conflict-preserving updates bring the harness into established repositories.
-- **Use the smallest workflow:** clear changes stay lightweight; ambiguity, architecture, design, marketing, and production risk receive the additional process they need.
-- **Keep context lean:** `AGENTS.md` contains durable rules while complete workflows and project facts load only when relevant.
-- **Verify across the lifecycle:** session-aware hooks invalidate stale results after writes and recover conservatively after resume or compaction; humans, Codex, Git hooks, and CI use the same canonical commands.
-- **Treat external context as untrusted:** integrations stay disabled until reviewed, tools stay narrowly scoped, and external content cannot grant authority for writes.
-- **Keep side effects explicit:** commits, pushes, pull requests, deployments, messages, spend, and production changes require clear authority.
+| Durable context | Deliberate execution | Verifiable delivery |
+|---|---|---|
+| `AGENTS.md` holds the small set of rules that should always be present. Detailed facts and workflows load only when relevant. | Clear work stays lightweight. Ambiguity, architecture, experience, marketing, and production risk receive the process they need. | Local commands, trusted hooks, Git hooks, and CI share the same lint, test, and security paths. |
+| **Less repeated discovery** | **Less process without less rigor** | **Less room for stale confidence** |
 
-## Start in five minutes
+The harness also keeps external context in its proper place: integrations begin disabled, tools remain narrowly scoped, and content from issues, webpages, documents, or tool output cannot grant authority for writes.
 
-### 1. Create a project
+## 03 — The operating model
 
-On GitHub, select **Use this template**, then **Create a new repository**. For local-only work, copy the directory and omit its `.git` directory.
+<p align="center">
+  <picture>
+    <source media="(max-width: 640px)" srcset="docs/assets/codexicon-operating-model-mobile.svg">
+    <img src="docs/assets/codexicon-operating-model.svg" alt="Codexicon operating model: context, route, verify, then cross an explicit authority boundary" width="100%">
+  </picture>
+</p>
 
-To add Codexicon to an established repository, keep the repositories separate and inspect first:
+1. **Know the ground.** Adopt safely or define the product outcome before selecting technology.
+2. **Choose the work.** Route each request through the smallest workflow proportionate to uncertainty and risk.
+3. **Prove the result.** Run the repository's canonical checks and invalidate stale evidence after writes.
+4. **Cross the boundary deliberately.** Commits, pushes, deployments, messages, spend, and production changes require explicit authority.
+
+| Coverage | Current baseline |
+|---|---|
+| Repository state | New repositories and conflict-preserving adoption into established repositories |
+| Verification | Equivalent POSIX and native Windows lint, test, and security entry points |
+| Continuous integration | Ubuntu, Windows, and macOS across Python 3.10 and 3.13 |
+| Updates | Trusted local sources, baseline-aware conflicts, atomic writes, and rollback |
+
+## 04 — Start in five minutes
+
+### New repository
+
+1. Select **[Use this template](https://github.com/new?template_name=codexicon&template_owner=bnet47)** and create a repository.
+2. Open Codex at the repository root.
+3. Review `AGENTS.md`, `.codex/config.toml`, and `.codex/hooks.json` before trusting the project configuration.
+4. Verify the baseline:
 
 ```bash
-python scripts/codexicon.py inspect /path/to/existing-repository
-```
-
-Inspection does not write. After reviewing conflicts and project-owned requirements, explicit `adopt ... --apply` copies only absent managed/merge files and records baseline hashes; it never replaces existing content. See [Adoption, diagnostics, and updates](docs/codex.md#adoption-diagnostics-and-updates).
-
-On Windows, after deliberately staging the adopted files, run `python scripts/codexicon.py sync-git-modes` in the target. This changes only the manifest-declared executable bits already in the Git index, so later POSIX clones can run the tracked hooks and shell entry points.
-
-### 2. Open the new project in Codex
-
-Open Codex at the repository root. Review `AGENTS.md`, `.codex/config.toml`, and `.codex/hooks.json` before trusting the project configuration.
-
-### 3. Verify the template baseline
-
-POSIX:
-
-```bash
+# POSIX
 ./scripts/lint.sh
 ./scripts/test.sh
 ./scripts/security.sh
 ```
 
-Native Windows:
-
 ```powershell
+# Native Windows
 ./scripts/lint.ps1
 ./scripts/test.ps1
 ./scripts/security.ps1
 ```
 
-### 4. Define the project
+5. Define the project:
 
 ```text
 $discover
@@ -74,9 +106,7 @@ Constraints: [real constraints].
 Out of scope: [non-goals].
 ```
 
-### 5. Initialize the real stack
-
-After approving the charter created by `$discover`:
+6. Initialize the real stack after approving the charter:
 
 ```text
 $init Configure this repository from the approved charter. Recommend the
@@ -85,11 +115,65 @@ configure equivalent CI checks, and explain any irreversible choice before
 making it. Do not add hosting or deploy anything unless I ask.
 ```
 
-From this point, use ordinary outcome-based prompts. Codexicon routes the work to the smallest relevant workflow.
+### Adopt into an existing repository
 
-## Example: build a sports app
+Keep Codexicon and the target repository separate, then begin with a read-only inspection:
 
-The examples throughout the visual playbook use **Matchday**, a fictional community-football app. A realistic first sequence is:
+```bash
+python scripts/codexicon.py inspect /path/to/existing-repository
+```
+
+Inspection does not write. After reviewing conflicts and project-owned requirements, an explicit `adopt ... --apply` copies only absent managed or merge files and records baseline hashes; it never replaces existing content.
+
+On Windows, after deliberately staging adopted files, run:
+
+```powershell
+python scripts/codexicon.py sync-git-modes
+```
+
+This changes only manifest-declared executable bits already in the Git index so later POSIX clones can run tracked hooks and shell entry points. Continue with [adoption, diagnostics, and updates](docs/codex.md#adoption-diagnostics-and-updates).
+
+## 05 — Route work by intent
+
+The repository exposes compact skill metadata first. Complete instructions load only when a task needs them.
+
+| Stage | Use when | Primary workflows | Evidence before continuing |
+|---|---|---|---|
+| **Adopt** | An established repository needs the harness | `$adopt-codexicon` | Reviewed compatibility plan and conflicts |
+| **Define** | The product or behavior is not settled | `$discover`, `$brainstorm`, `$spec` | Approved charter or executable specification |
+| **Build** | The outcome is clear enough to implement | `$quick`, `$write-plan`, `$execute-plan` | Observable behavior and focused verification |
+| **Assure** | Correctness, experience, architecture, or release risk needs scrutiny | `$review`, `$review-creative`, `$architecture-review`, `$production-readiness` | Findings resolved and canonical checks passing |
+| **Deliver** | A specific Git effect is authorized | `$ship` | Only the requested commit, push, or pull request |
+
+<details>
+<summary><strong>Open the complete workflow map</strong></summary>
+
+| Situation | Use |
+|---|---|
+| Established repository needs Codexicon | `$adopt-codexicon` |
+| Unconfigured project | `$discover` → `$init` |
+| Clear change affecting a few files | `$quick` |
+| Unclear feature behavior | `$brainstorm` |
+| Precise requirement needing a durable contract | `$spec` |
+| Approved multi-step requirement | `$write-plan` → `$execute-plan` when delegation helps |
+| Reproducible failure with an unknown cause | `$investigate` |
+| Expensive-to-reverse technical choice | `$architecture-review` |
+| App or website experience | `$design-experience` |
+| Positioning, copy, campaign, or launch asset | `$create-marketing` |
+| Customer-facing anti-slop review | `$review-creative` |
+| Engineering correctness and regression review | `$review` |
+| First launch or major production change | `$production-readiness` |
+| Explicit commit, push, or pull-request request | `$ship` |
+| Shorter communication with full rigor | `$concise` |
+
+Skills are routing tools, not mandatory ceremony. Codex may select one automatically; name one when you want that exact workflow.
+
+</details>
+
+<details>
+<summary><strong>See a realistic project sequence</strong></summary>
+
+The visual playbook uses **Matchday**, a fictional community-football app, to show the workflows in context.
 
 ```text
 $discover
@@ -124,72 +208,41 @@ capacity, backups, restore evidence, migrations, rollback, and incident
 ownership. Do not deploy or accept risk on my behalf.
 ```
 
-## The lifecycle
+</details>
 
-| Stage | Primary workflow | Evidence before continuing |
-|---|---|---|
-| Adopt (established repository) | `$adopt-codexicon` | Read-only compatibility plan, reviewed conflicts, then explicitly authorized integration |
-| Discover | `$discover` | Approved product charter |
-| Initialize | `$init` | Working stack, commands, CI, and project identity |
-| Build | `$quick`, `$brainstorm`, `$spec`, `$write-plan`, `$execute-plan` | Observable behavior and focused verification |
-| Experience | `$design-experience`, `$create-marketing` | Rendered, accessible, evidence-backed customer work |
-| Assure | `$review`, `$review-creative`, `$architecture-review` | Actionable findings resolved and canonical checks passing |
-| Release | `$production-readiness`, then `$ship` | Readiness verdict plus only the authorized Git action |
+> **Want the whole system at a glance?** The [interactive visual playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html) maps every lifecycle stage, repository skill, safety boundary, example prompt, and capability tier. Its standalone source remains in [`docs/repo-template-playbook.html`](docs/repo-template-playbook.html) for local and offline use.
 
-The [live visual playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html) explains each stage, every repository skill, example prompts, context loading, safety boundaries, and model-agnostic capability tiers. Its standalone HTML source remains in `docs/repo-template-playbook.html` for local and offline use.
+## 06 — Security and authority
 
-## Workflow map
+Codexicon treats safety as a chain of independent controls, not a single prompt.
 
-| Situation | Use |
+| Layer | What it contributes |
 |---|---|
-| Established repository needs Codexicon | `$adopt-codexicon` |
-| Unconfigured project | `$discover` → `$init` |
-| Clear change affecting a few files | `$quick` |
-| Unclear feature behavior | `$brainstorm` |
-| Precise requirement needing a durable contract | `$spec` |
-| Approved multi-step requirement | `$write-plan` → `$execute-plan` when delegation helps |
-| Reproducible failure with an unknown cause | `$investigate` |
-| Expensive-to-reverse technical choice | `$architecture-review` |
-| App or website experience | `$design-experience` |
-| Positioning, copy, campaign, or launch asset | `$create-marketing` |
-| Customer-facing anti-slop review | `$review-creative` |
-| Engineering correctness and regression review | `$review` |
-| First launch or major production change | `$production-readiness` |
-| Explicit commit, push, or pull-request request | `$ship` |
-| Shorter communication with full rigor | `$concise` |
+| **Repository policy** | Forbids opening credential-bearing files, dumping environment variables, and inferring external authority |
+| **Trusted lifecycle hooks** | Block common credential stores, track repository writes, and require fresh verification |
+| **Canonical security scan** | Checks tracked and non-ignored safe text without printing suspected secret values |
+| **Git and CI checks** | Offer opt-in local gates and repeat verification with a history-aware TruffleHog scan |
+| **Release review** | Treats missing authorization, recovery, rollback, or operational ownership as a release gap |
 
-Skills are optional routing tools, not mandatory ceremony. Codex may select them automatically; name one when you want that exact workflow.
+Project hooks run only after the user reviews and trusts them. Repository code cannot grant that trust on the user's behalf. Optional MCP servers and other integrations remain disabled until their instructions, data boundaries, tool scope, and approval mode have been reviewed.
 
-## Security and release safeguards
+## 07 — Designed to stay lean
 
-Codexicon uses several independent layers:
-
-1. `AGENTS.md` forbids opening credential-bearing files, dumping environment variables, and inferring external authority.
-2. Trusted Codex hooks block common credential stores and require fresh verification after repository writes.
-3. `scripts/security.sh` and `scripts/security.ps1` scan tracked and non-ignored safe text without printing suspected secret values.
-4. Optional tracked Git hooks run security before commit and full verification before push.
-5. CI repeats the canonical checks and adds a history-aware TruffleHog scan.
-6. `$production-readiness` treats missing authorization, recovery, rollback, or operational ownership as a release gap.
-
-Project hooks run only after the user reviews and trusts them. Repository code cannot grant that trust on the user's behalf.
-
-## Token efficiency
-
-Codexicon reduces recurring context rather than weakening engineering work:
+Codexicon reduces recurring context without weakening engineering work:
 
 - `AGENTS.md` stays short and durable.
-- Codex sees compact skill metadata first and loads full instructions only when they apply.
-- Detailed project facts live under `agent_docs/` and are read selectively.
-- Tool output is targeted and delegation is used only when it offsets its additional context.
-- `$concise` shortens communication without reducing reasoning, implementation, tests, review, or security evidence.
+- Skill metadata is visible before full workflow instructions are loaded.
+- Project facts live under `agent_docs/` and are read selectively.
+- Tool output is targeted; delegation is used only when it offsets its own context.
+- `$concise` shortens communication without reducing implementation, review, tests, or security evidence.
 
-The template validator enforces budgets for always-loaded repository guidance and the initial skill catalog.
+The validator enforces budgets for always-loaded repository guidance and the initial skill catalog.
 
-## Repository structure
+## 08 — Repository anatomy
 
 ```text
 .
-├── AGENTS.md                 # durable project rules and workflow routing
+├── AGENTS.md                 # durable rules and workflow routing
 ├── START_HERE.md             # complete project-start guide
 ├── .agents/skills/           # progressively disclosed workflows
 ├── .codex/
@@ -204,35 +257,32 @@ The template validator enforces budgets for always-loaded repository guidance an
 └── tests/                    # template, hook, scanner, and creative checks
 ```
 
-The root `.codexicon.json` is the source ownership contract used by the repository-local manager; adopted projects record their installed baselines in `.codexicon.lock.json`.
+The root [`.codexicon.json`](.codexicon.json) is the source ownership contract used by the repository-local manager. Adopted projects record installed baselines in `.codexicon.lock.json`.
 
-## Documentation
+## 09 — Reference shelf
 
-- [Interactive visual playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html)
-- [Start a project](START_HERE.md)
-- [Codex configuration and hooks](docs/codex.md)
-- [Upgrade an existing project](docs/upgrading.md)
-- [Agent and delegation patterns](docs/agent-patterns.md)
-- [Deployment command pattern](docs/deploy-patterns.md)
-- [Architecture decision template](docs/adr-template.md)
-- [Maintainer and release guide](docs/maintainers.md)
-- [Security policy](SECURITY.md)
-- [Support](SUPPORT.md)
-- [Contributing](CONTRIBUTING.md)
+| Start and operate | Govern and extend |
+|---|---|
+| [Interactive visual playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html) | [Security policy](SECURITY.md) |
+| [Start a project](START_HERE.md) | [Maintainer and release guide](docs/maintainers.md) |
+| [Codex configuration and hooks](docs/codex.md) | [Contributing](CONTRIBUTING.md) |
+| [Upgrade an existing project](docs/upgrading.md) | [Support](SUPPORT.md) |
+| [Agent and delegation patterns](docs/agent-patterns.md) | [Architecture decision template](docs/adr-template.md) |
+| [Deployment command pattern](docs/deploy-patterns.md) | [Code of Conduct](CODE_OF_CONDUCT.md) |
 
 ## Requirements
 
 - Codex opened at the repository root.
 - Python 3.10 or newer for template validation and hooks.
 - Git only when branches, commits, worktrees, remotes, or pull requests are wanted.
-- Bash for the POSIX scripts or PowerShell for the equivalent native Windows paths.
+- Bash for POSIX scripts or PowerShell for equivalent native Windows paths.
 
 No provider account, API key, database, hosting platform, or optional integration is required to begin.
 
 ## What Codexicon does not do
 
 - It does not choose a framework, database, or cloud before the project requires one.
-- It does not guarantee that generated code is correct, secure, accessible, or production-ready.
+- It does not guarantee generated code is correct, secure, accessible, or production-ready.
 - It does not read credentials, create production secrets, or preconfigure third-party integrations.
 - It does not download or apply automatic harness updates.
 - It does not authorize commits, pushes, deployments, messages, purchases, or production changes.
@@ -253,6 +303,6 @@ The first command is a read-only plan. Apply uses atomic writes and rollback, le
 
 ## Community
 
-Questions and reproducible problems belong in GitHub Issues after checking [support guidance](SUPPORT.md). Security vulnerabilities must follow [the private reporting process](SECURITY.md). Contributions are welcome under [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+Questions and reproducible problems belong in [GitHub Issues](https://github.com/bnet47/codexicon/issues) after checking the [support guidance](SUPPORT.md). Security vulnerabilities must follow the [private reporting process](SECURITY.md). Contributions are welcome under [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 Codexicon is maintained by [@bnet47](https://github.com/bnet47) and released under the [MIT License](LICENSE).
