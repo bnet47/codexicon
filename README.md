@@ -70,6 +70,7 @@ The harness also keeps external context in its proper place: integrations begin 
 | Repository state | New repositories and conflict-preserving adoption into established repositories |
 | Verification | Equivalent POSIX and native Windows lint, test, and security entry points |
 | Continuous integration | Ubuntu, Windows, and macOS across Python 3.10 and 3.13 |
+| Static analysis | Repository-level CodeQL default setup for Python and GitHub Actions, including local-source threat modeling |
 | Updates | Trusted local sources, baseline-aware conflicts, atomic writes, and rollback |
 
 ## 04 — Start in five minutes
@@ -222,6 +223,7 @@ Codexicon treats safety as a chain of independent controls, not a single prompt.
 | **Trusted lifecycle hooks** | Block common credential stores, track repository writes, and require fresh verification |
 | **Canonical security scan** | Checks tracked and non-ignored safe text without printing suspected secret values |
 | **Git and CI checks** | Offer opt-in local gates and repeat verification with a history-aware TruffleHog scan |
+| **Repository SAST** | Uses [CodeQL code scanning](https://github.com/bnet47/codexicon/security/code-scanning) for Python and GitHub Actions without adding a local dependency; derived projects make their own stack- and eligibility-aware SAST decision during initialization |
 | **Release review** | Treats missing authorization, recovery, rollback, or operational ownership as a release gap |
 
 Project hooks run only after the user reviews and trusts them. Repository code cannot grant that trust on the user's behalf. Optional MCP servers and other integrations remain disabled until their instructions, data boundaries, tool scope, and approval mode have been reviewed.

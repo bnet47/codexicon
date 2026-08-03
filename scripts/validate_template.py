@@ -389,6 +389,8 @@ def validate(*, release: bool = False) -> list[str]:
             errors.append("CI checkout persists credentials")
         if "timeout-minutes:" not in workflow:
             errors.append("CI jobs do not define timeouts")
+        if "scripts/codexicon.py doctor --root ." not in workflow:
+            errors.append("CI does not diagnose the source harness configuration")
         if "scripts/security.sh" not in workflow:
             errors.append("CI does not run the canonical local security gate")
         if "scripts/security.ps1" not in workflow:

@@ -48,6 +48,7 @@ Cover applicable misuse of authentication, authorization, data access, uploads/p
 
 ## Supply chain and assurance
 
+- **Static analysis / SAST:** [tool and setup, languages, triggers, query or rule policy, alert owner, or reason not applicable]
 - **Dependency and image audit command:** [canonical command and failure policy]
 - **Locking and updates:** [lockfiles, automated updates, review owner]
 - **CI and artifact integrity:** [permissions, immutable actions, signing/provenance if required]
