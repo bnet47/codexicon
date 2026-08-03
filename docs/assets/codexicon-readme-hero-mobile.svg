@@ -39,7 +39,7 @@
 
   <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">
     <text x="184" y="166" fill="#f8fafc" font-size="62" font-weight="800" letter-spacing="-1.8">Codexicon</text>
-    <g transform="translate(497 119)">
+    <g transform="translate(532 119)">
       <rect width="46" height="46" rx="11" fill="#102f32" stroke="#5ee5a6" stroke-opacity=".7"/>
       <path d="M14 15L22 23L14 31M27 31H34" fill="none" stroke="#7cf0b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
