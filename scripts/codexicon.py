@@ -776,17 +776,20 @@ def parse_hooks(root: Path, diagnostics: list[tuple[str, str]]) -> None:
                     diagnostics.append(("ERROR", f"hook event {event} lacks cross-platform commands"))
                 else:
                     command_text = f"{handler['command']} {handler['commandWindows']}"
-                    for action in (
-                        "session-start",
-                        "session-resume",
-                        "protect-secrets",
-                        "record-write",
-                        "record-shell",
-                        "record-compact",
-                        "verify-stop",
-                    ):
+                    action_capabilities = {
+                        "session-start": "session-start",
+                        "session-resume": "session-resume",
+                        "prepare-tool": "protect-secrets",
+                        "protect-secrets": "protect-secrets",
+                        "record-write": "record-write",
+                        "record-shell": "record-shell",
+                        "record-compact": "record-compact",
+                        "record-stop": "verify-stop",
+                        "verify-stop": "verify-stop",
+                    }
+                    for action, capability in action_capabilities.items():
                         if action in command_text:
-                            actions_by_event.setdefault(event, set()).add(action)
+                            actions_by_event.setdefault(event, set()).add(capability)
     required_actions = {
         "SessionStart": {"session-start", "session-resume"},
         "PreToolUse": {"protect-secrets"},

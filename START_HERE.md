@@ -88,8 +88,9 @@ Initialization should:
 7. update `.gitignore` for actual generated output;
 8. complete the applicable security and operations baseline in `agent_docs/`;
 9. preserve the credential scan while adding stack-specific dependency or image audits;
-10. decide whether external context is needed and leave MCP absent or disabled until its server and tools are reviewed;
-11. verify setup on the supported developer platforms.
+10. record a stack-appropriate SAST decision, using repository-level CodeQL default setup when eligible or documenting the selected alternative or reason it is not applicable;
+11. decide whether external context is needed and leave MCP absent or disabled until its server and tools are reviewed;
+12. verify setup on the supported developer platforms.
 
 When Git is enabled, inspect any existing hooks path before asking Codex to run `scripts/install-git-hooks.sh` (or `.ps1`). The tracked hooks scan before commit and run full lint, tests, and security before push.
 
@@ -235,6 +236,7 @@ Use `$ship` only after stating the action you want. Production deployment and wr
 - [ ] Project identity and ownership placeholders removed.
 - [ ] Real CI runs the same lint and test contract as local development.
 - [ ] Canonical security scan passes locally and in CI.
+- [ ] Static analysis is enabled for the actual stack, or its alternative or non-applicability is documented with an alert owner.
 - [ ] Repository Git hooks are installed or an existing equivalent is documented.
 - [ ] Environment variables documented only when required; no credentials tracked.
 - [ ] External integrations are absent or reviewed, least-privilege, and explicitly enabled.

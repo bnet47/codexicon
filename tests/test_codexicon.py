@@ -542,6 +542,41 @@ class CodexiconManagerTests(unittest.TestCase):
         self.assertIn("features.multi_agent must be true", messages)
         self.assertIn("lacks required verify-stop action", messages)
 
+    def test_source_repository_passes_doctor(self) -> None:
+        output = io.StringIO()
+
+        with contextlib.redirect_stdout(output):
+            result = CODEXICON.doctor(ROOT)
+
+        self.assertEqual(result, 0, output.getvalue())
+        unexpected_warnings = [
+            line
+            for line in output.getvalue().splitlines()
+            if line.startswith("WARN")
+            and "executable path is not tracked yet; stage it, then run sync-git-modes" not in line
+        ]
+        self.assertEqual(unexpected_warnings, [], output.getvalue())
+
+    def test_source_repository_doctor_allows_missing_git_mode_metadata(self) -> None:
+        output = io.StringIO()
+
+        with (
+            mock.patch.object(CODEXICON, "git_index_mode", return_value=None),
+            contextlib.redirect_stdout(output),
+        ):
+            result = CODEXICON.doctor(ROOT)
+
+        warnings = [line for line in output.getvalue().splitlines() if line.startswith("WARN")]
+        self.assertEqual(result, 0, output.getvalue())
+        self.assertTrue(warnings, output.getvalue())
+        self.assertTrue(
+            all(
+                "executable path is not tracked yet; stage it, then run sync-git-modes" in line
+                for line in warnings
+            ),
+            output.getvalue(),
+        )
+
     def test_python310_toml_fallback_rejects_malformed_config_and_agent(self) -> None:
         root = self.temp_dir / "project"
         agents = root / ".codex" / "agents"
