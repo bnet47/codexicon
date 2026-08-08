@@ -143,6 +143,7 @@ SEARCH_BOOLEAN_OPTIONS = {
 CHECKPOINT_MARKER = re.compile(r"^<!--\s*codexicon-checkpoint:\s*(\{.*\})\s*-->$")
 READ_ONLY_COMMANDS = {
     "cat",
+    "find",
     "get-childitem",
     "get-command",
     "get-content",
@@ -153,6 +154,7 @@ READ_ONLY_COMMANDS = {
     "get-variable",
     "gci",
     "head",
+    "grep",
     "ls",
     "measure-object",
     "out-string",
@@ -161,11 +163,14 @@ READ_ONLY_COMMANDS = {
     "select-object",
     "select-string",
     "sort-object",
+    "sed",
     "stat",
     "tail",
+    "tree",
     "test-path",
     "where",
     "where.exe",
+    "wc",
     "which",
     "write-output",
 }
@@ -1158,14 +1163,50 @@ def definitely_read_only_segment(command: str) -> bool:
         for unsafe in UNSAFE_READ_ONLY_TOKENS
     ):
         return False
-    if executable in READ_ONLY_COMMANDS:
-        return True
     if executable in {"rg", "rg.exe"}:
         return True
     if executable == "git":
         if len(lowered) >= 2 and lowered[1] == "branch":
             return lowered[2:] in ([], ["--show-current"], ["--list"])
-        return len(lowered) >= 2 and lowered[1] in READ_ONLY_GIT_COMMANDS
+        return len(lowered) >= 2 and lowered[1] in READ_ONLY_GIT_COMMANDS | {
+            "diff",
+            "grep",
+            "ls-tree",
+        }
+    if executable == "sed":
+        return not any(
+            token == "--in-place"
+            or token.startswith("--in-place=")
+            or token == "-i"
+            or token.startswith("-i")
+            for token in lowered[1:]
+        )
+    if executable == "find":
+        return not any(
+            token in {
+                "-delete",
+                "-exec",
+                "-execdir",
+                "-fdelete",
+                "-fls",
+                "-fprint",
+                "-fprint0",
+                "-fprintf",
+                "-ok",
+                "-okdir",
+            }
+            for token in lowered[1:]
+        )
+    if executable == "tree":
+        return not any(
+            token == "-o"
+            or token.startswith("-o")
+            or token == "--outfile"
+            or token.startswith("--outfile=")
+            for token in lowered[1:]
+        )
+    if executable in READ_ONLY_COMMANDS:
+        return True
     if executable in {"python", "python3", "node"}:
         return lowered[1:] in (["--version"], ["-v"])
     if executable in {"npm", "pnpm", "yarn"}:

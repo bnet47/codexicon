@@ -15,6 +15,7 @@ Use the project’s current behavior and accepted decisions as the source of tru
 
 - new validation and credential-scanning logic;
 - hook bug fixes that preserve the project’s verification receipt contract;
+- the 2.7.0 inspection classifier and Build operating guidance, after checking local hook and workflow customizations;
 - new opt-in documentation or disabled configuration examples;
 - CI hardening that preserves the project’s supported platforms and canonical checks;
 - new skills or references that do not replace locally modified workflows.
@@ -34,6 +35,10 @@ Review each change for local path, runtime, policy, and platform assumptions bef
 - environment placeholders, ignore rules, and dependency manifests.
 
 Never replace a project-specific command with a template stub or restore a deleted template placeholder over established project facts.
+
+## 2.7.0 migration note
+
+Adopt the hook classifier and operating guidance as one reviewable change. Merge the relevant `.codex/hooks/codex_hook.py` and `tests/test_template.py` changes together so read-only inspection behavior and its regression coverage stay aligned. Merge `AGENTS.md`, `docs/codex.md`, and applicable skill changes only after comparing local routing and approval policy; preserve project-specific identity, commands, security ownership, and accepted decisions. No state-file migration is required, and external skill discovery or installation remains opt-in.
 
 ## Adoption checklist
 

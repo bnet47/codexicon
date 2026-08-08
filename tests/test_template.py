@@ -752,8 +752,19 @@ class CodexHookTests(unittest.TestCase):
     def test_common_read_only_shell_commands_do_not_require_verification(self) -> None:
         self.assertEqual(self.run_hook("session-start", {"session_id": "s1"}).returncode, 0)
         read_only_commands = [
+            "git diff",
+            "git diff --stat",
+            "git diff --name-only",
+            "git grep needle",
             "git branch --show-current",
+            "git ls-tree HEAD",
+            "git show HEAD",
             "git status; git branch --show-current",
+            "find . -maxdepth 1",
+            "tree",
+            "grep needle README.md",
+            'sed -n "1,5p" README.md',
+            "wc -l README.md",
             "Get-ChildItem | Select-Object Name",
         ]
         for command in read_only_commands:
@@ -766,6 +777,67 @@ class CodexHookTests(unittest.TestCase):
 
         allowed = self.run_hook("verify-stop", {"session_id": "s1", "stop_hook_active": False})
         self.assertEqual(allowed.returncode, 0, allowed.stderr)
+
+    def test_common_inspection_does_not_invalidate_fresh_verification(self) -> None:
+        commands = [
+            "git diff",
+            "git diff --stat",
+            "git diff --name-only",
+            "git grep needle",
+            "git ls-tree HEAD",
+            "find . -maxdepth 1",
+            "tree",
+            "grep needle README.md",
+            'sed -n "1,5p" README.md',
+            "wc -l README.md",
+        ]
+        for command in commands:
+            with self.subTest(command=command):
+                self.run_hook("session-start", {"session_id": "s1"})
+                self.run_hook(
+                    "record-write",
+                    {"session_id": "s1", "tool_input": {"file_path": "src/example.py"}},
+                )
+                self.record_success("lint")
+                self.record_success("test")
+                recorded = self.run_hook(
+                    "record-shell",
+                    {"session_id": "s1", "tool_input": {"command": command}, "tool_response": ""},
+                )
+                self.assertEqual(recorded.returncode, 0, recorded.stderr)
+                allowed = self.run_hook(
+                    "verify-stop",
+                    {"session_id": "s1", "stop_hook_active": False},
+                )
+                self.assertEqual(allowed.returncode, 0, allowed.stderr)
+
+    def test_read_only_commands_with_write_options_still_invalidate_verification(self) -> None:
+        commands = [
+            "git diff --output=owned.txt",
+            "find . -delete",
+            "find . -exec python generate.py {} ;",
+            "sed -i s/old/new/ README.md",
+            "tree -o owned.txt",
+        ]
+        for command in commands:
+            with self.subTest(command=command):
+                self.run_hook("session-start", {"session_id": "s1"})
+                self.run_hook(
+                    "record-write",
+                    {"session_id": "s1", "tool_input": {"file_path": "src/example.py"}},
+                )
+                self.record_success("lint")
+                self.record_success("test")
+                recorded = self.run_hook(
+                    "record-shell",
+                    {"session_id": "s1", "tool_input": {"command": command}, "tool_response": ""},
+                )
+                self.assertEqual(recorded.returncode, 0, recorded.stderr)
+                blocked = self.run_hook(
+                    "verify-stop",
+                    {"session_id": "s1", "stop_hook_active": False},
+                )
+                self.assertEqual(blocked.returncode, 2)
 
     def test_execution_bearing_read_only_prefixes_invalidate_verification(self) -> None:
         commands = [

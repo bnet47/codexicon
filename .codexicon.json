@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "2.6.1-dev",
+  "version": "2.7.0",
   "files": [
     {
       "path": ".codexicon.json",

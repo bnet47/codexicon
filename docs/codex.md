@@ -18,6 +18,18 @@ Use `/skills` in Codex CLI or IDE surfaces to browse skills. Keep each descripti
 
 Official reference: [Agent skills](https://developers.openai.com/codex/skills)
 
+## Operating model
+
+Use the smallest mode that matches the request:
+
+- **Explore** investigates, compares, or diagnoses without modifying the repository unless the request authorizes a change.
+- **Build** is the default for a clear implementation request. Codex owns the internal understand, plan, implement, focused-validate, critique, improve, and final-verify loop, then reports important decisions and evidence.
+- **Ship** is reserved for commits, pushes, pull requests, publication, deployment, migrations, and external-system writes. These actions retain their explicit authority requirements.
+
+Brainstorming, specification, planning, implementation, and review are internal techniques in Build unless the request needs a durable artifact, a consequential product choice, or an independently requested review. Missing details should become documented reversible assumptions when safe; related blocking questions should be batched. A bounded self-review should improve the weakest important aspect of medium or large work, but it must stop when acceptance is met, improvement plateaus, failures repeat, verification is sufficient, or a human-owned boundary is reached.
+
+Do not automatically search for or install external skills during ordinary work. Skill discovery is an explicit extension decision; review the complete skill, scripts, dependencies, permissions, provenance, and licence before any project-local pinned installation, and never treat search as installation authority.
+
 ## Project configuration
 
 `.codex/config.toml` is loaded only for a trusted project. The template enables stable hooks and multi-agent support. It deliberately does not pin a model, agent-count limit, or permission mode.

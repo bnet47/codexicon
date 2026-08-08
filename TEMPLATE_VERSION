@@ -1,6 +1,12 @@
-2.6.1-dev
+2.7.0
 
 Status: Unreleased
+
+## 2.7.0 — Evidence-led autonomy and inspection verification
+
+- Expanded the fail-closed read-only command classifier for common diff, search, listing, and text-inspection commands while retaining write-option invalidation.
+- Made the default Build operating contract explicit: reversible internal decisions and refinement continue autonomously, while shipping and external-risk boundaries remain explicit.
+- Added the Codexicon evolution evaluation with current-state evidence, option comparison, benchmark methodology, and migration guidance.
 
 ## 2.6.1 — Harness reliability hardening
 
