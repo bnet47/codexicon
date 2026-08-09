@@ -9,7 +9,7 @@ Announce: "I'm using execute-plan to implement the approved plan with bounded ta
 
 ## 1. Load and validate the plan
 
-Read the selected plan and linked spec. Inspect `git status` and preserve existing user changes. Confirm task paths still exist and dependencies remain accurate; update the plan only when reality invalidates it, and explain material changes.
+Read the selected plan and linked spec. A plan produced for the current implementation request is approved by that request; do not create an extra approval gate unless the plan exposes a consequential product or architecture choice. Inspect `git status` and preserve existing user changes. Confirm task paths still exist and dependencies remain accurate; update the plan only when reality invalidates it, and explain material changes.
 
 If resuming, run `python scripts/codexicon.py resume`, then verify the selected checkpoint against the plan and current diff. `.codex-state/` is local verification state, not project memory.
 

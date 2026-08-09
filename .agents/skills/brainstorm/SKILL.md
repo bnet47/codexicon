@@ -13,7 +13,7 @@ Read the project identity and only the architecture, conventions, decisions, or 
 
 ## 2. Resolve the problem
 
-Ask one targeted question at a time and stop when you can state:
+Ask only genuinely blocking questions, batching related questions when practical, and stop when you can state:
 
 - the problem and affected person;
 - verifiable success;
@@ -27,7 +27,7 @@ Present two or three genuinely viable approaches with tradeoffs in behavior, com
 
 ## 4. Write the spec
 
-After the direction is accepted, save `agent_docs/briefs/[YYYY-MM-DD]-[feature-slug].md` without overwriting an existing file:
+After the direction is clear, save `agent_docs/briefs/[YYYY-MM-DD]-[feature-slug].md` without overwriting an existing file:
 
 ```markdown
 # Spec: [Feature]
@@ -59,4 +59,4 @@ After the direction is accepted, save `agent_docs/briefs/[YYYY-MM-DD]-[feature-s
 
 Self-check that every criterion is testable, no placeholder remains, and the first slice is complete rather than merely scaffolding.
 
-Offer `$write-plan` when implementation is multi-step. Do not implement, commit, or push during brainstorming unless the user explicitly expands the request.
+Offer `$write-plan` when implementation is multi-step. If the original request already authorizes implementation, continue through the smallest coherent implementation; otherwise stop after the requested brainstorming/spec artifact. Do not commit or push unless separately asked.

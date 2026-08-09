@@ -9,7 +9,7 @@ Announce: "I'm using write-plan to turn the approved spec into verifiable implem
 
 ## Inputs
 
-Read the selected approved spec, relevant architecture and conventions, applicable ADRs, and the current target code. Do not assume the newest spec is the right one when several are present; identify it from the request or links.
+Read the selected spec, relevant architecture and conventions, applicable ADRs, and the current target code. A spec created during the current implementation request is sufficient; do not require a separate approval turn when the request already authorizes the work. Do not assume the newest spec is the right one when several are present; identify it from the request or links.
 
 ## Task design
 
@@ -49,4 +49,4 @@ Save `agent_docs/plans/[YYYY-MM-DD]-[feature-slug]-plan.md`:
 **Done when:** [observable completion condition]
 ```
 
-Self-review for spec coverage, stale paths, undefined interfaces, unsafe parallelism, placeholders, and runnable verification. Offer `$execute-plan` when delegation is useful; otherwise the primary agent can implement the plan directly.
+Self-review for spec coverage, stale paths, undefined interfaces, unsafe parallelism, placeholders, and runnable verification. Continue into implementation when the original request authorizes it; offer `$execute-plan` when delegation is useful, or stop after the plan when planning was the requested deliverable.

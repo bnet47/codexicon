@@ -34,7 +34,7 @@ Before initialization, native Windows can run `./scripts/lint.ps1` and `./script
 ## Working agreements
 
 - Start from the requested outcome and done conditions. Inspect first; preserve unrelated changes.
-- Make reversible assumptions only when local evidence supports them. Ask when a choice materially changes the result.
+- For clear requests, own the internal build/review loop and do not turn skills into approval gates. Make reversible assumptions; record consequential ones; batch blocking questions; escalate only for material product, irreversible, destructive, external, production, credential, legal, regulatory, security, or financial risk.
 - Prefer the smallest complete solution. Use `rg` for search and `apply_patch` for manual edits.
 - Load only relevant context. Use targeted commands and bounded output; do not dump whole logs, generated files, or minified content when an excerpt proves the point.
 - Communicate densely: no request restatement, filler, or repeated summary. Preserve exact code, commands, paths, identifiers, and errors. Clarity wins for risk or ambiguity.
