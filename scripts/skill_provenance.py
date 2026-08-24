@@ -61,6 +61,7 @@ def validate_lock(root: Path) -> list[str]:
     names: set[str] = set()
     required = {
         "name",
+        "path",
         "source",
         "commit",
         "content_sha256",
@@ -95,6 +96,15 @@ def validate_lock(root: Path) -> list[str]:
         digest = item["content_sha256"]
         if not isinstance(digest, str) or not SHA256.fullmatch(digest):
             errors.append(f"{label}.content_sha256 must be a lowercase SHA-256 digest")
+        skill_path = resolve_skill_path(root, item["path"], label, errors)
+        if skill_path is not None and isinstance(digest, str) and SHA256.fullmatch(digest):
+            try:
+                actual_digest = sha256_path(skill_path)
+            except (OSError, ValueError) as exc:
+                errors.append(f"{label}.path cannot be hashed safely: {exc}")
+            else:
+                if actual_digest != digest:
+                    errors.append(f"{label}.content_sha256 does not match local skill content")
         if not isinstance(item["license"], str) or not item["license"].strip():
             errors.append(f"{label}.license must be non-empty")
         if not isinstance(item["reviewed_at"], str) or not DATE.fullmatch(item["reviewed_at"]):
@@ -122,6 +132,56 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def resolve_skill_path(root: Path, value: Any, label: str, errors: list[str]) -> Path | None:
+    """Resolve a project-local skill directory without following symlinked components."""
+
+    if not isinstance(value, str) or not value.strip():
+        errors.append(f"{label}.path must be a non-empty project-relative path")
+        return None
+    candidate = Path(value)
+    if candidate.is_absolute() or candidate.drive or candidate.anchor or any(
+        part in {"", ".", ".."} for part in candidate.parts
+    ):
+        errors.append(f"{label}.path must stay within the project and cannot traverse parents")
+        return None
+    current = root
+    for part in candidate.parts:
+        current = current / part
+        try:
+            if current.is_symlink():
+                errors.append(f"{label}.path cannot contain symlinks")
+                return None
+        except OSError as exc:
+            errors.append(f"{label}.path cannot be inspected: {exc}")
+            return None
+    if not current.is_dir() or not (current / "SKILL.md").is_file():
+        errors.append(f"{label}.path must name a skill directory containing SKILL.md")
+        return None
+    return current
+
+
+def sha256_path(path: Path) -> str:
+    """Hash a file or a deterministic, symlink-free directory tree."""
+
+    if path.is_file():
+        return sha256_file(path)
+    if not path.is_dir():
+        raise OSError(f"path is not a file or directory: {path}")
+    digest = hashlib.sha256()
+    files = sorted(path.rglob("*"), key=lambda item: item.relative_to(path).as_posix())
+    for child in files:
+        relative = child.relative_to(path).as_posix()
+        if child.is_symlink():
+            raise ValueError(f"symlink found at {relative}")
+        if child.is_file():
+            digest.update(relative.encode("utf-8"))
+            digest.update(b"\0")
+            with child.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+    return digest.hexdigest()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("verify", "sha256"))
@@ -140,7 +200,7 @@ def main() -> int:
     if args.path is None:
         parser.error("sha256 requires --path")
     path = args.path if args.path.is_absolute() else root / args.path
-    print(sha256_file(path.resolve()))
+    print(sha256_path(path.resolve()))
     return 0
 
 

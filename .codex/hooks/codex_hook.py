@@ -1179,6 +1179,7 @@ def definitely_read_only_segment(command: str) -> bool:
             or token.startswith("--in-place=")
             or token == "-i"
             or token.startswith("-i")
+            or re.search(r"(?<![a-z])[wW](?=[^a-z]|$)", token)
             for token in lowered[1:]
         )
     if executable == "find":
@@ -1195,6 +1196,7 @@ def definitely_read_only_segment(command: str) -> bool:
                 "-ok",
                 "-okdir",
             }
+            or token.startswith(("-exec", "-ok", "-fprint", "-fprintf", "-fls"))
             for token in lowered[1:]
         )
     if executable == "tree":

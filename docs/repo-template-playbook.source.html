@@ -1084,6 +1084,16 @@
         <span role="cell"><span class="route-label">Result · </span>Bounded execution with integrated verification</span>
       </div>
       <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>Medium/high-complexity work with independent lanes</span>
+        <code role="cell">$engineering-loop</code>
+        <span role="cell"><span class="route-label">Result · </span>Isolated implementation, review, integration, and final verification</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>Explicit external capability search</span>
+        <code role="cell">$find-skills</code>
+        <span role="cell"><span class="route-label">Result · </span>Read-only candidates and provenance evidence before any approved installation</span>
+      </div>
+      <div class="route-row" role="row">
         <span role="cell"><span class="route-label">Signal · </span>Unknown cause or costly technical choice</span>
         <code role="cell">$investigate / $architecture-review</code>
         <span role="cell"><span class="route-label">Result · </span>Root cause or explicit reversible decision</span>
@@ -1123,6 +1133,7 @@
           <optgroup label="Implement">
             <option value="quick">$quick</option>
             <option value="execute-plan">$execute-plan</option>
+            <option value="engineering-loop">$engineering-loop</option>
           </optgroup>
           <optgroup label="Customer experience">
             <option value="design-experience">$design-experience</option>
@@ -1133,6 +1144,8 @@
             <option value="investigate">$investigate</option>
             <option value="architecture-review">$architecture-review</option>
             <option value="retro">$retro</option>
+            <option value="find-skills">$find-skills</option>
+            <option value="github-researcher">github-researcher</option>
           </optgroup>
           <optgroup label="Review and ship">
             <option value="review">$review</option>
@@ -1248,7 +1261,7 @@
         build: {
           title: 'Build the first useful slice',
           purpose: 'Deliver the smallest complete behaviour that proves value, using the least ceremonial workflow that fits.',
-          command: '$quick · $brainstorm · $spec · $execute-plan',
+          command: '$quick · $brainstorm · $spec · $execute-plan · $engineering-loop',
           model: 'Default coding tier · lighter effort',
           modelNote: 'Raise reasoning effort for architecture, long-context work, security, data integrity, or expensive failure modes.',
           evidence: 'Observable behaviour, focused tests, canonical lint and tests, and a concise report of residual gaps.',
@@ -1343,6 +1356,27 @@
           produces: 'Integrated implementation of the approved tasks with bounded delegation and final verification.',
           next: '$review',
           prompt: '$execute-plan Implement the approved Matchday standings and team-page plan. Delegate only independent tasks, preserve unrelated work, integrate centrally, and run every acceptance check in the plan.'
+        },
+        'engineering-loop': {
+          title: '$engineering-loop',
+          when: 'Medium/high-complexity work, multiple independent workstreams, or an explicit request for bounded parallel agents makes isolation worthwhile.',
+          produces: 'Integrated implementation, independent review, and final verification with every delegated lane bounded by scope and authority.',
+          next: '$review and the canonical repository checks',
+          prompt: '$engineering-loop Implement the approved Matchday release plan. Split only independent lanes, use isolated worktrees for writers, keep Git and external writes with the primary agent, integrate each result after inspecting its diff, and run final lint/tests/security.'
+        },
+        'find-skills': {
+          title: '$find-skills',
+          when: 'The task has a missing external capability and the user explicitly asks to search for, compare, or install an agent skill.',
+          produces: 'A short evidence-backed candidate list; installation remains a separate approval decision and is project-local and pinned when authorised.',
+          next: 'Review the complete candidate and approve or reject installation explicitly',
+          prompt: '$find-skills Find a maintained external skill for Matchday browser accessibility testing. Search read-only, inspect the complete candidate, report source, pinned revision, license, tools, permissions, and risks, and do not install anything.'
+        },
+        'github-researcher': {
+          title: 'github-researcher',
+          when: 'A decision needs current read-only evidence from upstream repositories, issues, pull requests, releases, or skill sources.',
+          produces: 'Pinned, source-linked external evidence for the primary agent to assess; it grants no GitHub write authority.',
+          next: 'Primary agent evaluates the evidence against repository rules and the task outcome',
+          prompt: 'Use github-researcher in read-only mode to compare the current upstream implementations and release notes relevant to Matchday\'s selected provider. Return source links, pinned revisions, and open risks; do not edit or write externally.'
         },
         'design-experience': {
           title: '$design-experience',

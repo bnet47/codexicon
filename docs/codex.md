@@ -30,7 +30,7 @@ Brainstorming, specification, planning, implementation, and review are internal 
 
 Do not automatically search for or install external skills during ordinary work. Skill discovery is an explicit extension decision; review the complete skill, scripts, dependencies, permissions, provenance, and licence before any project-local pinned installation, and never treat search as installation authority.
 
-Use `$find-skills` for an explicit external capability search. It returns candidates and evidence first; it does not install or update a skill. Approved installations are project-local, pinned to an immutable commit, reviewed after installation, and recorded in `agent_docs/skills.lock.json`. Run `python scripts/skill_provenance.py verify --root .` after changing the lock.
+Use `$find-skills` for an explicit external capability search. It returns candidates and evidence first; it does not install or update a skill. Approved installations are project-local, pinned to an immutable commit, reviewed after installation, and recorded in `agent_docs/skills.lock.json` with the installed skill path and a digest of its complete local content. Run `python scripts/skill_provenance.py verify --root .` after changing the lock; verification checks both the lock schema and the recorded local content.
 
 ## Project configuration
 
