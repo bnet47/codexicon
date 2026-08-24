@@ -43,11 +43,15 @@ class SkillProvenanceTests(unittest.TestCase):
         }
 
     def valid_entry(self, name: str = "example-skill") -> dict:
+        skill_path = self.root / ".agents" / "skills" / name
+        skill_path.mkdir(parents=True, exist_ok=True)
+        (skill_path / "SKILL.md").write_text("# Example skill\n", encoding="utf-8")
         return {
             "name": name,
+            "path": f".agents/skills/{name}",
             "source": "example-owner/example-repo/tree/main/skills/example-skill",
             "commit": "a" * 40,
-            "content_sha256": "b" * 64,
+            "content_sha256": MODULE.sha256_path(skill_path),
             "license": "MIT",
             "reviewed_at": "2026-08-24",
             "reviewer": "maintainer",
@@ -91,6 +95,24 @@ class SkillProvenanceTests(unittest.TestCase):
             MODULE.validate_lock(self.root),
             ["missing provenance lock: agent_docs/skills.lock.json"],
         )
+
+    def test_content_digest_mismatch_is_rejected(self) -> None:
+        value = self.base_lock()
+        entry = self.valid_entry()
+        entry["content_sha256"] = "b" * 64
+        value["skills"] = [entry]
+        self.write_lock(value)
+        self.assertTrue(
+            any("does not match local skill content" in error for error in MODULE.validate_lock(self.root))
+        )
+
+    def test_path_traversal_is_rejected(self) -> None:
+        value = self.base_lock()
+        entry = self.valid_entry()
+        entry["path"] = "../outside"
+        value["skills"] = [entry]
+        self.write_lock(value)
+        self.assertTrue(any("cannot traverse parents" in error for error in MODULE.validate_lock(self.root)))
 
 
 if __name__ == "__main__":
