@@ -142,7 +142,7 @@ The repository exposes compact skill metadata first. Complete instructions load 
 |---|---|---|---|
 | **Adopt** | An established repository needs the harness | `$adopt-codexicon` | Reviewed compatibility plan and conflicts |
 | **Define** | The product or behavior is not settled | `$discover`, `$brainstorm`, `$spec` | Approved charter or executable specification |
-| **Build** | The outcome is clear enough to implement | `$quick`, `$write-plan`, `$execute-plan` | Observable behavior and focused verification |
+| **Build** | The outcome is clear enough to implement | `$quick`, `$write-plan`, `$execute-plan`, `$engineering-loop` | Observable behavior and focused verification |
 | **Assure** | Correctness, experience, architecture, or release risk needs scrutiny | `$review`, `$review-creative`, `$architecture-review`, `$production-readiness` | Findings resolved and canonical checks passing |
 | **Deliver** | A specific Git effect is authorized | `$ship` | Only the requested commit, push, or pull request |
 
@@ -157,7 +157,10 @@ The repository exposes compact skill metadata first. Complete instructions load 
 | Unclear feature behavior | `$brainstorm` |
 | Precise requirement needing a durable contract | `$spec` |
 | Approved multi-step requirement | `$write-plan` → `$execute-plan` when delegation helps |
+| Medium/high-complexity work with independent lanes | `$engineering-loop` |
+| Explicit external capability search | `$find-skills` |
 | Reproducible failure with an unknown cause | `$investigate` |
+| Upstream repository, issue, release, or skill-source research | `github-researcher` |
 | Expensive-to-reverse technical choice | `$architecture-review` |
 | App or website experience | `$design-experience` |
 | Positioning, copy, campaign, or launch asset | `$create-marketing` |

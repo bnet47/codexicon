@@ -111,7 +111,10 @@ Choose only the workflow the change needs:
 | Precise requirement needs a durable contract | `$spec` |
 | Approved multi-step spec needs task decomposition | `$write-plan` |
 | Approved plan contains independent implementation tasks | `$execute-plan` |
+| Medium/high-complexity work with independent lanes | `$engineering-loop` |
+| Explicit search for an external agent skill | `$find-skills` |
 | Existing repository needs Codexicon inspection, adoption, or update | `$adopt-codexicon` |
+| Upstream GitHub or skill-source research | `github-researcher` |
 | Reproducible failure has an unknown cause | `$investigate` |
 | Expensive-to-reverse technical choice | `$architecture-review` |
 | App or website experience needs intentional visual execution | `$design-experience` |

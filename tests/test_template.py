@@ -817,6 +817,7 @@ class CodexHookTests(unittest.TestCase):
             "find . -delete",
             "find . -exec python generate.py {} ;",
             "sed -i s/old/new/ README.md",
+            "sed -n 'w owned.txt' README.md",
             "tree -o owned.txt",
         ]
         for command in commands:
