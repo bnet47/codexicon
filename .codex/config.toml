@@ -29,6 +29,8 @@ multi_agent = true
 # enabled = false
 # enabled_tools = ["replace-with-reviewed-read-tool-names"]
 # default_tools_approval_mode = "prompt"
+# For GitHub research, enable only reviewed read tools and keep comments,
+# merges, issue edits, releases, and other writes disabled by default.
 #
 # Stack-specific placeholder: browser, data store, monitoring, tracker,
 # payments, or another integration justified by the configured project.

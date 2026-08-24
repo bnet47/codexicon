@@ -70,11 +70,11 @@ Codexicon already has useful pieces of the proposed model:
 - explicit Git, deployment, credential, and external-write boundaries;
 - commented, disabled MCP examples with trust guidance.
 
-What is missing is an explicit default Build contract and a self-critique expectation. Those are now documented in `AGENTS.md` and `docs/codex.md`; they do not introduce a new runtime or mandatory artifact.
+What was missing was an explicit default Build contract and a self-critique expectation. Those are now documented in `AGENTS.md`, `docs/codex.md`, and `$engineering-loop`; they do not introduce a new runtime or mandatory artifact.
 
 ### External skill discovery
 
-There is no automatic external skill discovery or installation path in the repository. MCP and external systems are documented as opt-in and disabled by default. This is the correct current baseline for a template: ordinary work should not turn into marketplace search, installation, and extra context loading.
+There is no automatic external skill discovery or installation path in the repository. An explicit `$find-skills` workflow now provides read-only search and review, while MCP and external systems remain opt-in and disabled by default. Approved project-local skills require immutable provenance in `agent_docs/skills.lock.json`.
 
 ## Severity-ranked issues
 
@@ -108,12 +108,12 @@ There is no automatic external skill discovery or installation path in the repos
 **Root cause:** command payloads and repository state are separate concerns, and a general filesystem fingerprint is expensive and difficult to scope safely across Git, non-Git, Windows, generated files, and concurrent sessions.
 **Disposition:** defer a fingerprint design. Revisit only with traces showing material residual false positives and a check-specific state model.
 
-### LOW - External skill extension is documented but not discoverable by an explicit command
+### LOW - External skill discovery requires deliberate invocation and review
 
-**Behavior:** users can read the MCP trust posture, but there is no `$find-skill` or governed external-skill lock workflow.
+**Behavior:** users can invoke `$find-skills` to search and evaluate candidates, but installation remains deliberately gated by user approval and a provenance lock.
 **Impact:** specialist capability discovery is less convenient.
-**Root cause:** adding the CLI and provenance workflow would create a supply-chain subsystem.
-**Disposition:** keep discovery explicit and manual for now; do not auto-trigger it. A future extension must search read-only, review complete skill contents and scripts, pin a reviewed source, install project-locally, and record provenance.
+**Root cause:** external skills are executable supply-chain inputs, not ordinary documentation.
+**Disposition:** implemented as an explicit, read-only, review-first workflow with immutable commit, content digest, license, permissions, reviewer, and notes recorded in `agent_docs/skills.lock.json`. Automatic search, global installation, and confirmation bypass remain disallowed.
 
 ## Options considered
 
@@ -128,7 +128,7 @@ There is no automatic external skill discovery or installation path in the repos
 | Independent review | Reviewer for every task | More coverage, unnecessary latency and context for trivial work | Reject |
 | Independent review | Selective reviewer for medium/high-risk work | Matches existing reviewer profile and risk boundaries | Retain |
 | External skills | Automatic search/install | Slower, unsafe, and not authorized by ordinary implementation requests | Reject |
-| External skills | Explicit search/review/install flow | Safer future direction, but not justified as a current subsystem | Document as future option |
+| External skills | Explicit search/review/install flow | Safer, reviewable extension with some supply-chain overhead | Selected and implemented as an explicit project-local workflow |
 
 ## Recommended operating model
 
@@ -185,7 +185,7 @@ The repository supports deterministic hook and structural checks, but it does no
 | Failed implementation | Recovery is available but no explicit refinement loop | Re-enter Build with acceptance and evidence | Better momentum and recovery |
 | Passing but weak implementation | May stop after checks pass | Critique and improve the weakest important aspect | Quality target is explicit |
 | Full ship request | Explicit Git/shipping controls | Same | Safety preserved |
-| External skill search | No automatic search/install | Explicit future extension only | No supply-chain detour |
+| External skill search | No automatic search/install | Explicit `$find-skills` workflow with approval and provenance | No automatic supply-chain detour |
 | Destructive migration/external write | Escalation required | Same | Human boundary preserved |
 | Reversible missing detail | Local assumptions permitted but not prominently framed | Assumption recorded and work continues | Fewer preference interruptions |
 
@@ -195,7 +195,7 @@ The final hook matrix confirms that the selected read-only commands no longer in
 
 ## External skill recommendation
 
-Do not install or auto-discover external skills as part of normal Codexicon operation. Document the possibility only. If a future `$find-skill` or `$extend` capability is added, it should require explicit invocation, keep search read-only, avoid exposing sensitive project terms, review complete instructions and executable content, pin a reviewed source, install project-locally, record provenance, and require explicit approval for installation and updates.
+Do not auto-discover or auto-install external skills as part of normal Codexicon operation. The implemented `$find-skills` workflow requires explicit invocation, keeps search read-only, avoids exposing sensitive project terms, reviews complete instructions and executable content, pins a reviewed source, installs project-locally, records provenance, and requires explicit approval for installation and updates.
 
 ## Implemented changes
 
@@ -203,9 +203,13 @@ Do not install or auto-discover external skills as part of normal Codexicon oper
 - `tests/test_template.py`: regression coverage for inspection commands and dangerous options.
 - `AGENTS.md`: compact Build autonomy and escalation contract.
 - `.agents/skills/brainstorm/SKILL.md`, `.agents/skills/write-plan/SKILL.md`, `.agents/skills/execute-plan/SKILL.md`: current-task authorization can carry through internal phases without an extra approval turn.
+- `.agents/skills/engineering-loop/SKILL.md`: selective decomposition, isolated worktrees, integration ownership, review, and plateau-aware refinement.
+- `.agents/skills/find-skills/SKILL.md`, `scripts/skill_provenance.py`, and `agent_docs/skills.lock.json`: explicit external-skill discovery and provenance validation.
+- `.codex/agents/github-researcher.toml`: read-only upstream repository and skill research contract.
+- `docs/evals/agent-loop-benchmark.md`: repeatable paired benchmark protocol for direct versus delegated work.
 - `docs/codex.md`: Explore/Build/Ship model, self-review, decision visibility, and external-skill trust boundary.
 - `docs/upgrading.md`: migration note for downstream repositories.
-- `TEMPLATE_VERSION` and `.codexicon.json`: release marker `2.7.0`.
+- `TEMPLATE_VERSION` and `.codexicon.json`: release marker `2.8.0`.
 
 ## Rollout and rollback
 
@@ -215,6 +219,6 @@ Rollback is file-level and reversible: restore the prior hook and matching tests
 
 ## Remaining risks and follow-up
 
-- Run a live multi-task Codex benchmark when a transcript/tool-call harness is available; measure latency, interruptions, verification reruns, quality after first implementation, and quality after refinement.
+- Run the paired agent-loop benchmark in `docs/evals/agent-loop-benchmark.md` when a transcript/tool-call harness is available; measure latency, interruptions, verification reruns, quality after first implementation, and quality after refinement.
 - If false-positive invalidation remains material, design a check-specific repository fingerprint with explicit treatment for untracked, ignored, generated, non-Git, Windows, and concurrent-session state before changing the hook contract.
-- If external skill demand is demonstrated, specify and review a project-local provenance lock before implementing discovery or installation.
+- If external skill demand grows beyond the explicit workflow, revisit lock update ergonomics and plugin packaging without weakening the approval and provenance boundary.

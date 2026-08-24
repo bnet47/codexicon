@@ -10,6 +10,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from skill_provenance import validate_lock  # noqa: E402
+
 try:
     import tomllib
 except ModuleNotFoundError:  # Python 3.10 remains common in WSL distributions.
@@ -40,11 +43,13 @@ SKILL_INVOCATIONS = (
     "create-marketing",
     "review-creative",
     "production-readiness",
+    "engineering-loop",
+    "find-skills",
 )
 
 MAX_PROJECT_GUIDANCE_CHARS = 8192
 MAX_SKILL_DESCRIPTION_CHARS = 200
-MAX_REPO_SKILL_CATALOG_CHARS = 3800
+MAX_REPO_SKILL_CATALOG_CHARS = 4200
 NUMBER_WORD = r"(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)"
 WORKFLOW_UNIT = r"(?:files?|agents?|subagents?|questions?|lines?|steps?|tasks?|reviewers?|reviews?)"
 DURABLE_GUIDANCE_PATTERNS = {
@@ -534,6 +539,8 @@ def validate(*, release: bool = False) -> list[str]:
             "repository skill catalog exceeds the "
             f"{MAX_REPO_SKILL_CATALOG_CHARS}-character initial-context budget"
         )
+
+    errors.extend(validate_lock(ROOT))
 
     for root_doc in ("AGENTS.md", "README.md", "START_HERE.md"):
         content = (ROOT / root_doc).read_text(encoding="utf-8").lower()

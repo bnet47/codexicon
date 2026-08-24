@@ -1,0 +1,4 @@
+interface:
+  display_name: "Engineering Loop"
+  short_description: "Coordinate bounded parallel engineering work"
+  default_prompt: "Use $engineering-loop to decompose this medium-complexity change, coordinate bounded agents, integrate their evidence, and finish with final verification."
