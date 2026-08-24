@@ -96,7 +96,7 @@ class SkillProvenanceTests(unittest.TestCase):
             ["missing provenance lock: agent_docs/skills.lock.json"],
         )
 
-    def test_content_digest_mismatch_is_rejected(self) -> None:
+    def test_digest_mismatch_is_rejected(self) -> None:
         value = self.base_lock()
         entry = self.valid_entry()
         entry["content_sha256"] = "b" * 64
