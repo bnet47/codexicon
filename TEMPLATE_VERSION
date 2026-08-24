@@ -1,6 +1,6 @@
 2.8.0
 
-Status: Unreleased
+Status: Released 2026-08-24
 
 ## 2.8.0 — Bounded agent loops and trusted external research
 
@@ -10,6 +10,7 @@ Status: Unreleased
 - Strengthened provenance verification to bind each lock entry to a local skill directory and verify its complete content digest; broadened shell write detection for `sed` and `find` inspection commands.
 - Refreshed newcomer routing maps and the interactive playbook for bounded engineering loops, external skill discovery, and read-only GitHub research, and aligned CI action pins with their scanner versions.
 - Added a paired direct-versus-delegated benchmark protocol without claiming unavailable live-agent metrics.
+- Confined hook state and receipt paths to repository-local hashed namespaces, rejected symbolic-link escapes, strengthened immutable action-pin validation, and aligned the TruffleHog action wrapper with scanner v3.97.0.
 
 ## 2.7.0 — Evidence-led autonomy and inspection verification
 

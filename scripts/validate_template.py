@@ -136,6 +136,85 @@ def durable_guidance_findings(content: str) -> list[str]:
     ]
 
 
+def workflow_action_references(workflow: str) -> list[str]:
+    """Extract action references from block- or flow-style workflow steps."""
+
+    references: list[str] = []
+    value_pattern = r'("[^"]+"|\'[^\']+\'|[^,}\]\s#]+)'
+    block = re.compile(rf"^(?:-\s*)?(?:uses|\"uses\"|'uses')\s*:\s*{value_pattern}")
+    flow = re.compile(rf"(?:^|[\[{{,])\s*(?:uses|\"uses\"|'uses')\s*:\s*{value_pattern}")
+    for line in workflow.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        match = block.match(stripped)
+        if match:
+            references.append(match.group(1).strip("'\""))
+        references.extend(
+            match.group(1).strip("'\"")
+            for match in flow.finditer(stripped)
+        )
+    return references
+
+
+def mutable_action_references(workflow: str) -> list[str]:
+    """Return non-local GitHub Action references that are not full commit SHAs."""
+
+    findings: list[str] = []
+    for reference in workflow_action_references(workflow):
+        if reference.startswith("./"):
+            continue
+        if reference.startswith("docker://"):
+            if not re.search(r"@sha256:[a-fA-F0-9]{64}$", reference):
+                findings.append(reference)
+            continue
+        _, separator, revision = reference.rpartition("@")
+        if not separator or not re.fullmatch(r"[a-fA-F0-9]{40}", revision):
+            findings.append(reference)
+    return findings
+
+
+def trufflehog_version_mismatch(workflow: str) -> bool:
+    lines = workflow.splitlines()
+    found = False
+    for index, line in enumerate(lines):
+        references = workflow_action_references(line)
+        if not any(value.startswith("trufflesecurity/trufflehog@") for value in references):
+            continue
+        found = True
+        action_version = re.search(r"#\s*v(\d+\.\d+\.\d+)\s*$", line)
+        if action_version is None:
+            return True
+        base_indent = len(line) - len(line.lstrip())
+        with_index: int | None = None
+        with_indent = -1
+        for candidate_index in range(index + 1, len(lines)):
+            candidate = lines[candidate_index]
+            stripped = candidate.strip()
+            indent = len(candidate) - len(candidate.lstrip())
+            if stripped.startswith("-") and indent <= base_indent:
+                break
+            if re.match(r"^with:\s*$", stripped) and indent > base_indent:
+                with_index = candidate_index
+                with_indent = indent
+                break
+        if with_index is None:
+            return True
+        scanner_version: str | None = None
+        for candidate in lines[with_index + 1 :]:
+            stripped = candidate.strip()
+            indent = len(candidate) - len(candidate.lstrip())
+            if stripped and indent <= with_indent:
+                break
+            version = re.match(r"^version:\s*['\"]?(\d+\.\d+\.\d+)['\"]?\s*$", stripped)
+            if version and indent > with_indent:
+                scanner_version = version.group(1)
+                break
+        if scanner_version != action_version.group(1):
+            return True
+    return not found
+
+
 def has_active_mcp_servers(config: dict) -> bool:
     return bool(config.get("mcp_servers"))
 
@@ -379,11 +458,22 @@ def validate(*, release: bool = False) -> list[str]:
             if command not in content:
                 errors.append(f"{relative} does not run {command}")
 
-    workflow_path = ROOT / ".github" / "workflows" / "ci.yml"
+    workflow_directory = ROOT / ".github" / "workflows"
+    workflow_paths = sorted(workflow_directory.glob("*.yml")) + sorted(
+        workflow_directory.glob("*.yaml")
+    )
+    for candidate in workflow_paths:
+        mutable = mutable_action_references(candidate.read_text(encoding="utf-8"))
+        if mutable:
+            errors.append(
+                f"{rel(candidate)} action is not pinned to an immutable commit SHA: {mutable[0]}"
+            )
+
+    workflow_path = workflow_directory / "ci.yml"
     if workflow_path.is_file():
         workflow = workflow_path.read_text(encoding="utf-8")
-        if re.search(r"uses:\s+[^\s@]+@(?:main|master|latest|v\d+)\s*$", workflow, re.MULTILINE):
-            errors.append("CI action is not pinned to an immutable commit SHA")
+        if trufflehog_version_mismatch(workflow):
+            errors.append("TruffleHog action and scanner versions do not match")
         if "windows-latest" not in workflow or "scripts/test.ps1" not in workflow:
             errors.append("CI does not exercise the native Windows verification path")
         if "macos-latest" not in workflow:

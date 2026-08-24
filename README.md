@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/bnet47/codexicon/actions/workflows/ci.yml"><img src="https://github.com/bnet47/codexicon/actions/workflows/ci.yml/badge.svg" alt="Template CI"></a>
-  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.6.1--dev-339cff.svg" alt="Template version 2.6.1-dev"></a>
+  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.8.0-339cff.svg" alt="Template version 2.8.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-46a862.svg" alt="MIT License"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-f39a56.svg" alt="Python 3.10 or newer"></a>
 </p>

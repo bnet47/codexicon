@@ -21,9 +21,14 @@ from typing import Any, Callable, Iterator
 
 
 ROOT = Path(__file__).resolve().parents[2]
-STATE_DIR = Path(os.environ.get("CODEX_STATE_DIR", ROOT / ".codex-state"))
-STATE_FILE_OVERRIDE = os.environ.get("CODEX_STATE_FILE")
-STATE_FILE = Path(STATE_FILE_OVERRIDE) if STATE_FILE_OVERRIDE else STATE_DIR / "session-default.json"
+STATE_ROOT = ROOT / ".codex-state"
+STATE_NAMESPACE = os.environ.get("CODEX_STATE_NAMESPACE")
+if STATE_NAMESPACE:
+    namespace_digest = hashlib.sha256(STATE_NAMESPACE.encode("utf-8")).hexdigest()[:20]
+    STATE_DIR = STATE_ROOT / "namespaces" / namespace_digest
+else:
+    STATE_DIR = STATE_ROOT
+STATE_FILE = STATE_DIR / "session-default.json"
 RECEIPT_DIR = STATE_DIR / "receipts"
 SUMMARY_DIR = STATE_DIR / "summaries"
 RECEIPT_TTL_SECONDS = 3600
@@ -189,6 +194,25 @@ class StateLoadError(RuntimeError):
     """Raised when verification state is absent or cannot be trusted."""
 
 
+def trusted_state_path(path: Path) -> Path:
+    """Reject state paths that escape the repository or traverse symbolic links."""
+
+    lexical = path if path.is_absolute() else ROOT / path
+    lexical = Path(os.path.abspath(lexical))
+    try:
+        lexical.relative_to(STATE_ROOT)
+    except ValueError as exc:
+        raise StateLoadError("verification state path escapes .codex-state") from exc
+    try:
+        resolved_root = STATE_ROOT.resolve(strict=False)
+        resolved = lexical.resolve(strict=False)
+    except OSError as exc:
+        raise StateLoadError("verification state path is unreadable") from exc
+    if resolved_root != STATE_ROOT or resolved != lexical:
+        raise StateLoadError("verification state path traverses a symbolic link")
+    return lexical
+
+
 def utc_now() -> tuple[float, str]:
     stamp = time.time()
     rendered = datetime.fromtimestamp(stamp, timezone.utc).isoformat(timespec="seconds")
@@ -210,9 +234,6 @@ def read_stdin() -> dict[str, Any]:
 
 def configure_state_file(payload: dict[str, Any]) -> None:
     global STATE_FILE
-    if STATE_FILE_OVERRIDE:
-        STATE_FILE = Path(STATE_FILE_OVERRIDE)
-        return
     session_id = str(payload.get("session_id") or "default")
     digest = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:20]
     STATE_FILE = STATE_DIR / f"session-{digest}.json"
@@ -271,8 +292,9 @@ def write_session_summary(state: dict[str, Any]) -> None:
 def state_lock(*, blocking: bool = True) -> Iterator[bool]:
     """Serialize state updates with a deadline; telemetry may opt out immediately."""
 
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    lock_path = STATE_FILE.with_suffix(STATE_FILE.suffix + ".lock")
+    state_file = trusted_state_path(STATE_FILE)
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = trusted_state_path(state_file.with_suffix(state_file.suffix + ".lock"))
     with lock_path.open("a+b") as handle:
         deadline = time.monotonic() + STATE_LOCK_TIMEOUT_SECONDS
         acquired = False
@@ -336,7 +358,7 @@ def valid_state(value: Any) -> bool:
 
 def load_state_unlocked(strict: bool = False) -> dict[str, Any]:
     try:
-        value = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        value = json.loads(trusted_state_path(STATE_FILE).read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         if strict:
             raise StateLoadError("verification state is missing") from exc
@@ -351,6 +373,7 @@ def load_state_unlocked(strict: bool = False) -> dict[str, Any]:
 
 
 def save_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    path = trusted_state_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=f"{path.stem}-", suffix=".tmp", dir=path.parent)
     try:
@@ -375,6 +398,7 @@ def trusted_pending_write_directory(*, create: bool) -> Path:
     try:
         if directory.is_symlink():
             raise StateLoadError("pending write storage is not a trusted directory")
+        trusted_state_path(directory)
         if directory.exists():
             if not directory.is_dir():
                 raise StateLoadError("pending write storage is not a trusted directory")
@@ -390,7 +414,7 @@ def trusted_pending_write_directory(*, create: bool) -> Path:
 
 
 def pending_write_key() -> str:
-    material = str(STATE_FILE.resolve())
+    material = str(trusted_state_path(STATE_FILE))
     return hashlib.sha256(material.encode("utf-8")).hexdigest()[:20]
 
 
@@ -398,6 +422,12 @@ def marker_tool_key(tool_use_id: Any) -> str | None:
     if not isinstance(tool_use_id, str) or not tool_use_id:
         return None
     return hashlib.sha256(tool_use_id.encode("utf-8")).hexdigest()[:20]
+
+
+def receipt_key(receipt_id: str) -> str:
+    """Map an externally echoed receipt identifier to a filesystem-safe key."""
+
+    return hashlib.sha256(receipt_id.encode("ascii")).hexdigest()
 
 
 def pending_write_marker_path(tool_use_id: Any) -> Path | None:
@@ -422,6 +452,7 @@ def write_pending_write_marker(
         path = directory / (
             f"{pending_write_key()}-unpaired-{secrets.token_hex(16)}.json"
         )
+    path = trusted_state_path(path)
 
     created_epoch = stamp
     created_at = rendered
@@ -474,6 +505,7 @@ def load_pending_write_markers(paths: list[Path]) -> list[dict[str, Any]]:
     fallback_epoch, fallback_at = utc_now()
     markers: list[dict[str, Any]] = []
     for path in paths:
+        path = trusted_state_path(path)
         try:
             marker = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(marker, dict) or marker.get("schema_version") != 1:
@@ -554,7 +586,7 @@ def remove_completed_write_markers(markers: list[dict[str, Any]]) -> None:
     for marker in markers:
         if marker.get("status") != "completed":
             continue
-        path = marker["path"]
+        path = trusted_state_path(marker["path"])
         try:
             path.unlink()
         except FileNotFoundError:
@@ -1255,11 +1287,13 @@ def prune_receipts(now: float | None = None) -> None:
 
     current = time.time() if now is None else now
     try:
-        paths = [*RECEIPT_DIR.glob("*.json"), *RECEIPT_DIR.glob("*.claim")]
-    except OSError:
+        directory = trusted_state_path(RECEIPT_DIR)
+        paths = [*directory.glob("*.json"), *directory.glob("*.claim")]
+    except (OSError, StateLoadError):
         return
     for path in paths:
         try:
+            path = trusted_state_path(path)
             value = json.loads(path.read_text(encoding="utf-8"))
             created = epoch(value.get("created_epoch"))
             if created and current - created <= RECEIPT_TTL_SECONDS and created <= current + 60:
@@ -1280,7 +1314,7 @@ def emit_receipt(check: str) -> int:
     prune_receipts(stamp)
     receipt_id = secrets.token_hex(16)
     save_json_atomic(
-        RECEIPT_DIR / f"{receipt_id}.json",
+        RECEIPT_DIR / f"{receipt_key(receipt_id)}.json",
         {"schema_version": 1, "check": check, "created_at": rendered, "created_epoch": stamp},
     )
     print(f"[codex-verification] check={check} receipt={receipt_id}")
@@ -1300,8 +1334,11 @@ def claim_receipt(
     for marker_check, receipt_id in RECEIPT_MARKER.findall(text):
         if marker_check != check:
             continue
-        source = RECEIPT_DIR / f"{receipt_id}.json"
-        claim = RECEIPT_DIR / f"{receipt_id}-{session_digest(session_id)}.claim"
+        key = receipt_key(receipt_id)
+        source = trusted_state_path(RECEIPT_DIR / f"{key}.json")
+        claim = trusted_state_path(
+            RECEIPT_DIR / f"{key}-{session_digest(session_id)}.claim"
+        )
         try:
             if not claim.exists():
                 try:
