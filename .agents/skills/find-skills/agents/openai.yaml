@@ -1,0 +1,6 @@
+interface:
+  display_name: "Find Skills"
+  short_description: "Discover skills with provenance review"
+  default_prompt: "Use $find-skills to search for a skill for this capability, review its source and permissions, and present an approval-gated recommendation."
+policy:
+  allow_implicit_invocation: false

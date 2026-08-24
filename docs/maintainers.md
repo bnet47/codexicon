@@ -19,12 +19,13 @@ This guide covers the public template itself, not projects created from it.
 4. Run Windows and POSIX lint, tests, and security checks.
 5. Run `python scripts/validate_template.py --release` to reject repository-local briefs, plans, and checkpoints before tagging.
 6. Run the production-readiness skill validator and creative scanner when those surfaces changed.
-7. Confirm the playbook source and standalone output match.
-8. Search for machine-specific paths, credentials, obsolete harness files, placeholders outside intentional project templates, and internal task records.
-9. Confirm repository-level CodeQL default setup still analyzes Python and GitHub Actions with the `default` query suite and local-source threat modeling; triage open alerts explicitly and keep provider-specific SAST workflows out of the reusable template.
-10. Open a pull request and require CI before merging.
-11. Tag the exact merge commit as `vX.Y.Z` and publish release notes from `TEMPLATE_VERSION`.
-12. Confirm the repository remains public, marked as a template, and private vulnerability reporting is enabled.
+7. Run `python scripts/skill_provenance.py verify --root .` and review any external-skill lock changes.
+8. Confirm the playbook source and standalone output match.
+9. Search for machine-specific paths, credentials, obsolete harness files, placeholders outside intentional project templates, and internal task records.
+10. Confirm repository-level CodeQL default setup still analyzes Python and GitHub Actions with the `default` query suite and local-source threat modeling; triage open alerts explicitly and keep provider-specific SAST workflows out of the reusable template.
+11. Open a pull request and require CI before merging.
+12. Tag the exact merge commit as `vX.Y.Z` and publish release notes from `TEMPLATE_VERSION`.
+13. Confirm the repository remains public, marked as a template, and private vulnerability reporting is enabled.
 
 ## Updating the playbook
 

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "install_scope": "project-local",
+    "require_explicit_approval": true,
+    "require_immutable_commit": true,
+    "require_content_sha256": true,
+    "allow_global_install": false
+  },
+  "skills": []
+}

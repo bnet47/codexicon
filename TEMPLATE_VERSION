@@ -1,6 +1,13 @@
-2.7.0
+2.8.0
 
 Status: Unreleased
+
+## 2.8.0 — Bounded agent loops and trusted external research
+
+- Added a selective engineering-loop skill for independent exploration, isolated implementation, integration, review, and evidence-based refinement.
+- Added a read-only GitHub researcher profile and upstream-content trust contract.
+- Added explicit `$find-skills` discovery with project-local, immutable provenance requirements and a dependency-free lock validator.
+- Added a paired direct-versus-delegated benchmark protocol without claiming unavailable live-agent metrics.
 
 ## 2.7.0 — Evidence-led autonomy and inspection verification
 

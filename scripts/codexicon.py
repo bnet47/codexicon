@@ -1078,7 +1078,7 @@ def doctor(root: Path) -> int:
                 continue
             if not command_path.is_file():
                 diagnostics.append(("ERROR", f"missing canonical command: {relative}"))
-    for name in ("implementer", "reviewer", "researcher"):
+    for name in ("implementer", "reviewer", "researcher", "github-researcher"):
         path = root / ".codex" / "agents" / f"{name}.toml"
         if not path.is_file():
             diagnostics.append(("WARN", f"missing project agent profile: {path.relative_to(root).as_posix()}"))

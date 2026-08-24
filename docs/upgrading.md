@@ -19,6 +19,7 @@ Use the project’s current behavior and accepted decisions as the source of tru
 - new opt-in documentation or disabled configuration examples;
 - CI hardening that preserves the project’s supported platforms and canonical checks;
 - new skills or references that do not replace locally modified workflows.
+- the bounded `$engineering-loop`, read-only `github-researcher`, and explicit `$find-skills` workflow after reviewing local delegation and supply-chain policy;
 
 Review each change for local path, runtime, policy, and platform assumptions before applying it.
 
@@ -39,6 +40,10 @@ Never replace a project-specific command with a template stub or restore a delet
 ## 2.7.0 migration note
 
 Adopt the hook classifier and operating guidance as one reviewable change. Merge the relevant `.codex/hooks/codex_hook.py` and `tests/test_template.py` changes together so read-only inspection behavior and its regression coverage stay aligned. Merge `AGENTS.md`, `docs/codex.md`, and applicable skill changes only after comparing local routing and approval policy; preserve project-specific identity, commands, security ownership, and accepted decisions. No state-file migration is required, and external skill discovery or installation remains opt-in.
+
+## 2.8.0 migration note
+
+Adopt the engineering-loop guidance, GitHub researcher profile, and skill provenance lock together. Keep GitHub MCP or browser integrations disabled until the server identity, tool allowlist, credential scope, and data handling are reviewed. Preserve local `.agents/skills/` customizations. If a project already has external skills, record immutable source commits, content digests, licenses, permissions, and review ownership in `agent_docs/skills.lock.json` before enabling updates.
 
 ## Adoption checklist
 

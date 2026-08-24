@@ -13,6 +13,8 @@ Inspect `git status`, unstaged and staged diffs, and—when available—the bran
 
 For a broad or high-risk diff, delegate independent read-only passes to the `reviewer` profile (for example correctness, security, and test coverage), then deduplicate and verify the findings yourself.
 
+When the diff came from an engineering loop, review the combined result after integration. Do not treat a passing subagent report as final evidence; inspect the actual diff and canonical checks.
+
 ## Findings threshold
 
 Report only issues that can cause:
