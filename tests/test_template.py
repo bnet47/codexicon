@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -91,6 +92,66 @@ class TemplateValidationTests(unittest.TestCase):
         self.assertIn("docs", parsed["mcp_servers"])
         self.assertTrue(TEMPLATE_VALIDATOR.has_active_mcp_servers(parsed))
 
+    def test_workflow_actions_require_full_commit_shas(self) -> None:
+        mutable = "steps:\n  - uses: owner/action@feature\n"
+        mutable_flow = "steps:\n  - { name: Build, uses: owner/action@main }\n"
+        mutable_inline_flow = "steps: [{ uses: owner/action@develop }]\n"
+        mutable_compact_flow = "steps: [uses: owner/action@release]\n"
+        mixed_inline_flow = (
+            "steps: [{ uses: owner/pinned@0123456789abcdef0123456789abcdef01234567 }, "
+            "{ uses: owner/mutable@main }]\n"
+        )
+        mutable_container = "steps:\n  - uses: docker://alpine:3.22\n"
+        pinned = (
+            "steps:\n"
+            '  - uses: "owner/action@0123456789abcdef0123456789abcdef01234567" # v1.2.3\n'
+            "  - uses: ./local-action\n"
+            "  - uses: docker://alpine@sha256:"
+            + "a" * 64
+            + "\n"
+        )
+        self.assertEqual(TEMPLATE_VALIDATOR.mutable_action_references(mutable), ["owner/action@feature"])
+        self.assertEqual(
+            TEMPLATE_VALIDATOR.mutable_action_references(mutable_flow),
+            ["owner/action@main"],
+        )
+        self.assertEqual(
+            TEMPLATE_VALIDATOR.mutable_action_references(mutable_inline_flow),
+            ["owner/action@develop"],
+        )
+        self.assertEqual(
+            TEMPLATE_VALIDATOR.mutable_action_references(mutable_compact_flow),
+            ["owner/action@release"],
+        )
+        self.assertEqual(
+            TEMPLATE_VALIDATOR.mutable_action_references(mixed_inline_flow),
+            ["owner/mutable@main"],
+        )
+        self.assertEqual(
+            TEMPLATE_VALIDATOR.mutable_action_references(mutable_container),
+            ["docker://alpine:3.22"],
+        )
+        self.assertEqual(TEMPLATE_VALIDATOR.mutable_action_references(pinned), [])
+
+    def test_trufflehog_action_and_scanner_versions_must_match(self) -> None:
+        workflow = (
+            '- uses: "trufflesecurity/trufflehog@0123456789abcdef0123456789abcdef01234567" # v3.97.0\n'
+            "  with:\n"
+            "    version: 3.96.0\n"
+        )
+        self.assertTrue(TEMPLATE_VALIDATOR.trufflehog_version_mismatch(workflow))
+        self.assertFalse(
+            TEMPLATE_VALIDATOR.trufflehog_version_mismatch(workflow.replace("3.96.0", "3.97.0"))
+        )
+        self.assertTrue(
+            TEMPLATE_VALIDATOR.trufflehog_version_mismatch(workflow.replace(" # v3.97.0", ""))
+        )
+        masked = workflow.replace(
+            "  with:\n    version: 3.96.0\n",
+            "  env:\n    version: 3.97.0\n  with:\n    version: 3.96.0\n",
+        )
+        self.assertTrue(TEMPLATE_VALIDATOR.trufflehog_version_mismatch(masked))
+
     def temp_config(self, content: str) -> Path:
         directory = make_test_directory()
         self.addCleanup(shutil.rmtree, directory, True)
@@ -116,11 +177,14 @@ class TemplateValidationTests(unittest.TestCase):
                 for handler_index, handler in enumerate(group["hooks"]):
                     with self.subTest(event=event, group=group_index, handler=handler_index):
                         command = handler["commandWindows"] if os.name == "nt" else handler["command"]
-                        temp_dir = make_test_directory()
+                        namespace = uuid.uuid4().hex
+                        namespace_digest = hashlib.sha256(namespace.encode("utf-8")).hexdigest()[:20]
+                        temp_dir = ROOT / ".codex-state" / "namespaces" / namespace_digest
                         try:
                             env = os.environ.copy()
-                            env["CODEX_STATE_FILE"] = str(temp_dir / "state.json")
-                            env["CODEX_STATE_DIR"] = str(temp_dir)
+                            env["CODEX_STATE_NAMESPACE"] = namespace
+                            env.pop("CODEX_STATE_FILE", None)
+                            env.pop("CODEX_STATE_DIR", None)
                             payload = {"session_id": "bootstrap"}
                             if event == "SessionStart":
                                 payload["source"] = "startup"
@@ -189,14 +253,19 @@ class TemplateValidationTests(unittest.TestCase):
 
 class CodexHookTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp_dir = make_test_directory()
+        self.state_namespace = uuid.uuid4().hex
+        namespace_digest = hashlib.sha256(self.state_namespace.encode("utf-8")).hexdigest()[:20]
+        self.temp_dir = ROOT / ".codex-state" / "namespaces" / namespace_digest
+        self.temp_dir.mkdir(parents=True, exist_ok=False)
         self.addCleanup(shutil.rmtree, self.temp_dir, True)
-        self.state_file = self.temp_dir / "state.json"
+        session_digest = hashlib.sha256(b"s1").hexdigest()[:20]
+        self.state_file = self.temp_dir / f"session-{session_digest}.json"
 
     def run_hook(self, action: str, payload: dict | None = None, *extra: str) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
-        env["CODEX_STATE_FILE"] = str(self.state_file)
-        env["CODEX_STATE_DIR"] = str(self.temp_dir)
+        env["CODEX_STATE_NAMESPACE"] = self.state_namespace
+        env.pop("CODEX_STATE_FILE", None)
+        env.pop("CODEX_STATE_DIR", None)
         return subprocess.run(
             [sys.executable, str(HOOK), action, *extra],
             cwd=ROOT,
@@ -391,6 +460,49 @@ class CodexHookTests(unittest.TestCase):
         self.assertFalse(expired.exists())
         self.assertFalse(malformed.exists())
         self.assertEqual(len(list(receipt_dir.glob("*.json"))), 1)
+
+    def test_state_namespace_cannot_select_a_filesystem_path(self) -> None:
+        external = Path(tempfile.mkdtemp(prefix="codexicon-state-escape-"))
+        self.addCleanup(shutil.rmtree, external, True)
+        env = os.environ.copy()
+        env["CODEX_STATE_NAMESPACE"] = str(external / "chosen-state")
+        env["CODEX_STATE_FILE"] = str(external / "state.json")
+        env["CODEX_STATE_DIR"] = str(external)
+
+        result = subprocess.run(
+            [sys.executable, str(HOOK), "session-start"],
+            cwd=ROOT,
+            input=json.dumps({"session_id": "untrusted-path", "source": "startup"}),
+            text=True,
+            capture_output=True,
+            env=env,
+            check=False,
+        )
+
+        namespace_digest = hashlib.sha256(env["CODEX_STATE_NAMESPACE"].encode("utf-8")).hexdigest()[:20]
+        safe_directory = ROOT / ".codex-state" / "namespaces" / namespace_digest
+        self.addCleanup(shutil.rmtree, safe_directory, True)
+        session_digest = hashlib.sha256(b"untrusted-path").hexdigest()[:20]
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue((safe_directory / f"session-{session_digest}.json").is_file())
+        self.assertFalse((external / "state.json").exists())
+
+    def test_state_file_symlink_escape_is_rejected(self) -> None:
+        external = Path(tempfile.mkdtemp(prefix="codexicon-state-target-"))
+        self.addCleanup(shutil.rmtree, external, True)
+        target = external / "state.json"
+        target.write_text('{"sentinel": true}\n', encoding="utf-8")
+        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.state_file.symlink_to(target)
+        except OSError:
+            self.skipTest("symbolic links are unavailable")
+
+        with mock.patch.object(CODEX_HOOK, "STATE_FILE", self.state_file):
+            with self.assertRaises(CODEX_HOOK.StateLoadError):
+                CODEX_HOOK.load_state_unlocked(strict=True)
+
+        self.assertEqual(target.read_text(encoding="utf-8"), '{"sentinel": true}\n')
 
     def test_session_summary_records_supported_lifecycle_fields(self) -> None:
         started = self.run_hook("session-start", {"session_id": "s1", "source": "startup"})
@@ -1098,7 +1210,8 @@ class CodexHookTests(unittest.TestCase):
             with mock.patch.object(CODEX_HOOK, "save_json_atomic", side_effect=fail_state_write):
                 with self.assertRaises(OSError):
                     CODEX_HOOK.record_shell(payload)
-            claims = list((self.temp_dir / "receipts").glob(f"{receipt_id}-*.claim"))
+            receipt_key = hashlib.sha256(receipt_id.encode("ascii")).hexdigest()
+            claims = list((self.temp_dir / "receipts").glob(f"{receipt_key}-*.claim"))
             self.assertEqual(len(claims), 1)
 
             self.assertEqual(CODEX_HOOK.record_shell(payload), 0)
