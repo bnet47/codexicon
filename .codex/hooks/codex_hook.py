@@ -1178,8 +1178,36 @@ def definitely_read_only(command: str) -> bool:
     return bool(segments) and all(definitely_read_only_segment(segment) for segment in segments)
 
 
+def read_only_codexicon_manager_command(command: str) -> bool:
+    """Recognize only manager invocations whose current contract cannot apply changes."""
+
+    try:
+        tokens = shlex.split(command.replace("\\", "/"), posix=True)
+    except ValueError:
+        return False
+    if tokens and tokens[0] == "&":
+        tokens = tokens[1:]
+    if len(tokens) < 3:
+        return False
+    if Path(tokens[0]).name.lower() not in {"python", "python3", "python.exe"}:
+        return False
+    script = tokens[1].removeprefix("./").lower()
+    if script != "scripts/codexicon.py":
+        return False
+    subcommand = tokens[2].lower()
+    if subcommand in {"inspect", "doctor", "resume"}:
+        return True
+    apply_requested = any(
+        len(token) > 2 and token.startswith("--") and "--apply".startswith(token)
+        for token in (value.lower() for value in tokens[3:])
+    )
+    return subcommand in {"adopt", "update"} and not apply_requested
+
+
 def definitely_read_only_segment(command: str) -> bool:
     if not command.strip():
+        return True
+    if read_only_codexicon_manager_command(command):
         return True
     try:
         tokens = shlex.split(command, posix=True)

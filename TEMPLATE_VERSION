@@ -1,6 +1,13 @@
-2.8.0
+2.8.1
 
-Status: Released 2026-08-24
+Status: Released 2026-08-26
+
+## 2.8.1 — Efficient diagnostics and verification output
+
+- Classified exact read-only Codexicon manager plans and diagnostics without allowing `--apply` mutations through the verification gate.
+- Reduced successful canonical test output while preserving complete failure diagnostics.
+- Returned subagent concurrency to user and runtime policy and added validation against reintroducing a project-level fixed cap.
+- Made Git-heavy test-fixture cleanup clear read-only artifacts, retry, and fail visibly instead of silently accumulating workspace state on Windows.
 
 ## 2.8.0 — Bounded agent loops and trusted external research
 

@@ -7,8 +7,10 @@ import io
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
+import time
 import unittest
 import uuid
 from pathlib import Path
@@ -25,11 +27,30 @@ sys.modules[SPEC.name] = CODEXICON
 SPEC.loader.exec_module(CODEXICON)
 
 
+def remove_test_directory(path: Path) -> None:
+    """Remove Git-heavy fixtures reliably on Windows instead of hiding leaked state."""
+
+    def make_writable(function, blocked_path, _error) -> None:
+        os.chmod(blocked_path, stat.S_IWRITE)
+        function(blocked_path)
+
+    for attempt in range(6):
+        try:
+            shutil.rmtree(path, onerror=make_writable)
+            return
+        except FileNotFoundError:
+            return
+        except OSError:
+            if attempt == 5:
+                raise
+            time.sleep(0.05 * (attempt + 1))
+
+
 class CodexiconManagerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = TEST_TEMP_ROOT / uuid.uuid4().hex
         self.temp_dir.mkdir(parents=True)
-        self.addCleanup(shutil.rmtree, self.temp_dir, True)
+        self.addCleanup(remove_test_directory, self.temp_dir)
 
     def make_source(
         self,
@@ -51,6 +72,35 @@ class CodexiconManagerTests(unittest.TestCase):
             encoding="utf-8",
         )
         return root
+
+    def test_test_fixture_cleanup_handles_read_only_files(self) -> None:
+        fixture = self.temp_dir / "cleanup-fixture"
+        fixture.mkdir()
+        read_only = fixture / "object"
+        read_only.write_text("fixture\n", encoding="utf-8")
+        os.chmod(read_only, stat.S_IREAD)
+
+        remove_test_directory(fixture)
+
+        self.assertFalse(fixture.exists())
+
+    def test_test_fixture_cleanup_retries_and_reports_exhaustion(self) -> None:
+        fixture = self.temp_dir / "retry-fixture"
+        with (
+            mock.patch.object(shutil, "rmtree", side_effect=[OSError("busy"), None]) as remove,
+            mock.patch.object(time, "sleep") as sleep,
+        ):
+            remove_test_directory(fixture)
+        self.assertEqual(remove.call_count, 2)
+        sleep.assert_called_once()
+
+        with (
+            mock.patch.object(shutil, "rmtree", side_effect=OSError("still busy")) as remove,
+            mock.patch.object(time, "sleep"),
+            self.assertRaisesRegex(OSError, "still busy"),
+        ):
+            remove_test_directory(fixture)
+        self.assertEqual(remove.call_count, 6)
 
     def run_quietly(self, function, *args, **kwargs):
         with (
@@ -542,6 +592,25 @@ class CodexiconManagerTests(unittest.TestCase):
         self.assertIn("features.multi_agent must be true", messages)
         self.assertIn("lacks required verify-stop action", messages)
 
+    def test_doctor_accepts_runtime_managed_subagent_concurrency(self) -> None:
+        root = self.temp_dir / "project"
+        (root / ".codex").mkdir(parents=True)
+        (root / ".codex" / "config.toml").write_text(
+            'project_root_markers = [".git"]\n'
+            "[features]\n"
+            "hooks = true\n"
+            "multi_agent = true\n",
+            encoding="utf-8",
+        )
+        diagnostics = []
+
+        CODEXICON.parse_config(root, diagnostics)
+
+        self.assertFalse(
+            any("concurrency" in message for _, message in diagnostics),
+            diagnostics,
+        )
+
     def test_source_repository_passes_doctor(self) -> None:
         output = io.StringIO()
 
@@ -810,6 +879,7 @@ class CodexiconManagerTests(unittest.TestCase):
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(ROOT / relative, destination)
         subprocess.run(["git", "init", "-q"], cwd=target, check=True)
+        subprocess.run(["git", "config", "core.autocrlf", "false"], cwd=target, check=True)
 
         result = self.run_quietly(
             CODEXICON.run_install, source, target, apply=True, update=False

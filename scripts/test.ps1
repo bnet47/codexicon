@@ -7,12 +7,12 @@ $StderrFile = [System.IO.Path]::GetTempFileName()
 
 Push-Location $Root
 try {
-    $CommandLine = "`"$PythonCommand`" -m unittest discover -s tests -v 1>`"$StdoutFile`" 2>`"$StderrFile`""
+    $CommandLine = "`"$PythonCommand`" -m unittest discover -s tests 1>`"$StdoutFile`" 2>`"$StderrFile`""
     & $env:ComSpec /d /s /c $CommandLine
     $Status = $LASTEXITCODE
     if ($Status -ne 0) {
-        Get-Content -LiteralPath $StdoutFile
-        Get-Content -LiteralPath $StderrFile | Write-Error
+        [Console]::Out.Write([System.IO.File]::ReadAllText($StdoutFile))
+        [Console]::Error.Write([System.IO.File]::ReadAllText($StderrFile))
         exit $Status
     }
     & $PythonCommand .codex/hooks/codex_hook.py emit-success test

@@ -45,6 +45,10 @@ Adopt the hook classifier and operating guidance as one reviewable change. Merge
 
 Adopt the engineering-loop guidance, GitHub researcher profile, and skill provenance lock together. Keep GitHub MCP or browser integrations disabled until the server identity, tool allowlist, credential scope, and data handling are reviewed. Preserve local `.agents/skills/` customizations. If a project already has external skills, record immutable source commits, content digests, licenses, permissions, and review ownership in `agent_docs/skills.lock.json` before enabling updates.
 
+## 2.8.1 migration note
+
+Adopt the hook classifier and its regression tests together so read-only Codexicon manager plans and diagnostics no longer stale verification while `--apply` remains mutation-bearing. Review project test wrappers before adopting concise success output; preserve full failure diagnostics and any stack-specific test flags. Remove the template's fixed subagent-concurrency value only when local policy does not deliberately impose a cap.
+
 ## Adoption checklist
 
 - Selected release changes are mapped to a real project need or safeguard.

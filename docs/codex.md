@@ -51,7 +51,7 @@ Official reference: [Codex configuration](https://developers.openai.com/codex/co
 - records completed patch/write events;
 - requires lint after any write and tests after behavior-relevant writes;
 - accepts verification only when an exact canonical command returns a one-use success receipt;
-- recognizes only a narrow complete allowlist of read-only inspections; execution syntax and unknown options conservatively invalidate prior verification;
+- recognizes only a narrow complete allowlist of read-only inspections, including manager plans and diagnostics that omit `--apply`; execution syntax and unknown options conservatively invalidate prior verification;
 - conservatively invalidates verification after shell commands that are not definitely read-only;
 - records supported turn, compaction, and session lifecycle telemetry in a local summary without treating it as a project checkpoint;
 - asks Codex to run any missing checks before stopping.
@@ -145,6 +145,7 @@ Optimize recurring context before compressing technical content:
 - Keep durable instructions stable and move changing project facts into the mapped `agent_docs/` files so recurring instruction prefixes remain cache-friendly.
 - Codex initially loads skill names, descriptions, and paths; full `SKILL.md` bodies remain progressively disclosed. Keep descriptions short and front-load trigger conditions.
 - Use targeted searches and bounded command output. Preserve full logs only when diagnosis requires them.
+- Keep successful canonical checks concise while preserving complete failure diagnostics.
 - Delegate only when parallelism or context isolation justifies the additional agent tokens.
 - Use `$concise` for low-token communication. It never reduces reasoning, code, verification, review, security detail, exact commands, or exact errors.
 
