@@ -922,8 +922,6 @@ def parse_config(root: Path, diagnostics: list[tuple[str, str]]) -> None:
         diagnostics.append(("ERROR", "undocumented agents.max_depth is configured"))
     if "max_threads" in agents:
         diagnostics.append(("WARN", "agents.max_threads is a legacy alias; use max_concurrent_threads_per_session"))
-    if not isinstance(agents.get("max_concurrent_threads_per_session"), int):
-        diagnostics.append(("WARN", "canonical bounded subagent concurrency is not configured"))
     assert parsed is not None
     markers = parsed.get("project_root_markers")
     features = parsed.get("features", {})

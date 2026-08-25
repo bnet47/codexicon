@@ -3,9 +3,6 @@
 # user-controlled rather than being pinned by the template.
 project_root_markers = [".git", "AGENTS.md"]
 
-[agents]
-max_concurrent_threads_per_session = 3
-
 [features]
 hooks = true
 multi_agent = true

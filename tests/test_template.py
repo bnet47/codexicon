@@ -878,6 +878,13 @@ class CodexHookTests(unittest.TestCase):
             'sed -n "1,5p" README.md',
             "wc -l README.md",
             "Get-ChildItem | Select-Object Name",
+            "python scripts/codexicon.py inspect target",
+            "python scripts/codexicon.py adopt target",
+            "python scripts/codexicon.py update --root target --source source",
+            "python scripts/codexicon.py doctor --root .",
+            "python scripts/codexicon.py resume --root .",
+            "python3 ./scripts/codexicon.py doctor --root .",
+            "python .\\scripts\\codexicon.py resume --root .",
         ]
         for command in read_only_commands:
             with self.subTest(command=command):
@@ -902,6 +909,11 @@ class CodexHookTests(unittest.TestCase):
             "grep needle README.md",
             'sed -n "1,5p" README.md',
             "wc -l README.md",
+            "python scripts/codexicon.py inspect target",
+            "python scripts/codexicon.py adopt target",
+            "python scripts/codexicon.py update --root target --source source",
+            "python scripts/codexicon.py doctor --root .",
+            "python scripts/codexicon.py resume --root .",
         ]
         for command in commands:
             with self.subTest(command=command):
@@ -931,6 +943,11 @@ class CodexHookTests(unittest.TestCase):
             "sed -i s/old/new/ README.md",
             "sed -n 'w owned.txt' README.md",
             "tree -o owned.txt",
+            "python scripts/codexicon.py adopt target --apply",
+            "python scripts/codexicon.py adopt target --a",
+            "python scripts/codexicon.py adopt target --app",
+            "python scripts/codexicon.py update --root target --source source --apply",
+            "python scripts/codexicon.py update --root target --source source --appl",
         ]
         for command in commands:
             with self.subTest(command=command):

@@ -522,6 +522,28 @@ def validate(*, release: bool = False) -> list[str]:
             errors.append(".codex/config.toml must enable documented features.hooks")
         if not isinstance(features, dict) or features.get("multi_agent") is not True:
             errors.append(".codex/config.toml must enable documented features.multi_agent")
+        agents = config_value.get("agents", {})
+        if isinstance(agents, dict) and "max_concurrent_threads_per_session" in agents:
+            errors.append(
+                ".codex/config.toml must leave subagent concurrency to user and runtime policy"
+            )
+
+    for suffix in ("sh", "ps1"):
+        test_script = ROOT / "scripts" / f"test.{suffix}"
+        test_content = test_script.read_text(encoding="utf-8")
+        if re.search(
+            r"-m\s+unittest\s+discover[^\r\n]*\s-v(?:\s|$)",
+            test_content,
+        ):
+            errors.append(f"{rel(test_script)} enables verbose output for passing tests")
+        if suffix == "ps1" and not all(
+            marker in test_content
+            for marker in (
+                "[Console]::Out.Write([System.IO.File]::ReadAllText($StdoutFile))",
+                "[Console]::Error.Write([System.IO.File]::ReadAllText($StderrFile))",
+            )
+        ):
+            errors.append("scripts/test.ps1 does not preserve complete failure diagnostics")
 
     agent_names = {path.stem for path in (ROOT / ".codex/agents").glob("*.toml")}
     missing_agents = {"implementer", "researcher", "reviewer"} - agent_names
