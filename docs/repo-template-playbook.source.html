@@ -994,7 +994,7 @@
         </div>
         <div>
           <span class="text-small text-muted">Evidence to continue</span>
-          <p id="stage-evidence">An approved charter under agent_docs/briefs/.</p>
+          <p id="stage-evidence">An active root SPEC.md contract.</p>
         </div>
         <div>
           <span class="text-small text-muted">Avoid</span>
@@ -1170,7 +1170,7 @@
           </div>
           <div>
             <span class="text-small text-muted">Produces</span>
-            <p id="skill-produces">An approved charter covering the problem, user, outcome, constraints, evidence, and non-goals.</p>
+            <p id="skill-produces">An active root SPEC.md contract with requirements, interfaces, acceptance, and anti-goals.</p>
           </div>
           <div>
             <span class="text-small text-muted">Usually followed by</span>
@@ -1244,7 +1244,7 @@
           command: '$discover',
           model: 'High-reasoning tier · standard effort',
           modelNote: 'Raise reasoning effort for regulated or unusually ambiguous products, especially when a wrong charter would create major safety, compliance, or investment risk.',
-          evidence: 'An approved charter under agent_docs/briefs/.',
+          evidence: 'An active root SPEC.md contract.',
           avoid: 'Selecting a framework or database before the problem and constraints require one.',
           example: '$discover We want a mobile-first sports app for community football fans to follow fixtures, live scores, standings, and match alerts. Success means a fan can find today\'s match and understand its current state in under 10 seconds. Constraints: accessible web app, no betting features, no provider selected.'
         },
@@ -1256,7 +1256,7 @@
           modelNote: 'Raise reasoning effort for unfamiliar stacks, complex infrastructure, security, compliance, migration, or production-critical setup.',
           evidence: 'Project identity, security and operations boundaries are filled; real commands, Git gates, CI, and supported platforms are verified.',
           avoid: 'Adding providers, dependencies, databases, or deployment services before the charter requires them.',
-          example: '$init Configure Matchday from the approved charter. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting unless requested.'
+          example: '$init Configure Matchday from the active SPEC.md contract. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting during Build.'
         },
         build: {
           title: 'Build the first useful slice',
@@ -1304,7 +1304,7 @@
         discover: {
           title: '$discover',
           when: 'The copied template has no approved product definition and technical choices should wait.',
-          produces: 'An approved charter covering the problem, user, outcome, constraints, evidence, and non-goals.',
+          produces: 'An active root SPEC.md contract with requirements, interfaces, acceptance, and anti-goals.',
           next: '$init',
           prompt: '$discover Define Matchday, a community football app for fixtures, live scores, standings, and match alerts. Clarify the users, observable success, data constraints, accessibility needs, and non-goals before choosing a stack.'
         },
@@ -1313,7 +1313,7 @@
           when: 'A charter is approved and the unconfigured template must become a working project.',
           produces: 'The smallest suitable stack, project identity, real source/test structure, commands, CI, and verified local setup.',
           next: '$quick or the workflow that fits the first slice',
-          prompt: '$init Configure Matchday from the approved charter. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting unless requested.'
+          prompt: '$init Configure Matchday from the active SPEC.md contract. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting during Build.'
         },
         'adopt-codexicon': {
           title: '$adopt-codexicon',
@@ -1338,7 +1338,7 @@
         },
         'write-plan': {
           title: '$write-plan',
-          when: 'An approved spec spans dependent tasks, files, or verification stages that benefit from sequencing.',
+          when: 'A task register spans dependent tasks, files, or verification stages that benefit from sequencing.',
           produces: 'Dependency-aware tasks with file scopes, acceptance mapping, and verification for each step.',
           next: '$execute-plan',
           prompt: '$write-plan Turn the approved Matchday live-match specification into tasks for API streaming, state management, match UI, accessibility, tests, and browser verification. Map every acceptance criterion to a task and check.'
@@ -1352,7 +1352,7 @@
         },
         'execute-plan': {
           title: '$execute-plan',
-          when: 'An approved plan contains independent implementation work that can be delegated without losing integration control.',
+          when: 'Independent read-only research or review can reduce context load without moving implementation out of the active checkout.',
           produces: 'Integrated implementation of the approved tasks with bounded delegation and final verification.',
           next: '$review',
           prompt: '$execute-plan Implement the approved Matchday standings and team-page plan. Delegate only independent tasks, preserve unrelated work, integrate centrally, and run every acceptance check in the plan.'
@@ -1362,7 +1362,7 @@
           when: 'Medium/high-complexity work, multiple independent workstreams, or an explicit request for bounded parallel agents makes isolation worthwhile.',
           produces: 'Integrated implementation, independent review, and final verification with every delegated lane bounded by scope and authority.',
           next: '$review and the canonical repository checks',
-          prompt: '$engineering-loop Implement the approved Matchday release plan. Split only independent lanes, use isolated worktrees for writers, keep Git and external writes with the primary agent, integrate each result after inspecting its diff, and run final lint/tests/security.'
+          prompt: '$autonomous-build Implement the Matchday tasks from TASKS.md. Trace every change to SPEC.md, work in the current checkout, verify each task, review meaningful risk, and continue until the queue is complete.'
         },
         'find-skills': {
           title: '$find-skills',
@@ -1425,7 +1425,7 @@
           when: 'A diff needs a read-only correctness, security, regression, scope, and test review against its request or spec.',
           produces: 'Prioritised actionable findings and verification gaps; no modifications.',
           next: 'Fix findings, verify, then $ship if authorised',
-          prompt: '$review Review the Matchday match-reminder diff against its approved spec. Focus on duplicate scheduling, timezone changes, opt-out behaviour, privacy, regressions, and missing tests. Do not edit.'
+          prompt: '$review Review the Matchday match-reminder changed paths against SPEC.md. Focus on duplicate scheduling, timezone changes, opt-out behaviour, privacy, regressions, and missing tests. Do not edit.'
         },
         'production-readiness': {
           title: '$production-readiness',

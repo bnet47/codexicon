@@ -1,6 +1,13 @@
-2.8.1
+2.9.0
 
 Status: Released 2026-08-26
+
+## 2.9.0 — Local-first autonomous Build
+
+- Added root `SPEC.md` contract validation and a traceable `TASKS.md` execution register.
+- Added the autonomous Build skill with focused verification, read-only review, and direct task chaining.
+- Kept Explore and Build in the current checkout without branches, worktrees, staging, commits, or pushes.
+- Updated routing, onboarding, review, delegation, Codex guidance, benchmarks, and the generated playbook.
 
 ## 2.8.1 — Efficient diagnostics and verification output
 

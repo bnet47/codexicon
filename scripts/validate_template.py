@@ -44,6 +44,7 @@ SKILL_INVOCATIONS = (
     "review-creative",
     "production-readiness",
     "engineering-loop",
+    "autonomous-build",
     "find-skills",
 )
 

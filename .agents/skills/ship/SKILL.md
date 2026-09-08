@@ -31,7 +31,7 @@ For a first production launch or material production change, run `$production-re
 
 Inspect unstaged, staged, and untracked files. Confirm the diff matches the request, the security gate passed, and there is no accidental generated output or unresolved conflict marker.
 
-Determine the intended base branch and confirm the current branch is not `main` or another protected branch. Create a scoped branch when needed; never force-push.
+Determine the current branch and protected-branch policy. Do not create a branch automatically. If publication requires a different branch, stop and report the exact branch decision unless the user explicitly authorized branch creation. Never force-push.
 
 ## 3. Review
 

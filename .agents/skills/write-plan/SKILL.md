@@ -1,15 +1,15 @@
 ---
 name: write-plan
-description: Turn an approved spec into dependency-aware tasks with file scopes, acceptance mapping, and verification. Skip obvious small changes.
+description: Turn SPEC.md into dependency-aware local tasks with traces, file scopes, acceptance mapping, and verification.
 ---
 
 # Write an implementation plan
 
-Announce: "I'm using write-plan to turn the approved spec into verifiable implementation tasks."
+Announce: "I'm using write-plan to turn SPEC.md into verifiable local tasks."
 
 ## Inputs
 
-Read the selected spec, relevant architecture and conventions, applicable ADRs, and the current target code. A spec created during the current implementation request is sufficient; do not require a separate approval turn when the request already authorizes the work. Do not assume the newest spec is the right one when several are present; identify it from the request or links.
+Read root `SPEC.md`, relevant architecture and conventions, applicable ADRs, and the current target code. Do not require a separate approval turn when the current request authorizes implementation. Do not invoke Git.
 
 ## Task design
 
@@ -18,7 +18,7 @@ Read the selected spec, relevant architecture and conventions, applicable ADRs, 
 - Keep tightly coupled edits in one task. Do not split work to satisfy a time or file-count quota.
 - Give each task the smallest coherent file scope and name existing interfaces precisely.
 - Include migrations, compatibility behavior, error paths, and tests when required by the spec.
-- Do not include commits, pushes, deployments, or external writes unless the approved scope explicitly authorizes them.
+- Include requirement and interface IDs for every task. Do not include Git, deployment, or external writes in Build tasks.
 
 ## Output
 
@@ -49,4 +49,4 @@ Save `agent_docs/plans/[YYYY-MM-DD]-[feature-slug]-plan.md`:
 **Done when:** [observable completion condition]
 ```
 
-Self-review for spec coverage, stale paths, undefined interfaces, unsafe parallelism, placeholders, and runnable verification. Continue into implementation when the original request authorizes it; offer `$execute-plan` when delegation is useful, or stop after the plan when planning was the requested deliverable.
+Self-review for contract coverage, stale paths, undefined interfaces, unsafe parallelism, placeholders, and runnable verification. Write the corresponding `TASKS.md` register and continue into `$autonomous-build` when implementation is authorized.

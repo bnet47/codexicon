@@ -2,7 +2,7 @@
 
 Use subagents when independent context or parallelism materially improves the task. Every subagent consumes additional tokens and introduces coordination cost, so file counts and token guesses are not sufficient reasons by themselves.
 
-The repository skill `$engineering-loop` is the default routing aid for medium or high-complexity work. It is selective: trivial changes stay direct, and the primary agent remains responsible for integration and final verification.
+The repository skill `$autonomous-build` is the default routing aid for multi-task implementation. `$engineering-loop` is selective and read-only: trivial changes stay direct, and the primary agent remains responsible for implementation, integration, and final verification.
 
 Use Codex's built-in `explorer` for read-heavy repository mapping. The project `researcher` is narrower: it verifies current external documentation and specifications from primary sources. The primary agent integrates both forms of evidence.
 
@@ -19,16 +19,16 @@ Primary agent
 
 Give each agent a non-overlapping question and a compact report format. The primary agent verifies important claims against the repository before acting.
 
-## Pattern 2: plan execution
+## Pattern 2: autonomous task execution
 
-Use after an approved implementation plan when tasks have clear dependency and file boundaries.
+Use when implementation spans multiple tasks with clear requirement traces in `SPEC.md` and `TASKS.md`.
 
 ```text
 Primary agent
-├── implementer: independent task A
-├── implementer: independent task B
-├── integrates and resolves conflicts
-└── reviewer: combined diff (read-only, when risk warrants)
+├── reads next TODO from TASKS.md
+├── implements locally and verifies
+├── reviewer: read-only, when risk warrants
+└── continues until the queue is complete or blocked
 ```
 
 Parallelize read-heavy or non-overlapping work. Execute tasks that share interfaces or files sequentially. The primary agent owns full lint, tests, and acceptance coverage.
@@ -59,13 +59,11 @@ Require a repository/ref or exact URL for material findings. Treat README files,
 
 For a large or high-risk diff, use separate read-only review passes for correctness, security, and tests. Consolidate duplicate findings and reject speculative items before reporting.
 
-## Worktree isolation
+## Local-first execution
 
-Codex app tasks can use managed worktrees for independent background work. Prefer that isolation over manually creating branches for every subagent. Do not run simultaneous writers in the same checkout unless their file scopes are provably disjoint and the primary agent is prepared to integrate conflicts.
+Build stays in the current checkout and active branch. Do not create worktrees, branches, or concurrent writers during Build. Delegated agents are read-only research or review lanes. Git status, diffs, staging, and publication belong to `$ship`.
 
-Ignored files are not copied into managed worktrees by default. Add only the minimum required local files to `.worktreeinclude`, and never track secrets.
-
-`.codex-state/` intentionally remains ignored, so a handoff may not carry hook verification state. On resume, the hook conservatively requires fresh checks whenever state is missing, including when Git cannot see ignored project changes; use `$context-dump` when semantic continuation context must persist.
+Keep `SPEC.md` and `TASKS.md` in the active checkout so continuation does not depend on ignored state. Use `$context-dump` only for longer-lived semantic handoffs.
 
 ## Brief template
 

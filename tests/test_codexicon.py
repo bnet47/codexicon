@@ -84,6 +84,68 @@ class CodexiconManagerTests(unittest.TestCase):
 
         self.assertFalse(fixture.exists())
 
+    def write_contract(self, root: Path, *, include_anti_goal: bool = True) -> None:
+        anti_goal = "- **AG-001:** No unrelated features.\n" if include_anti_goal else ""
+        (root / "SPEC.md").write_text(
+            "# Specification\n\n"
+            "**Status:** ACTIVE\n\n"
+            "## Requirements\n\n"
+            "- **R-001:** The service returns a healthy response.\n\n"
+            "## Interfaces\n\n"
+            "- **I-001:** The health endpoint returns JSON.\n\n"
+            "## Acceptance\n\n"
+            "- **A-001:** The health check passes.\n\n"
+            "## Anti-goals\n\n"
+            + anti_goal
+            + "\n## Assumptions\n\n- Local execution is sufficient.\n\n"
+            "## Amendments\n\n- None.\n",
+            encoding="utf-8",
+        )
+
+    def test_spec_check_requires_active_contract_and_anti_goals(self) -> None:
+        root = self.temp_dir / "project"
+        root.mkdir()
+        self.write_contract(root)
+        self.assertEqual(self.run_quietly(CODEXICON.contract_check, root), 0)
+
+        self.write_contract(root, include_anti_goal=False)
+        with self.assertRaisesRegex(CODEXICON.CodexiconError, "Anti-goals"):
+            CODEXICON.contract_check(root)
+
+    def test_task_register_traces_requirements_and_supports_state_transitions(self) -> None:
+        root = self.temp_dir / "project"
+        root.mkdir()
+        self.write_contract(root)
+        tasks = root / "TASKS.md"
+        tasks.write_text(
+            "# Task Register\n\n"
+            "| ID | State | Requirement | Interface | Scope | Verification |\n"
+            "|---|---|---|---|---|---|\n"
+            "| T-001 | TODO | R-001 | I-001 | `src/health.py` | `pytest tests/test_health.py` |\n",
+            encoding="utf-8",
+        )
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(CODEXICON.tasks_next(root), 0)
+        self.assertIn("T-001 | R-001 | I-001", output.getvalue())
+        self.assertEqual(CODEXICON.tasks_set_state(root, "T-001", "ACTIVE"), 0)
+        self.assertIn("| T-001 | ACTIVE |", tasks.read_text(encoding="utf-8"))
+        self.assertEqual(CODEXICON.tasks_set_state(root, "T-001", "DONE"), 0)
+
+    def test_task_register_rejects_orphan_requirement(self) -> None:
+        root = self.temp_dir / "project"
+        root.mkdir()
+        self.write_contract(root)
+        (root / "TASKS.md").write_text(
+            "| ID | State | Requirement | Interface | Scope | Verification |\n"
+            "|---|---|---|---|---|---|\n"
+            "| T-001 | TODO | R-999 | I-001 | src | test |\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(CODEXICON.CodexiconError, "missing requirement"):
+            CODEXICON.tasks_next(root)
+
     def test_test_fixture_cleanup_retries_and_reports_exhaustion(self) -> None:
         fixture = self.temp_dir / "retry-fixture"
         with (
