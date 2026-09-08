@@ -1,75 +1,24 @@
 ---
 name: discover
-description: Define a new project's problem, user, outcome, constraints, and non-goals before technical choices. Use once for an unconfigured project.
+description: Define the project contract in root SPEC.md before technical choices.
 ---
 
 # Discover
 
-Announce: "I'm using discover to define the project before we choose how to build it."
+Define a durable project contract without turning ordinary discovery into an approval loop.
 
-## 1. Check the gate
+1. Inspect the repository identity and any existing `SPEC.md`.
+2. Ask only questions whose answers would materially change the product outcome, safety boundary, or irreversible technical direction. Batch related questions.
+3. Infer reversible details and record them as assumptions.
+4. Create or update root `SPEC.md` with:
+   - an observable outcome;
+   - stable requirement IDs such as `R-001`;
+   - interface contracts such as `I-001`;
+   - acceptance conditions such as `A-001`;
+   - explicit anti-goals covering what will not be built, mocked, or supported;
+   - assumptions and unresolved blockers.
+5. Keep requirements and interfaces append-only. Record changes under `Amendments`; never silently rewrite or delete an existing contract item.
+6. Run `python scripts/codexicon.py spec-check` before continuing.
+7. Continue directly to `$init` or `$autonomous-build` when the request authorizes implementation.
 
-Inspect `agent_docs/briefs/` and the identity section in `AGENTS.md`.
-
-- If an approved project charter already exists, summarize it and ask whether the user wants to revise it. Do not create a duplicate.
-- If this is an established repository with clear project identity, stop and route the request to the relevant feature workflow.
-
-## 2. Build understanding
-
-Ask one question at a time and stop as soon as the answer is clear. Keep the exchange focused on unresolved decisions.
-
-Cover only unresolved parts of:
-
-1. What is painful, missing, or expensive today?
-2. Who experiences it, and what do they do now?
-3. What concrete change should the project create for that person?
-4. Why is this worth solving now?
-5. What constraints and existing systems are real?
-6. What is explicitly not part of the project?
-
-Do not choose a language, framework, database, or deployment target in this workflow.
-
-## 3. Reflect before writing
-
-Return a two- or three-sentence synthesis of the problem, person, and intended outcome. Resolve material corrections before saving.
-
-## 4. Write the charter
-
-Save `agent_docs/briefs/charter-[project-slug].md`:
-
-```markdown
-# Project Charter: [Project name]
-
-**Date:** [YYYY-MM-DD]
-**Status:** Approved
-
-## Problem
-[Pain, affected person, and current cost.]
-
-## Intended user
-[A specific person or role and their context.]
-
-## Outcome
-[The observable change when the project succeeds.]
-
-## Why now
-[Why the work matters now.]
-
-## Constraints
-- [Real limit or dependency.]
-
-## Non-goals
-- [Explicit boundary.]
-
-## Success signals
-- [Observable evidence without prescribing a feature.]
-
-## Open questions
-- [Unresolved item, or "None".]
-```
-
-Self-check that the charter describes a problem and outcome rather than a predetermined solution, and that non-goals are meaningful.
-
-## 5. Hand off
-
-Offer `$init` to configure the technical environment. Do not commit, push, or open a PR unless the user separately asks.
+Pause only for a critical unresolved domain decision, required credentials with no safe local substitute, or an unrecoverable repository/tooling failure. Do not ask for approval of routine wording or technical defaults. Do not commit or push.

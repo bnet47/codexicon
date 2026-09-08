@@ -1749,7 +1749,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;/div&gt;
         &lt;div&gt;
           &lt;span class=&quot;text-small text-muted&quot;&gt;Evidence to continue&lt;/span&gt;
-          &lt;p id=&quot;stage-evidence&quot;&gt;An approved charter under agent_docs/briefs/.&lt;/p&gt;
+          &lt;p id=&quot;stage-evidence&quot;&gt;An active root SPEC.md contract.&lt;/p&gt;
         &lt;/div&gt;
         &lt;div&gt;
           &lt;span class=&quot;text-small text-muted&quot;&gt;Avoid&lt;/span&gt;
@@ -1925,7 +1925,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;/div&gt;
           &lt;div&gt;
             &lt;span class=&quot;text-small text-muted&quot;&gt;Produces&lt;/span&gt;
-            &lt;p id=&quot;skill-produces&quot;&gt;An approved charter covering the problem, user, outcome, constraints, evidence, and non-goals.&lt;/p&gt;
+            &lt;p id=&quot;skill-produces&quot;&gt;An active root SPEC.md contract with requirements, interfaces, acceptance, and anti-goals.&lt;/p&gt;
           &lt;/div&gt;
           &lt;div&gt;
             &lt;span class=&quot;text-small text-muted&quot;&gt;Usually followed by&lt;/span&gt;
@@ -1999,7 +1999,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           command: &#x27;$discover&#x27;,
           model: &#x27;High-reasoning tier · standard effort&#x27;,
           modelNote: &#x27;Raise reasoning effort for regulated or unusually ambiguous products, especially when a wrong charter would create major safety, compliance, or investment risk.&#x27;,
-          evidence: &#x27;An approved charter under agent_docs/briefs/.&#x27;,
+          evidence: &#x27;An active root SPEC.md contract.&#x27;,
           avoid: &#x27;Selecting a framework or database before the problem and constraints require one.&#x27;,
           example: &#x27;$discover We want a mobile-first sports app for community football fans to follow fixtures, live scores, standings, and match alerts. Success means a fan can find today\&#x27;s match and understand its current state in under 10 seconds. Constraints: accessible web app, no betting features, no provider selected.&#x27;
         },
@@ -2011,7 +2011,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           modelNote: &#x27;Raise reasoning effort for unfamiliar stacks, complex infrastructure, security, compliance, migration, or production-critical setup.&#x27;,
           evidence: &#x27;Project identity, security and operations boundaries are filled; real commands, Git gates, CI, and supported platforms are verified.&#x27;,
           avoid: &#x27;Adding providers, dependencies, databases, or deployment services before the charter requires them.&#x27;,
-          example: &#x27;$init Configure Matchday from the approved charter. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting unless requested.&#x27;
+          example: &#x27;$init Configure Matchday from the active SPEC.md contract. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting during Build.&#x27;
         },
         build: {
           title: &#x27;Build the first useful slice&#x27;,
@@ -2059,7 +2059,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         discover: {
           title: &#x27;$discover&#x27;,
           when: &#x27;The copied template has no approved product definition and technical choices should wait.&#x27;,
-          produces: &#x27;An approved charter covering the problem, user, outcome, constraints, evidence, and non-goals.&#x27;,
+          produces: &#x27;An active root SPEC.md contract with requirements, interfaces, acceptance, and anti-goals.&#x27;,
           next: &#x27;$init&#x27;,
           prompt: &#x27;$discover Define Matchday, a community football app for fixtures, live scores, standings, and match alerts. Clarify the users, observable success, data constraints, accessibility needs, and non-goals before choosing a stack.&#x27;
         },
@@ -2068,7 +2068,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           when: &#x27;A charter is approved and the unconfigured template must become a working project.&#x27;,
           produces: &#x27;The smallest suitable stack, project identity, real source/test structure, commands, CI, and verified local setup.&#x27;,
           next: &#x27;$quick or the workflow that fits the first slice&#x27;,
-          prompt: &#x27;$init Configure Matchday from the approved charter. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting unless requested.&#x27;
+          prompt: &#x27;$init Configure Matchday from the active SPEC.md contract. Recommend the smallest stack for a responsive web app with live-score updates, create real setup/lint/test commands and CI, and do not initialise Git or add hosting during Build.&#x27;
         },
         &#x27;adopt-codexicon&#x27;: {
           title: &#x27;$adopt-codexicon&#x27;,
@@ -2093,7 +2093,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         },
         &#x27;write-plan&#x27;: {
           title: &#x27;$write-plan&#x27;,
-          when: &#x27;An approved spec spans dependent tasks, files, or verification stages that benefit from sequencing.&#x27;,
+          when: &#x27;A task register spans dependent tasks, files, or verification stages that benefit from sequencing.&#x27;,
           produces: &#x27;Dependency-aware tasks with file scopes, acceptance mapping, and verification for each step.&#x27;,
           next: &#x27;$execute-plan&#x27;,
           prompt: &#x27;$write-plan Turn the approved Matchday live-match specification into tasks for API streaming, state management, match UI, accessibility, tests, and browser verification. Map every acceptance criterion to a task and check.&#x27;
@@ -2107,7 +2107,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         },
         &#x27;execute-plan&#x27;: {
           title: &#x27;$execute-plan&#x27;,
-          when: &#x27;An approved plan contains independent implementation work that can be delegated without losing integration control.&#x27;,
+          when: &#x27;Independent read-only research or review can reduce context load without moving implementation out of the active checkout.&#x27;,
           produces: &#x27;Integrated implementation of the approved tasks with bounded delegation and final verification.&#x27;,
           next: &#x27;$review&#x27;,
           prompt: &#x27;$execute-plan Implement the approved Matchday standings and team-page plan. Delegate only independent tasks, preserve unrelated work, integrate centrally, and run every acceptance check in the plan.&#x27;
@@ -2117,7 +2117,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           when: &#x27;Medium/high-complexity work, multiple independent workstreams, or an explicit request for bounded parallel agents makes isolation worthwhile.&#x27;,
           produces: &#x27;Integrated implementation, independent review, and final verification with every delegated lane bounded by scope and authority.&#x27;,
           next: &#x27;$review and the canonical repository checks&#x27;,
-          prompt: &#x27;$engineering-loop Implement the approved Matchday release plan. Split only independent lanes, use isolated worktrees for writers, keep Git and external writes with the primary agent, integrate each result after inspecting its diff, and run final lint/tests/security.&#x27;
+          prompt: &#x27;$autonomous-build Implement the Matchday tasks from TASKS.md. Trace every change to SPEC.md, work in the current checkout, verify each task, review meaningful risk, and continue until the queue is complete.&#x27;
         },
         &#x27;find-skills&#x27;: {
           title: &#x27;$find-skills&#x27;,
@@ -2180,7 +2180,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           when: &#x27;A diff needs a read-only correctness, security, regression, scope, and test review against its request or spec.&#x27;,
           produces: &#x27;Prioritised actionable findings and verification gaps; no modifications.&#x27;,
           next: &#x27;Fix findings, verify, then $ship if authorised&#x27;,
-          prompt: &#x27;$review Review the Matchday match-reminder diff against its approved spec. Focus on duplicate scheduling, timezone changes, opt-out behaviour, privacy, regressions, and missing tests. Do not edit.&#x27;
+          prompt: &#x27;$review Review the Matchday match-reminder changed paths against SPEC.md. Focus on duplicate scheduling, timezone changes, opt-out behaviour, privacy, regressions, and missing tests. Do not edit.&#x27;
         },
         &#x27;production-readiness&#x27;: {
           title: &#x27;$production-readiness&#x27;,

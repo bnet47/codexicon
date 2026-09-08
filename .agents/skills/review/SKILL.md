@@ -7,13 +7,15 @@ description: Review a diff against its request or spec and report actionable cor
 
 Review evidence, not intent. Do not modify files.
 
+During Explore or Build, do not invoke Git. Review the changed paths recorded in `TASKS.md` against `SPEC.md`, acceptance criteria, and verification output. Git status, diffs, staging, and branch comparisons are reserved for `$ship`.
+
 ## Establish the comparison
 
-Inspect `git status`, unstaged and staged diffs, and—when available—the branch diff from its merge base. Read the request or linked spec/plan plus relevant conventions. If no Git repository exists, review the explicitly supplied files and state the limitation.
+During Build, inspect the changed paths recorded in `TASKS.md`. During Ship, inspect `git status`, staged and unstaged diffs, and—when available—the branch diff from its merge base. Read the request or linked contract/plan plus relevant conventions.
 
 For a broad or high-risk diff, delegate independent read-only passes to the `reviewer` profile (for example correctness, security, and test coverage), then deduplicate and verify the findings yourself.
 
-When the diff came from an engineering loop, review the combined result after integration. Do not treat a passing subagent report as final evidence; inspect the actual diff and canonical checks.
+When the result came from an engineering loop, review the combined changed paths after integration. Do not treat a passing subagent report as final evidence; inspect the files and canonical checks.
 
 ## Findings threshold
 

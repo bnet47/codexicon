@@ -20,6 +20,7 @@ Use the project’s current behavior and accepted decisions as the source of tru
 - CI hardening that preserves the project’s supported platforms and canonical checks;
 - new skills or references that do not replace locally modified workflows.
 - the bounded `$engineering-loop`, read-only `github-researcher`, and explicit `$find-skills` workflow after reviewing local delegation and supply-chain policy;
+- root `SPEC.md`, `TASKS.md`, and `$autonomous-build` after reviewing local task and contract conventions;
 
 Review each change for local path, runtime, policy, and platform assumptions before applying it.
 

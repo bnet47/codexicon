@@ -1,15 +1,15 @@
 ---
 name: init
-description: Configure an uninitialized project from an approved charter: stack, scripts, identity, optional Git, and verification.
+description: Configure an uninitialized project from the active SPEC.md contract and verify the local stack.
 ---
 
 # Initialize the project
 
-Announce: "I'm using init to turn the approved project context into a working development environment."
+Announce: "I'm using init to turn the active project contract into a working local development environment."
 
 ## 1. Establish context
 
-Read the approved charter in `agent_docs/briefs/` and inspect the repository for existing code, package manifests, and Git state. Do not overwrite an existing stack or working command without explaining the conflict.
+Read the active root `SPEC.md` and inspect the repository for existing code and package manifests. Do not overwrite an existing stack or working command without explaining the conflict.
 
 If neither a charter nor equivalent explicit project context exists, stop and recommend `$discover`.
 
@@ -40,8 +40,7 @@ When the user has no preference, recommend the smallest stack that fits the char
 - Create `.env.example` with names and comments only when environment variables are needed. Never create or read a real credential file.
 - Leave MCP absent unless the project needs external context. When needed, start from the commented project pattern, review the server and tool schemas, keep it disabled until the user trusts it, prefer read-only tools and scoped credentials, and record the trust boundary in `agent_docs/security.md`.
 - Update `.gitignore` for generated outputs and local state.
-- Initialize Git only when no repository exists and the user chose a fresh local repository. Do not commit, add a remote, push, or open a PR unless separately requested.
-- When Git is enabled, inspect any existing hooks configuration before running `scripts/install-git-hooks.sh` or `.ps1`. Preserve or deliberately integrate existing hooks; never silently overwrite a different hooks path.
+- Do not initialize Git, create branches, create worktrees, stage files, commit, add remotes, push, or open a PR during initialization. Git setup belongs to `$ship`.
 
 Commands must fail when unconfigured or when their underlying check fails. Never leave success-printing stubs.
 
@@ -64,4 +63,4 @@ After the project is trusted in Codex, use `/hooks` and the live smoke checklist
 
 ## 5. Report
 
-Summarize the selected stack, security/operations baseline, files created or replaced, exact verification results, Git/hook status, and any remaining manual setup. Offer `$brainstorm`, `$spec`, or `$quick` for the first slice.
+Summarize the selected stack, security/operations baseline, files created or replaced, exact verification results, and any remaining local setup. Continue to `$autonomous-build` for the first slice.

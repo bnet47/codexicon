@@ -11,7 +11,7 @@ Determine whether selective delegation improves acceptance quality, review cover
 Run the same task brief and repository state through:
 
 - **Direct:** one primary agent owns exploration, implementation, verification, and review.
-- **Loop:** the primary agent delegates only independent lanes, uses isolated worktrees for writers, integrates the results, and performs final verification.
+- **Loop:** the primary agent consumes `TASKS.md`, traces changes to `SPEC.md`, implements in the current checkout, uses only read-only delegated lanes, and performs final verification.
 
 Keep model, permissions, starting revision, task brief, and canonical checks constant. Randomize run order where the harness permits it. Do not include credentials, private project content, or unreviewed external write access in the benchmark.
 
@@ -35,7 +35,7 @@ Keep model, permissions, starting revision, task brief, and canonical checks con
 - tool-call count and delegated-agent count;
 - input/output token usage when the client exposes reliable values;
 - user corrections, clarification turns, and approval interruptions;
-- worktree conflicts or integration corrections;
+- task-trace failures or integration corrections;
 - external systems contacted and any attempted unauthorized side effect.
 
 Unavailable metrics must be recorded as **unmeasured**, not inferred from summaries or hook state.

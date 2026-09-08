@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/bnet47/codexicon/actions/workflows/ci.yml"><img src="https://github.com/bnet47/codexicon/actions/workflows/ci.yml/badge.svg" alt="Template CI"></a>
-  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.8.1-339cff.svg" alt="Template version 2.8.1"></a>
+  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.9.0-339cff.svg" alt="Template version 2.9.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-46a862.svg" alt="MIT License"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-f39a56.svg" alt="Python 3.10 or newer"></a>
 </p>
@@ -110,7 +110,7 @@ Out of scope: [non-goals].
 6. Initialize the real stack after approving the charter:
 
 ```text
-$init Configure this repository from the approved charter. Recommend the
+$init Configure this repository from the active SPEC.md contract. Recommend the
 smallest suitable stack, replace every template command with a real one,
 configure equivalent CI checks, and explain any irreversible choice before
 making it. Do not add hosting or deploy anything unless I ask.
@@ -141,8 +141,8 @@ The repository exposes compact skill metadata first. Complete instructions load 
 | Stage | Use when | Primary workflows | Evidence before continuing |
 |---|---|---|---|
 | **Adopt** | An established repository needs the harness | `$adopt-codexicon` | Reviewed compatibility plan and conflicts |
-| **Define** | The product or behavior is not settled | `$discover`, `$brainstorm`, `$spec` | Approved charter or executable specification |
-| **Build** | The outcome is clear enough to implement | `$quick`, `$write-plan`, `$execute-plan`, `$engineering-loop` | Observable behavior and focused verification |
+| **Define** | The product or behavior is not settled | `$discover`, `$brainstorm`, `$spec` | Active root `SPEC.md` contract |
+| **Build** | The outcome is clear enough to implement | `$quick`, `$autonomous-build`, `$write-plan`, `$execute-plan` | Traced tasks and fresh verification |
 | **Assure** | Correctness, experience, architecture, or release risk needs scrutiny | `$review`, `$review-creative`, `$architecture-review`, `$production-readiness` | Findings resolved and canonical checks passing |
 | **Deliver** | A specific Git effect is authorized | `$ship` | Only the requested commit, push, or pull request |
 
@@ -152,12 +152,13 @@ The repository exposes compact skill metadata first. Complete instructions load 
 | Situation | Use |
 |---|---|
 | Established repository needs Codexicon | `$adopt-codexicon` |
-| Unconfigured project | `$discover` → `$init` |
+| Unconfigured project | `$discover` → root `SPEC.md` → `$init` |
 | Clear change affecting a few files | `$quick` |
 | Unclear feature behavior | `$brainstorm` |
 | Precise requirement needing a durable contract | `$spec` |
-| Approved multi-step requirement | `$write-plan` → `$execute-plan` when delegation helps |
-| Medium/high-complexity work with independent lanes | `$engineering-loop` |
+| Multi-task implementation | `$autonomous-build` consuming `TASKS.md` |
+| Existing durable plan | `$write-plan` → `$execute-plan` |
+| Independent research or review lanes | `$engineering-loop` |
 | Explicit external capability search | `$find-skills` |
 | Reproducible failure with an unknown cause | `$investigate` |
 | Upstream repository, issue, release, or skill-source research | `github-researcher` |
@@ -189,7 +190,7 @@ Constraints: accessible web app, no betting features, no data provider chosen.
 ```
 
 ```text
-$init Configure Matchday from the approved charter. Recommend the smallest
+$init Configure Matchday from the active SPEC.md contract. Recommend the smallest
 stack for a responsive web app with live-score updates. Create real setup,
 development, lint, test, security, and CI commands. Do not initialize hosting
 or contact providers.
@@ -256,7 +257,9 @@ The validator enforces budgets for always-loaded repository guidance and the ini
 │   ├── hooks/                # portable hook implementation
 │   └── agents/               # bounded project agent profiles
 ├── .githooks/                # opt-in commit and push verification
-├── agent_docs/               # project facts, decisions, specs, and operations
+├── SPEC.md                   # active immutable project contract after discovery
+├── TASKS.md                  # local multi-task execution register when needed
+├── agent_docs/               # project facts, decisions, historical briefs, and operations
 ├── docs/                     # Codex guide, patterns, and visual playbook
 ├── scripts/                  # canonical cross-platform commands
 └── tests/                    # template, hook, scanner, and creative checks
@@ -273,13 +276,14 @@ The root [`.codexicon.json`](.codexicon.json) is the source ownership contract u
 | [Codex configuration and hooks](docs/codex.md) | [Contributing](CONTRIBUTING.md) |
 | [Upgrade an existing project](docs/upgrading.md) | [Support](SUPPORT.md) |
 | [Agent and delegation patterns](docs/agent-patterns.md) | [Architecture decision template](docs/adr-template.md) |
-| [Deployment command pattern](docs/deploy-patterns.md) | [Code of Conduct](CODE_OF_CONDUCT.md) |
+| [Build contracts](docs/build-contracts.md) | [Deployment command pattern](docs/deploy-patterns.md) |
+| [Code of Conduct](CODE_OF_CONDUCT.md) | |
 
 ## Requirements
 
 - Codex opened at the repository root.
 - Python 3.10 or newer for template validation and hooks.
-- Git only when branches, commits, worktrees, remotes, or pull requests are wanted.
+- Git is needed only for shipping, remotes, commits, or pull requests; Build stays in the current checkout.
 - Bash for POSIX scripts or PowerShell for equivalent native Windows paths.
 
 No provider account, API key, database, hosting platform, or optional integration is required to begin.

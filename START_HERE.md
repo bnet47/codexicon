@@ -1,6 +1,6 @@
 # Starting a project with Codexicon
 
-Codexicon begins deliberately unconfigured. The best results come from defining the project before selecting a stack, then asking Codex to build one small verified slice at a time.
+Codexicon begins deliberately unconfigured. Define the project contract before selecting a stack, then let Build consume and verify local tasks without intermediate sign-offs.
 
 For a visual overview of the lifecycle, workflow routing, token model, and safety boundaries, open [the live interactive template playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html). The same guide is available locally at `docs/repo-template-playbook.html`.
 
@@ -49,7 +49,7 @@ Invoke:
 $discover
 ```
 
-Codex will clarify only what is unresolved and save an approved charter under `agent_docs/briefs/`. Be ready to describe:
+Codex will clarify only consequential unknowns and save an active contract as root `SPEC.md`. Be ready to describe:
 
 - the problem or cost today;
 - the specific person or role affected;
@@ -71,7 +71,7 @@ Avoid choosing a framework or database in this step unless an existing organizat
 
 ## 3. Configure the real development environment
 
-After approving the charter, invoke:
+After `SPEC.md` passes `spec-check`, invoke:
 
 ```text
 $init
@@ -110,7 +110,8 @@ Choose only the workflow the change needs:
 | Feature behavior or approach is genuinely uncertain | `$brainstorm` |
 | Precise requirement needs a durable contract | `$spec` |
 | Approved multi-step spec needs task decomposition | `$write-plan` |
-| Approved plan contains independent implementation tasks | `$execute-plan` |
+| Multi-task implementation from `TASKS.md` | `$autonomous-build` |
+| Existing durable plan needs execution | `$execute-plan` |
 | Medium/high-complexity work with independent lanes | `$engineering-loop` |
 | Explicit search for an external agent skill | `$find-skills` |
 | Existing repository needs Codexicon inspection, adoption, or update | `$adopt-codexicon` |
@@ -192,16 +193,18 @@ Use each location for one kind of truth:
 | Security boundaries, threats, privacy, and assurance | `agent_docs/security.md` |
 | Operations, recovery, observability, and release safety | `agent_docs/operations.md` |
 | Accepted technical decisions | `agent_docs/decisions/` |
-| Approved charters and feature specs | `agent_docs/briefs/` |
+| Active contract | `SPEC.md` |
+| Active task register | `TASKS.md` |
+| Historical briefs and plans | `agent_docs/briefs/`, `agent_docs/plans/` |
 | Implementation plans | `agent_docs/plans/` |
 | Requested handoff checkpoints and retrospectives | `agent_docs/sessions/` |
 | Codex configuration and extension details | `docs/codex.md` |
 
-Do not put temporary task state or long explanations in `AGENTS.md`; it is loaded into every task. `.codex-state/` is local verification state, not project memory. Use `$context-dump` for an explicit atomic Markdown checkpoint and `python scripts/codexicon.py resume` to select the newest compatible checkpoint.
+Do not put temporary task state or long explanations in `AGENTS.md`; it is loaded into every task. Use root `SPEC.md` for the active contract and `TASKS.md` for a multi-task queue. `.codex-state/` is local verification state, not project memory.
 
 ## 8. Verify and ship deliberately
 
-During development, run the narrowest focused check first. Before shipping code or configuration, run the canonical full checks:
+During Build, run the narrowest focused check after each task. When the queue is complete, run the canonical full checks:
 
 ```bash
 ./scripts/lint.sh
@@ -219,7 +222,7 @@ $production-readiness
 
 It returns READY, READY WITH ACCEPTED RISK, or NOT READY from current evidence. Unknown recovery, authorization, rollback, or ownership is a gap; only the accountable human can accept a named residual risk.
 
-Git authority is intentionally granular:
+Git is deferred until `$ship`. During Build, do not create branches or worktrees, stage files, commit, or push. Git authority is intentionally granular during Ship:
 
 - “commit” authorizes a local commit only;
 - “push” authorizes a commit when needed and a push from a non-protected branch;

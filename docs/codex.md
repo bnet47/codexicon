@@ -23,7 +23,7 @@ Official reference: [Agent skills](https://developers.openai.com/codex/skills)
 Use the smallest mode that matches the request:
 
 - **Explore** investigates, compares, or diagnoses without modifying the repository unless the request authorizes a change.
-- **Build** is the default for a clear implementation request. Codex owns the internal understand, plan, implement, focused-validate, critique, improve, and final-verify loop, then reports important decisions and evidence.
+- **Build** is the default for a clear implementation request. Codex owns the internal understand, plan, implement, focused-validate, critique, improve, and final-verify loop, consuming `TASKS.md` until the queue is complete and tracing changes to `SPEC.md`.
 - **Ship** is reserved for commits, pushes, pull requests, publication, deployment, migrations, and external-system writes. These actions retain their explicit authority requirements.
 
 Brainstorming, specification, planning, implementation, and review are internal techniques in Build unless the request needs a durable artifact, a consequential product choice, or an independently requested review. Missing details should become documented reversible assumptions when safe; related blocking questions should be batched. A bounded self-review should improve the weakest important aspect of medium or large work, but it must stop when acceptance is met, improvement plateaus, failures repeat, verification is sufficient, or a human-owned boundary is reached.
@@ -76,7 +76,7 @@ Official reference: [Codex hooks](https://developers.openai.com/codex/hooks)
 
 The pre-tool policy blocks common repository and user credential stores, broad environment enumeration, and direct reads of secret-like environment variables. `.env.example` remains the only credential-shaped placeholder path agents may open. The dependency-free `scripts/security.sh` and `scripts/security.ps1` scan tracked and non-ignored safe text without opening protected credential paths; findings reveal only path, line, and detector.
 
-When a project uses Git, run `scripts/install-git-hooks.sh` or `.ps1` after inspecting any existing hooks path. Installation is idempotent for `.githooks` and refuses to replace a different `core.hooksPath`. The tracked pre-commit hook runs the security gate; pre-push runs lint, tests, and security. `$ship` runs the same commands directly, so publication safety does not depend on local hooks alone.
+Git is intentionally deferred during Explore and Build. Do not create branches or worktrees, stage files, commit, or push until `$ship`. When a project uses Git, run `scripts/install-git-hooks.sh` or `.ps1` only as part of the authorized shipping setup.
 
 Hook registration is structurally and behaviorally tested, but Codex trust is local to each clone and surface. After trusting the project, use `/hooks` and complete the live smoke checklist below; repository code cannot grant that trust itself.
 
@@ -103,7 +103,13 @@ Checkpoints are project files but are never auto-committed or synchronized. `.co
 
 The manager never downloads, commits, pushes, publishes, deploys, or writes to external systems.
 
-## Subagents and worktrees
+## Local Build contracts
+
+`$discover` creates the active root `SPEC.md`, including stable requirement and interface IDs, acceptance conditions, anti-goals, assumptions, and append-only amendments. `$autonomous-build` consumes a multi-task `TASKS.md` register, requires a trace from each task to `SPEC.md`, verifies each task, and continues to the next actionable task without a sign-off turn. See `docs/build-contracts.md` for the format and local validation commands.
+
+Explore and Build remain Git-free: do not create branches or worktrees, stage files, commit, or push. `$ship` is the only workflow that performs Git operations.
+
+## Subagents and local-first Build
 
 Project-scoped custom agents live in `.codex/agents/`. The template includes a read-only external-documentation `researcher`, a read-only `reviewer`, and a bounded `implementer`. Use Codex's built-in `explorer` for repository mapping; the custom researcher deliberately does not duplicate it.
 
@@ -113,7 +119,7 @@ Use subagents for independent work with clear inputs and outputs. Parallel read-
 
 Read-only custom-agent sandbox settings are defaults: a parent turn's live permission mode can override them, so agent instructions and the primary agent's review still matter.
 
-In the Codex app, prefer Codex-managed worktrees for independent background tasks. Worktrees require Git; ignored local files are not copied unless deliberately listed in `.worktreeinclude`. Because `.codex-state/` is intentionally ignored, worktree handoff can omit local verification state; resume/compact recovery therefore treats every missing state file as requiring fresh lint and tests, including when Git cannot see changes to ignored project files.
+During Build, keep implementation in the current checkout. Delegated agents are read-only research or review lanes; do not create worktrees or concurrent writers. `SPEC.md` and `TASKS.md` provide durable continuation state, while `.codex-state/` remains ephemeral verification state.
 
 Official references: [Subagents](https://developers.openai.com/codex/subagents), [Worktrees](https://developers.openai.com/codex/app/worktrees)
 

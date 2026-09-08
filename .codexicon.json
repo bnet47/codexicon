@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "2.8.1",
+  "version": "2.9.0",
   "files": [
     {
       "path": ".codexicon.json",
@@ -83,6 +83,10 @@
     },
     {
       "path": ".agents/skills/engineering-loop/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/autonomous-build/SKILL.md",
       "policy": "merge"
     },
     {

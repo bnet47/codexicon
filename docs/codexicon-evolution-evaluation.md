@@ -4,6 +4,10 @@
 **Scope:** `CODEXICON_EVOLUTION_EVALUATION_BRIEF-1.md` and the repository at this revision
 **Verdict:** Proceed with a small autonomy and verification improvement; defer a new orchestration subsystem.
 
+## Follow-up implementation
+
+This historical evaluation describes the 2.8.x baseline. The current local-first refactor extends that direction with an active root `SPEC.md`, a validated `TASKS.md` register, explicit task-to-requirement traces, an autonomous Build skill, and a Build rule that keeps implementation in the current checkout. Git-backed worktrees remain available only outside Build's active execution path, and publication remains isolated to `$ship`.
+
 ## Executive conclusion
 
 Codexicon is not uniformly too procedural. Clear, tightly scoped work already routes to `$quick`, and the stop hook is concerned with verification evidence rather than formal lifecycle artifacts. The friction is concentrated in two places:

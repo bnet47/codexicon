@@ -1061,11 +1061,152 @@ def compatible_checkpoints(root: Path) -> list[tuple[datetime, Path, dict[str, A
     return sorted(candidates, key=lambda item: (item[0], item[1].name), reverse=True)
 
 
+SPEC_SECTIONS = {
+    "Requirements": re.compile(r"^\s*-\s+\*\*(R-\d+):\*\*\s+\S"),
+    "Interfaces": re.compile(r"^\s*-\s+\*\*(I-\d+):\*\*\s+\S"),
+    "Acceptance": re.compile(r"^\s*-\s+\*\*(A-\d+):\*\*\s+\S"),
+    "Anti-goals": re.compile(r"^\s*-\s+\*\*(AG-\d+):\*\*\s+\S"),
+}
+TASK_ROW = re.compile(
+    r"^\|\s*(T-\d+)\s*\|\s*(TODO|ACTIVE|DONE|BLOCKED)\s*\|\s*"
+    r"(R-\d+)\s*\|\s*(I-\d+|None)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$"
+)
+
+
+def read_contract(root: Path) -> tuple[str, set[str], set[str], set[str], set[str]]:
+    path = checked_path(root, "SPEC.md")
+    if not path.is_file():
+        raise CodexiconError("SPEC.md is missing; run $discover before building")
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as exc:
+        raise CodexiconError(f"SPEC.md is unreadable: {exc}") from exc
+    if not any(line.strip() == "**Status:** ACTIVE" for line in lines):
+        raise CodexiconError("SPEC.md must declare **Status:** ACTIVE")
+    found: dict[str, set[str]] = {section: set() for section in SPEC_SECTIONS}
+    current = ""
+    for line in lines:
+        heading = line.removeprefix("## ").strip()
+        if heading in SPEC_SECTIONS:
+            current = heading
+        elif current:
+            match = SPEC_SECTIONS[current].match(line)
+            if match:
+                found[current].add(match.group(1))
+    missing = [section for section, values in found.items() if not values]
+    if missing:
+        raise CodexiconError(f"SPEC.md has no entries in: {', '.join(missing)}")
+    return (
+        path.read_text(encoding="utf-8"),
+        found["Requirements"],
+        found["Interfaces"],
+        found["Acceptance"],
+        found["Anti-goals"],
+    )
+
+
+def contract_check(root: Path) -> int:
+    _, requirements, interfaces, acceptance, anti_goals = read_contract(root.resolve())
+    print(
+        "[codexicon] SPEC.md valid: "
+        f"{len(requirements)} requirement(s), {len(interfaces)} interface(s), "
+        f"{len(acceptance)} acceptance condition(s), {len(anti_goals)} anti-goal(s)."
+    )
+    return 0
+
+
+def task_rows(root: Path) -> tuple[Path, list[dict[str, str]], set[str], set[str]]:
+    root = root.resolve()
+    _, requirements, interfaces, _, _ = read_contract(root)
+    path = checked_path(root, "TASKS.md")
+    if not path.is_file():
+        raise CodexiconError("TASKS.md is missing; create a task register for multi-task work")
+    rows: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        match = TASK_ROW.match(line)
+        if not match:
+            continue
+        task_id, state, requirement, interface, scope, verification = match.groups()
+        if task_id in seen:
+            raise CodexiconError(f"TASKS.md contains duplicate task ID: {task_id}")
+        if requirement not in requirements:
+            raise CodexiconError(f"{task_id} references missing requirement: {requirement}")
+        if interface != "None" and interface not in interfaces:
+            raise CodexiconError(f"{task_id} references missing interface: {interface}")
+        if scope.strip() in {"", "-"} or verification.strip() in {"", "-"}:
+            raise CodexiconError(f"{task_id} requires scope and verification")
+        seen.add(task_id)
+        rows.append(
+            {
+                "id": task_id,
+                "state": state,
+                "requirement": requirement,
+                "interface": interface,
+                "scope": scope.strip(),
+                "verification": verification.strip(),
+            }
+        )
+    if not rows:
+        raise CodexiconError("TASKS.md contains no task rows")
+    return path, rows, requirements, interfaces
+
+
+def tasks_next(root: Path) -> int:
+    _, rows, _, _ = task_rows(root)
+    for row in rows:
+        if row["state"] == "TODO":
+            print(
+                f"{row['id']} | {row['requirement']} | {row['interface']} | "
+                f"{row['scope']} | {row['verification']}"
+            )
+            return 0
+    print("[codexicon] TASKS.md has no TODO tasks.")
+    return 0
+
+
+def tasks_set_state(root: Path, task_id: str, state: str) -> int:
+    path, rows, _, _ = task_rows(root)
+    if not re.fullmatch(r"T-\d+", task_id):
+        raise CodexiconError("task ID must look like T-001")
+    if state not in {"ACTIVE", "DONE", "BLOCKED"}:
+        raise CodexiconError("task state must be ACTIVE, DONE, or BLOCKED")
+    if not any(row["id"] == task_id for row in rows):
+        raise CodexiconError(f"unknown task ID: {task_id}")
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    pattern = re.compile(rf"^(\|\s*{re.escape(task_id)}\s*\|\s*)\w+(\s*\|.*)$")
+    replaced = False
+    output: list[str] = []
+    for line in lines:
+        match = pattern.match(line.rstrip("\r\n"))
+        if match:
+            newline = "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
+            output.append(f"{match.group(1)}{state}{match.group(2)}{newline}")
+            replaced = True
+        else:
+            output.append(line)
+    if not replaced:
+        raise CodexiconError(f"unable to update task row: {task_id}")
+    atomic_write_bytes(path, "".join(output).encode("utf-8"), mode=0o644)
+    print(f"[codexicon] {task_id} -> {state}")
+    return 0
+
+
 def doctor(root: Path) -> int:
     root = root.resolve()
     diagnostics: list[tuple[str, str]] = []
     parse_config(root, diagnostics)
     parse_hooks(root, diagnostics)
+    if (root / "SPEC.md").exists():
+        try:
+            read_contract(root)
+        except CodexiconError as exc:
+            diagnostics.append(("ERROR", f"invalid SPEC.md: {exc}"))
+    if (root / "TASKS.md").exists():
+        try:
+            task_rows(root)
+        except CodexiconError as exc:
+            diagnostics.append(("ERROR", f"invalid TASKS.md: {exc}"))
     for name in CANONICAL_CHECKS:
         for suffix in ("sh", "ps1"):
             relative = f"scripts/{name}.{suffix}"
@@ -1475,6 +1616,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     resume_parser = subparsers.add_parser("resume", help="print the newest compatible checkpoint")
     resume_parser.add_argument("--root", type=Path, default=ROOT)
+
+    contract_parser = subparsers.add_parser("spec-check", help="validate the active root SPEC.md contract")
+    contract_parser.add_argument("--root", type=Path, default=ROOT)
+
+    next_parser = subparsers.add_parser("tasks-next", help="print the next TODO task from TASKS.md")
+    next_parser.add_argument("--root", type=Path, default=ROOT)
+
+    for state in ("start", "done", "blocked"):
+        task_parser = subparsers.add_parser(
+            f"tasks-{state}", help=f"mark a TASKS.md row {state}"
+        )
+        task_parser.add_argument("task_id")
+        task_parser.add_argument("--root", type=Path, default=ROOT)
     return parser
 
 
@@ -1500,6 +1654,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             return create_checkpoint(args)
         if args.command == "resume":
             return resume(args.root)
+        if args.command == "spec-check":
+            return contract_check(args.root)
+        if args.command == "tasks-next":
+            return tasks_next(args.root)
+        if args.command == "tasks-start":
+            return tasks_set_state(args.root, args.task_id, "ACTIVE")
+        if args.command == "tasks-done":
+            return tasks_set_state(args.root, args.task_id, "DONE")
+        if args.command == "tasks-blocked":
+            return tasks_set_state(args.root, args.task_id, "BLOCKED")
         parser.error(f"unsupported command: {args.command}")
     except CodexiconError as exc:
         print(f"[codexicon] {exc}", file=sys.stderr)

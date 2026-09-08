@@ -1,15 +1,15 @@
 ---
 name: execute-plan
-description: Execute an approved plan with bounded delegation. Use after write-plan for independent tasks; not for exploratory or tightly coupled work.
+description: Execute a durable plan locally with bounded read-only review. Use for existing multi-task plans.
 ---
 
-# Execute an approved plan
+# Execute a durable plan
 
-Announce: "I'm using execute-plan to implement the approved plan with bounded task delegation where it helps."
+Announce: "I'm using execute-plan to implement the durable plan locally with bounded read-only review where it helps."
 
 ## 1. Load and validate the plan
 
-Read the selected plan and linked spec. A plan produced for the current implementation request is approved by that request; do not create an extra approval gate unless the plan exposes a consequential product or architecture choice. Inspect `git status` and preserve existing user changes. Confirm task paths still exist and dependencies remain accurate; update the plan only when reality invalidates it, and explain material changes.
+Read the selected plan, linked contract, and `TASKS.md`. A plan produced for the current implementation request is authorized by that request; do not create an extra approval gate unless it exposes a consequential product or architecture choice. Preserve existing user changes without invoking Git. Confirm task paths and dependencies remain accurate.
 
 If resuming, run `python scripts/codexicon.py resume`, then verify the selected checkpoint against the plan and current diff. `.codex-state/` is local verification state, not project memory.
 
@@ -29,7 +29,7 @@ For GitHub or upstream research, use the read-only `github-researcher` profile o
 
 For every task:
 
-1. Inspect the actual diff and verification evidence.
+1. Inspect the declared changed paths and verification evidence.
 2. Check acceptance coverage, scope, regressions, and conflicts with user changes.
 3. Resolve small integration gaps directly or return one specific correction brief to the implementer.
 
@@ -44,7 +44,7 @@ After task-level checks, run the full plan verification plus:
 ./scripts/test.sh
 ```
 
-Then inspect the combined diff against the spec. Use `$review` for a separate read-only review when risk warrants it.
+Then inspect the declared changed paths against the contract. Use `$review` for a separate read-only review when risk warrants it; do not create a branch or worktree.
 
 ## 5. Report
 

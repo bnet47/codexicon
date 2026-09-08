@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Resolve unclear feature behavior or approach and produce an approved spec. Use for genuine uncertainty; not small or precise changes.
+description: Resolve unclear feature behavior or approach and update SPEC.md. Use for genuine uncertainty; not small or precise changes.
 ---
 
 # Brainstorm
@@ -9,7 +9,7 @@ Announce: "I'm using brainstorm to resolve the feature choices before implementa
 
 ## 1. Load relevant project context
 
-Read the project identity and only the architecture, conventions, decisions, or prior specs relevant to the feature. If the repository is still an unconfigured template, route to `$discover`.
+Read root `SPEC.md` when present plus only the architecture, conventions, decisions, or prior specs relevant to the feature. If the repository is still unconfigured, route to `$discover`.
 
 ## 2. Resolve the problem
 
@@ -27,13 +27,13 @@ Present two or three genuinely viable approaches with tradeoffs in behavior, com
 
 ## 4. Write the spec
 
-After the direction is clear, save `agent_docs/briefs/[YYYY-MM-DD]-[feature-slug].md` without overwriting an existing file:
+After the direction is clear, append the requirements, interfaces, acceptance, anti-goals, assumptions, and any amendment to root `SPEC.md`:
 
 ```markdown
-# Spec: [Feature]
+# Specification amendment: [Feature]
 
 **Date:** [YYYY-MM-DD]
-**Status:** Approved
+**Status:** ACTIVE
 
 ## Problem
 [Who is affected and what fails today.]
@@ -57,6 +57,6 @@ After the direction is clear, save `agent_docs/briefs/[YYYY-MM-DD]-[feature-slug
 - [Unresolved question, or "None".]
 ```
 
-Self-check that every criterion is testable, no placeholder remains, and the first slice is complete rather than merely scaffolding.
+Run `python scripts/codexicon.py spec-check`. Self-check that every criterion is testable, no placeholder remains, anti-goals are explicit, and the first slice is complete rather than scaffolding.
 
-Offer `$write-plan` when implementation is multi-step. If the original request already authorizes implementation, continue through the smallest coherent implementation; otherwise stop after the requested brainstorming/spec artifact. Do not commit or push unless separately asked.
+For multi-step work, write `TASKS.md` and continue to `$autonomous-build` when implementation is authorized. Do not invoke Git.
