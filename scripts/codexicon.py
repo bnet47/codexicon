@@ -5,16 +5,19 @@ from __future__ import annotations
 
 import argparse
 import ast
+import contextlib
 import hashlib
 import json
 import os
 import re
 import secrets
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Sequence
 
@@ -33,6 +36,9 @@ CHECKPOINT_MARKER = "codexicon-checkpoint:"
 SCHEMA_VERSION = 1
 POLICIES = {"managed", "merge", "project"}
 CANONICAL_CHECKS = ("lint", "test", "security")
+BUILD_MODE = "build"
+SHIP_MODE = "ship"
+VERIFICATION_MODES = (BUILD_MODE, SHIP_MODE)
 SUPPORTED_HOOK_EVENTS = {
     "PermissionRequest",
     "PostCompact",
@@ -254,6 +260,10 @@ def file_state(root: Path, relative: str) -> tuple[str, str | None]:
     return "file", sha256_file(path)
 
 
+def has_execute_mode(path: Path) -> bool:
+    return bool(path.stat().st_mode & 0o111)
+
+
 def install_plan(
     source_root: Path,
     target_root: Path,
@@ -292,8 +302,8 @@ def install_plan(
         if policy == "project":
             if target_state == "missing":
                 action = "required-missing"
-            elif executable and os.name != "nt" and not os.access(
-                checked_path(target_root, relative), os.X_OK
+            elif executable and os.name != "nt" and not has_execute_mode(
+                checked_path(target_root, relative)
             ):
                 action = "project-mode-conflict"
             else:
@@ -319,7 +329,12 @@ def install_plan(
                     "executable": executable,
                 }
         elif target_hash == source_hash:
-            action = "identical"
+            if executable and os.name != "nt" and not has_execute_mode(
+                checked_path(target_root, relative)
+            ):
+                action = "mode-correction"
+            else:
+                action = "identical"
             next_files[relative] = {
                 "policy": policy,
                 "sha256": source_hash,
@@ -345,6 +360,12 @@ def install_plan(
                 "action": action,
                 "executable": executable,
                 "expected_sha256": target_hash,
+                "source_sha256": source_hash,
+                "expected_mode": (
+                    checked_path(target_root, relative).stat().st_mode & 0o777
+                    if target_state == "file"
+                    else None
+                ),
             }
         )
 
@@ -426,7 +447,7 @@ def validate_transaction_journal(
     if (
         journal.get("schema_version") != SCHEMA_VERSION
         or journal.get("format") != "codexicon-transaction-v1"
-        or journal.get("phase") not in {"applying", "committed"}
+        or journal.get("phase") not in {"applying", "committed", "rolled-back"}
         or not isinstance(transaction_id, str)
         or not re.fullmatch(r"[a-f0-9]{16}", transaction_id)
         or backup_root != f"{STATE_DIR_NAME}/backups/{transaction_id}"
@@ -443,6 +464,12 @@ def validate_transaction_journal(
     except (KeyError, TypeError, ValueError) as exc:
         raise CodexiconError("transaction journal is malformed; manual recovery is required") from exc
     if created.tzinfo is None:
+        raise CodexiconError("transaction journal is malformed; manual recovery is required")
+    source_manifest_sha256 = journal.get("source_manifest_sha256")
+    if source_manifest_sha256 is not None and (
+        not isinstance(source_manifest_sha256, str)
+        or not re.fullmatch(r"[a-f0-9]{64}", source_manifest_sha256)
+    ):
         raise CodexiconError("transaction journal is malformed; manual recovery is required")
 
     seen: set[str] = set()
@@ -463,6 +490,23 @@ def validate_transaction_journal(
             raise CodexiconError("transaction journal is malformed; manual recovery is required")
         if after is not None and not (
             isinstance(after, str) and re.fullmatch(r"[a-f0-9]{64}", after)
+        ):
+            raise CodexiconError("transaction journal is malformed; manual recovery is required")
+        source_sha256 = operation.get("source_sha256")
+        if source_sha256 is not None and (
+            not isinstance(source_sha256, str)
+            or not re.fullmatch(r"[a-f0-9]{64}", source_sha256)
+            or source_sha256 != after
+        ):
+            raise CodexiconError("transaction journal is malformed; manual recovery is required")
+        operation_manifest_sha256 = operation.get("source_manifest_sha256")
+        if operation_manifest_sha256 is not None and (
+            not isinstance(operation_manifest_sha256, str)
+            or not re.fullmatch(r"[a-f0-9]{64}", operation_manifest_sha256)
+            or (
+                source_manifest_sha256 is not None
+                and operation_manifest_sha256 != source_manifest_sha256
+            )
         ):
             raise CodexiconError("transaction journal is malformed; manual recovery is required")
         expected_backup = (
@@ -504,6 +548,26 @@ def current_digest(path: Path) -> str | None:
     if not path.is_file():
         raise CodexiconError(f"expected a regular file: {path}")
     return sha256_file(path)
+
+
+def validate_source_baseline(source_root: Path, journal: dict[str, Any]) -> None:
+    """Refuse a planned transaction if its source bytes or manifest have drifted."""
+
+    source_manifest_sha256 = journal.get("source_manifest_sha256")
+    if source_manifest_sha256 is not None:
+        manifest = checked_path(source_root, MANIFEST_NAME)
+        if current_digest(manifest) != source_manifest_sha256:
+            raise CodexiconError(
+                "source manifest changed after planning; refusing to apply transaction"
+            )
+    for operation in journal["operations"]:
+        if operation["action"] != "write" or operation.get("source_sha256") is None:
+            continue
+        source = checked_path(source_root, str(operation["path"]))
+        if current_digest(source) != operation["source_sha256"]:
+            raise CodexiconError(
+                f"source changed after planning; refusing to apply {operation['path']}"
+            )
 
 
 def rollback_transaction(target_root: Path, journal: dict[str, Any]) -> None:
@@ -552,6 +616,8 @@ def recover_transaction(target_root: Path) -> None:
     _, _, backup_root_raw = validate_transaction_journal(target_root, journal)
     if journal["phase"] == "applying":
         rollback_transaction(target_root, journal)
+        journal["phase"] = "rolled-back"
+        atomic_write_json(journal_path, journal)
     backup_root = checked_path(target_root, normalize_relative(backup_root_raw))
     safe_remove_tree(backup_root, state_dir(target_root))
     journal_path.unlink(missing_ok=True)
@@ -572,9 +638,10 @@ def build_operations(
     operations: list[dict[str, Any]] = []
     transaction_id = secrets.token_hex(8)
     backup_root_relative = f"{STATE_DIR_NAME}/backups/{transaction_id}"
+    source_manifest_sha256 = next_lock.get("source_manifest_sha256")
     for item in actions:
         action = item["action"]
-        if action not in {"create", "update", "remove"}:
+        if action not in {"create", "update", "remove", "mode-correction"}:
             continue
         relative = item["path"]
         target = checked_path(target_root, relative)
@@ -586,31 +653,45 @@ def build_operations(
             "action": "delete" if action == "remove" else "write",
             "path": relative,
             "backup": backup,
-            "target_mode": (target.stat().st_mode & 0o777) if target.is_file() else None,
+            "target_mode": (
+                item.get("expected_mode")
+                if action == "mode-correction"
+                else (target.stat().st_mode & 0o777) if target.is_file() else None
+            ),
             "before_sha256": before_sha256,
             "after_sha256": None,
         }
         if action != "remove":
-            source = checked_path(source_root, relative)
-            operation["after_sha256"] = sha256_file(source)
+            source_sha256 = item.get("source_sha256")
+            if not isinstance(source_sha256, str) or not re.fullmatch(
+                r"[a-f0-9]{64}", source_sha256
+            ):
+                raise CodexiconError(f"install plan lacks a source baseline: {relative}")
+            operation["after_sha256"] = source_sha256
+            operation["source_sha256"] = source_sha256
             operation["executable"] = bool(item.get("executable", False))
+            if action == "mode-correction":
+                operation["mode_correction"] = True
+        if source_manifest_sha256 is not None:
+            operation["source_manifest_sha256"] = source_manifest_sha256
         operations.append(operation)
     lock_content = (json.dumps(next_lock, indent=2, sort_keys=True) + "\n").encode("utf-8")
     lock_target = checked_path(target_root, LOCK_NAME)
     lock_backup = None
     if lock_target.is_file():
         lock_backup = f"{backup_root_relative}/{operation_backup_name(len(operations), LOCK_NAME)}"
-    operations.append(
-        {
-            "action": "write-lock",
-            "path": LOCK_NAME,
-            "backup": lock_backup,
-            "target_mode": (lock_target.stat().st_mode & 0o777) if lock_target.is_file() else None,
-            "before_sha256": sha256_file(lock_target) if lock_target.is_file() else None,
-            "after_sha256": sha256_bytes(lock_content),
-            "content": lock_content.decode("utf-8"),
-        }
-    )
+    lock_operation: dict[str, Any] = {
+        "action": "write-lock",
+        "path": LOCK_NAME,
+        "backup": lock_backup,
+        "target_mode": (lock_target.stat().st_mode & 0o777) if lock_target.is_file() else None,
+        "before_sha256": sha256_file(lock_target) if lock_target.is_file() else None,
+        "after_sha256": sha256_bytes(lock_content),
+        "content": lock_content.decode("utf-8"),
+    }
+    if source_manifest_sha256 is not None:
+        lock_operation["source_manifest_sha256"] = source_manifest_sha256
+    operations.append(lock_operation)
     return transaction_id, operations
 
 
@@ -654,6 +735,9 @@ def apply_transaction(
         "applied": 0,
         "operations": operations,
     }
+    if next_lock.get("source_manifest_sha256") is not None:
+        journal["source_manifest_sha256"] = next_lock["source_manifest_sha256"]
+    validate_source_baseline(source_root, journal)
     journal_path = transaction_path(target_root)
     atomic_write_json(journal_path, journal)
     try:
@@ -662,6 +746,13 @@ def apply_transaction(
             if current_digest(target) != operation["before_sha256"]:
                 raise CodexiconError(
                     f"target changed after planning; refusing to modify {operation['path']}"
+                )
+            if (
+                operation.get("mode_correction")
+                and (target.stat().st_mode & 0o777) != operation.get("target_mode")
+            ):
+                raise CodexiconError(
+                    f"target mode changed after planning; refusing to modify {operation['path']}"
                 )
             backup_relative = operation.get("backup")
             if backup_relative:
@@ -681,6 +772,8 @@ def apply_transaction(
     except BaseException:
         try:
             rollback_transaction(target_root, journal)
+            journal["phase"] = "rolled-back"
+            atomic_write_json(journal_path, journal)
             backup_root = checked_path(target_root, backup_root_relative)
             safe_remove_tree(backup_root, state_dir(target_root))
             journal_path.unlink(missing_ok=True)
@@ -949,27 +1042,14 @@ def checkpoint_metadata(path: Path) -> dict[str, Any] | None:
 
 
 def repository_identity(root: Path) -> str:
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--git-common-dir"],
-            cwd=root,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-    except OSError:
-        result = None
-    if result is not None and result.returncode == 0 and result.stdout.strip():
-        common = Path(result.stdout.strip())
-        if not common.is_absolute():
-            common = root / common
-        material = str(common.resolve())
-    else:
-        material = str(root.resolve())
-    return hashlib.sha256(material.encode("utf-8")).hexdigest()[:20]
+    """Return a checkout-local identity without consulting Git metadata."""
+
+    return hashlib.sha256(str(root.resolve()).encode("utf-8")).hexdigest()[:20]
 
 
 def git_value(root: Path, *args: str) -> str | None:
+    """Run an explicit Git integration query reserved for Ship-capable commands."""
+
     try:
         result = subprocess.run(
             ["git", *args],
@@ -983,7 +1063,9 @@ def git_value(root: Path, *args: str) -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def dirty_paths(root: Path) -> list[str]:
+def ship_dirty_paths(root: Path) -> list[str]:
+    """Read Git dirty paths for explicit Ship auditing only."""
+
     value = git_value(root, "status", "--porcelain=v1", "-z")
     if value is None:
         return []
@@ -1008,6 +1090,101 @@ def dirty_paths(root: Path) -> list[str]:
     return sorted(paths)
 
 
+def dirty_paths(root: Path, paths: Sequence[str] = ()) -> list[str]:
+    """Normalize caller-supplied changed paths without inspecting checkout state."""
+
+    del root  # The identity is intentionally path-list based, not repository based.
+    return sorted({normalize_relative(path) for path in paths})
+
+
+def protected_local_path(relative: str) -> bool:
+    normalized = relative.replace("\\", "/")
+    name = PurePosixPath(normalized).name.casefold()
+    if name == ".env.example":
+        return False
+    return (
+        name == ".env"
+        or name.startswith(".env.")
+        or name in {".npmrc", ".pypirc", ".netrc", "credentials.json"}
+        or "/secrets/" in f"/{normalized.casefold()}/"
+        or normalized.casefold().endswith(
+            (
+                "/.aws/credentials",
+                "/.ssh/id_rsa",
+                "/.ssh/id_dsa",
+                "/.ssh/id_ecdsa",
+                "/.ssh/id_ed25519",
+                "/.kube/config",
+                "/.docker/config.json",
+            )
+        )
+        or name.endswith((".key", ".pem", ".p12", ".pfx", ".secret"))
+    )
+
+
+def local_path_identity(root: Path, relative: str) -> str:
+    """Hash one safe local path, including deterministic directory contents."""
+
+    if protected_local_path(relative):
+        raise CodexiconError(f"local identity refuses protected path: {relative}")
+    path = checked_path(root, relative)
+    if not path.exists():
+        return "missing"
+    if path.is_file():
+        return f"sha256:{sha256_file(path)}"
+    if not path.is_dir():
+        raise CodexiconError(f"local identity contains unsupported path: {relative}")
+    entries: list[dict[str, str]] = []
+    for child in sorted(path.rglob("*"), key=lambda item: item.as_posix()):
+        child_relative = child.relative_to(root).as_posix()
+        if protected_local_path(child_relative):
+            raise CodexiconError(f"local identity refuses protected path: {child_relative}")
+        checked_path(root, child_relative)
+        if child.is_dir():
+            continue
+        if not child.is_file():
+            raise CodexiconError(f"local identity contains unsupported path: {child_relative}")
+        entries.append({"path": child_relative, "sha256": sha256_file(child)})
+    material = json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return f"sha256:{sha256_bytes(material)}"
+
+
+def local_path_evidence(root: Path, paths: Sequence[str]) -> dict[str, str]:
+    normalized = sorted({normalize_relative(path) for path in paths})
+    return {relative: local_path_identity(root, relative) for relative in normalized}
+
+
+def local_path_evidence_identity(evidence: dict[str, str]) -> str:
+    material = json.dumps(evidence, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return f"sha256:{sha256_bytes(material)}"
+
+
+def checkpoint_local_identities(root: Path, paths: Sequence[str]) -> dict[str, Any]:
+    evidence = local_path_evidence(root, paths)
+    return {
+        "contract_identity": local_path_identity(root, "SPEC.md"),
+        "task_identity": local_path_identity(root, "TASKS.md"),
+        "path_identity": local_path_evidence_identity(evidence),
+        "path_evidence": evidence,
+    }
+
+
+def checkpoint_identity_warnings(root: Path, metadata: dict[str, Any]) -> list[str]:
+    warnings: list[str] = []
+    identity_labels = (("contract_identity", "SPEC.md"), ("task_identity", "TASKS.md"))
+    for key, label in identity_labels:
+        expected = metadata.get(key)
+        if isinstance(expected, str) and expected != local_path_identity(root, label):
+            warnings.append(f"checkpoint {label} identity differs from the current local file")
+    evidence = metadata.get("path_evidence")
+    if isinstance(evidence, dict):
+        current = local_path_evidence(root, [str(path) for path in evidence])
+        for relative, expected in evidence.items():
+            if current.get(relative) != expected:
+                warnings.append(f"checkpoint path evidence differs for {relative}")
+    return warnings
+
+
 def validate_checkpoint(
     root: Path, path: Path
 ) -> tuple[datetime | None, dict[str, Any] | None, str | None]:
@@ -1029,7 +1206,36 @@ def validate_checkpoint(
     if created.tzinfo is None:
         return None, None, "checkpoint timestamp lacks a timezone"
     if not isinstance(metadata.get("branch"), str) or not isinstance(metadata.get("head"), str):
-        return None, None, "invalid checkpoint Git reference"
+        return None, None, "invalid checkpoint local reference"
+    for key in ("contract_identity", "task_identity"):
+        value = metadata.get(key)
+        if value is not None and value != "missing" and (
+            not isinstance(value, str) or not re.fullmatch(r"sha256:[a-f0-9]{64}", value)
+        ):
+            return None, None, f"invalid checkpoint {key}"
+    path_identity = metadata.get("path_identity")
+    if path_identity is not None and (
+        not isinstance(path_identity, str)
+        or not re.fullmatch(r"sha256:[a-f0-9]{64}", path_identity)
+    ):
+        return None, None, "invalid checkpoint path identity"
+    evidence = metadata.get("path_evidence")
+    if evidence is not None:
+        if not isinstance(evidence, dict) or any(
+            not isinstance(path, str)
+            or not isinstance(identity, str)
+            or (identity != "missing" and not re.fullmatch(r"sha256:[a-f0-9]{64}", identity))
+            for path, identity in evidence.items()
+        ):
+            return None, None, "invalid checkpoint path evidence"
+        try:
+            evidence = {normalize_relative(path): identity for path, identity in evidence.items()}
+        except CodexiconError:
+            return None, None, "unsafe checkpoint path evidence"
+        if any(protected_local_path(path) for path in evidence):
+            return None, None, "checkpoint path evidence includes a protected path"
+        if path_identity is not None and path_identity != local_path_evidence_identity(evidence):
+            return None, None, "checkpoint path identity does not match its evidence"
     related = metadata.get("related")
     if not isinstance(related, list):
         return None, None, "invalid checkpoint related paths"
@@ -1039,7 +1245,19 @@ def validate_checkpoint(
         return None, None, "unsafe checkpoint related path"
     if len(normalized_related) != len(set(normalized_related)):
         return None, None, "duplicate checkpoint related path"
+    changed = metadata.get("changed", [])
+    if not isinstance(changed, list):
+        return None, None, "invalid checkpoint changed paths"
+    try:
+        normalized_changed = [normalize_relative(str(item)) for item in changed]
+    except CodexiconError:
+        return None, None, "unsafe checkpoint changed path"
+    if len(normalized_changed) != len(set(normalized_changed)):
+        return None, None, "duplicate checkpoint changed path"
     metadata = {**metadata, "related": normalized_related}
+    metadata["changed"] = normalized_changed
+    if evidence is not None:
+        metadata["path_evidence"] = evidence
     return created, metadata, None
 
 
@@ -1062,137 +1280,1219 @@ def compatible_checkpoints(root: Path) -> list[tuple[datetime, Path, dict[str, A
 
 
 SPEC_SECTIONS = {
-    "Requirements": re.compile(r"^\s*-\s+\*\*(R-\d+):\*\*\s+\S"),
-    "Interfaces": re.compile(r"^\s*-\s+\*\*(I-\d+):\*\*\s+\S"),
-    "Acceptance": re.compile(r"^\s*-\s+\*\*(A-\d+):\*\*\s+\S"),
-    "Anti-goals": re.compile(r"^\s*-\s+\*\*(AG-\d+):\*\*\s+\S"),
+    "Requirements": re.compile(r"^\s*-\s+\*\*(R-\d+):\*\*\s*(.*?)\s*$"),
+    "Interfaces": re.compile(r"^\s*-\s+\*\*(I-\d+):\*\*\s*(.*?)\s*$"),
+    "Acceptance": re.compile(r"^\s*-\s+\*\*(A-\d+):\*\*\s*(.*?)\s*$"),
+    "Anti-goals": re.compile(r"^\s*-\s+\*\*(AG-\d+):\*\*\s*(.*?)\s*$"),
 }
-TASK_ROW = re.compile(
-    r"^\|\s*(T-\d+)\s*\|\s*(TODO|ACTIVE|DONE|BLOCKED)\s*\|\s*"
-    r"(R-\d+)\s*\|\s*(I-\d+|None)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$"
+REQUIRED_SPEC_SECTIONS = ("Outcome", *SPEC_SECTIONS)
+SPEC_STATUS_RE = re.compile(r"^\s*\*\*Status:\*\*\s*(.*?)\s*$")
+SPEC_REVISION_RE = re.compile(r"^\s*\*\*Revision:\*\*\s*(.*?)\s*$")
+CONTRACT_REFERENCE_RE = re.compile(r"\b(?:R|I|A|AG)-\d+\b")
+AMENDMENT_DATE_RE = re.compile(r"^\s*-\s+\*\*(\d{4}-\d{2}-\d{2}):\*\*\s+\S")
+PLACEHOLDER_RE = re.compile(
+    r"^(?:\[.*\]|[-_.]{2,}|none\.?|tbd\.?|todo\.?|n/?a\.?|"
+    r"placeholder|to be defined|fill in|replace me)$",
+    re.IGNORECASE,
 )
+TASK_HEADERS = ("id", "state", "requirement", "interface", "scope", "verification")
+TASK_EXTENDED_HEADERS = (
+    *TASK_HEADERS,
+    "Dependencies",
+    "Blocker",
+    "Evidence",
+)
+TASK_STATES = {"TODO", "ACTIVE", "DONE", "BLOCKED"}
+QUEUE_READY = "READY"
+QUEUE_RESUME_ACTIVE = "RESUME_ACTIVE"
+QUEUE_BLOCKED = "BLOCKED"
+QUEUE_COMPLETE = "COMPLETE"
+QUEUE_INVALID = "INVALID"
+QUEUE_EXIT_CODES = {
+    QUEUE_READY: 0,
+    QUEUE_RESUME_ACTIVE: 0,
+    QUEUE_BLOCKED: 3,
+    QUEUE_COMPLETE: 0,
+    QUEUE_INVALID: 2,
+}
 
 
-def read_contract(root: Path) -> tuple[str, set[str], set[str], set[str], set[str]]:
+@dataclass(frozen=True)
+class QueueSelection:
+    outcome: str
+    task: dict[str, Any] | None = None
+    reason: str = ""
+    blockers: dict[str, list[str]] | None = None
+
+
+@dataclass(frozen=True)
+class ContractDetails:
+    """Validated contract data, including the identity used for drift checks."""
+
+    text: str
+    revision: str
+    digest: str
+    requirements: set[str]
+    interfaces: set[str]
+    acceptance: set[str]
+    anti_goals: set[str]
+
+    @property
+    def identity(self) -> str:
+        return f"sha256:{self.digest}"
+
+
+EVIDENCE_SCHEMA_VERSION = 1
+EVIDENCE_PASS = "passed"
+REVIEW_DISPOSITIONS = {"accepted", "fixed", "rejected", "not_applicable"}
+
+
+def _digest_identity(raw: Any, label: str) -> str:
+    if not isinstance(raw, str):
+        raise CodexiconError(f"task evidence requires a {label}")
+    value = raw.strip().removeprefix("sha256:")
+    if not re.fullmatch(r"[a-f0-9]{64}", value):
+        raise CodexiconError(f"task evidence has an invalid {label}")
+    return f"sha256:{value}"
+
+
+def _scope_paths(scope: str) -> list[str]:
+    code_spans = re.findall(r"`([^`]+)`", scope)
+    candidates = code_spans or [part.strip() for part in scope.split(",")]
+    paths: list[str] = []
+    for candidate in candidates:
+        candidate = candidate.strip()
+        if not candidate:
+            continue
+        try:
+            normalized = normalize_relative(candidate)
+        except CodexiconError:
+            if code_spans:
+                raise
+            # A prose scope has no safely enumerable path; its literal still
+            # participates in the digest below, so it cannot be confused with
+            # a different scope description.
+            continue
+        if normalized not in paths:
+            paths.append(normalized)
+    return paths
+
+
+def relevant_source_digest(root: Path, row: dict[str, Any]) -> str:
+    """Return a deterministic digest of the files named by a task scope.
+
+    This is an identity check, not a security boundary. Verification commands
+    are recorded as data and are never executed by the task manager.
+    """
+
+    root = root.resolve()
+    entries: list[dict[str, str]] = []
+    paths = _scope_paths(str(row["scope"]))
+    if not paths:
+        entries.append({"scope": str(row["scope"]).strip()})
+    for relative in paths:
+        path = checked_path(root, relative)
+        if not path.exists():
+            entries.append({"path": relative, "sha256": "missing"})
+            continue
+        if path.is_file():
+            entries.append({"path": relative, "sha256": sha256_file(path)})
+            continue
+        if path.is_dir():
+            found = False
+            for child in sorted(path.rglob("*"), key=lambda item: item.as_posix()):
+                child_relative = child.relative_to(root).as_posix()
+                checked_path(root, child_relative)
+                if child.is_dir():
+                    continue
+                if not child.is_file():
+                    raise CodexiconError(f"task scope contains unsupported path: {child_relative}")
+                found = True
+                entries.append({"path": child_relative, "sha256": sha256_file(child)})
+            if not found:
+                entries.append({"path": relative, "sha256": "empty-directory"})
+            continue
+        raise CodexiconError(f"task scope contains unsupported path: {relative}")
+    material = json.dumps(
+        {"task_id": row["id"], "scope": str(row["scope"]), "entries": entries},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return f"sha256:{sha256_bytes(material)}"
+
+
+def _command_identity(command: Any) -> tuple[str, bool]:
+    if isinstance(command, list):
+        if not command or any(not isinstance(part, str) or not part.strip() for part in command):
+            raise CodexiconError("task evidence commands must be non-empty string argument lists")
+        return " ".join(part.strip() for part in command), True
+    if isinstance(command, str) and command.strip():
+        return " ".join(command.split()), False
+    raise CodexiconError("task evidence requires a check command")
+
+
+def _declared_command_identity(value: str) -> str:
+    spans = re.findall(r"`([^`]+)`", value)
+    command = spans[0] if spans else value
+    return " ".join(command.split())
+
+
+def _command_tokens(value: str) -> tuple[str, ...]:
+    try:
+        return tuple(shlex.split(value, posix=True))
+    except ValueError:
+        return tuple(value.split())
+
+
+def _evidence_value(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        value = raw
+    elif isinstance(raw, str) and raw.strip():
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise CodexiconError("task evidence must be a JSON object") from exc
+    else:
+        raise CodexiconError("task evidence is required and must be a JSON object")
+    if not isinstance(value, dict):
+        raise CodexiconError("task evidence must be a JSON object")
+    return value
+
+
+def validate_task_evidence(
+    root: Path,
+    row: dict[str, Any],
+    raw: Any,
+    *,
+    contract: ContractDetails | None = None,
+) -> dict[str, Any]:
+    """Validate and normalize one task-local completion receipt."""
+
+    value = _evidence_value(raw)
+    version = value.get("schema_version", value.get("version", EVIDENCE_SCHEMA_VERSION))
+    if version != EVIDENCE_SCHEMA_VERSION:
+        raise CodexiconError("task evidence has an unsupported schema version")
+    if value.get("task_id") != row["id"]:
+        raise CodexiconError(f"task evidence belongs to the wrong task: {row['id']}")
+
+    acceptance = value.get("acceptance_ids", value.get("acceptance"))
+    if not isinstance(acceptance, list) or not acceptance or any(
+        not isinstance(item, str) or not re.fullmatch(r"A-\d+", item) for item in acceptance
+    ):
+        raise CodexiconError(f"task evidence for {row['id']} requires acceptance_ids")
+    contract = contract or read_contract_details(root.resolve())
+    unknown_acceptance = sorted(set(acceptance) - contract.acceptance)
+    if unknown_acceptance:
+        raise CodexiconError(
+            f"task evidence for {row['id']} references unknown acceptance ID(s): "
+            f"{', '.join(unknown_acceptance)}"
+        )
+
+    result = value.get("result")
+    if result != EVIDENCE_PASS:
+        raise CodexiconError(f"task evidence for {row['id']} is not successful")
+
+    timestamp = value.get("timestamp")
+    if not isinstance(timestamp, str) or not timestamp.strip():
+        raise CodexiconError(f"task evidence for {row['id']} requires a timestamp")
+    try:
+        parsed_timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise CodexiconError(f"task evidence for {row['id']} has an invalid timestamp") from exc
+    if parsed_timestamp.tzinfo is None:
+        raise CodexiconError(f"task evidence for {row['id']} timestamp requires a timezone")
+    if parsed_timestamp > datetime.now(timezone.utc):
+        raise CodexiconError(f"task evidence for {row['id']} has a future timestamp")
+
+    source_digest = _digest_identity(
+        value.get("source_digest", value.get("relevant_source_digest")),
+        "source digest",
+    )
+    current_source_digest = relevant_source_digest(root, row)
+    if source_digest != current_source_digest:
+        raise CodexiconError(f"task evidence for {row['id']} is stale: source digest changed")
+    contract_digest = _digest_identity(value.get("contract_digest"), "contract digest")
+    if contract_digest != contract.identity:
+        raise CodexiconError(f"task evidence for {row['id']} is stale: contract digest changed")
+
+    checks = value.get("checks")
+    if checks is None and isinstance(value.get("check"), dict):
+        checks = [value["check"]]
+    if checks is None and "command" in value:
+        checks = [
+            {
+                "identity": value.get("check_identity", value.get("check_id")),
+                "command": value.get("command"),
+                "result": value.get("check_result", result),
+                "reviewed": value.get("reviewed"),
+            }
+        ]
+    if not isinstance(checks, list) or not checks:
+        raise CodexiconError(f"task evidence for {row['id']} requires checks")
+    normalized_checks: list[dict[str, Any]] = []
+    declared_command = _declared_command_identity(str(row["verification"]))
+    declared_tokens = _command_tokens(declared_command)
+    for check in checks:
+        if not isinstance(check, dict):
+            raise CodexiconError(f"task evidence for {row['id']} contains a malformed check")
+        identity = check.get("identity", check.get("id"))
+        if not isinstance(identity, str) or not identity.strip():
+            raise CodexiconError(f"task evidence for {row['id']} checks require an identity")
+        command, structured = _command_identity(check.get("command"))
+        if not structured and check.get("reviewed") is not True:
+            raise CodexiconError(
+                f"task evidence check {identity} must use an argument list or reviewed command text"
+            )
+        check_result = check.get("result", result)
+        if check_result != EVIDENCE_PASS:
+            raise CodexiconError(f"task evidence check {identity} is not successful")
+        if identity not in CANONICAL_CHECKS and _command_tokens(command) != declared_tokens:
+            raise CodexiconError(
+                f"task evidence check {identity} does not match the task verification command"
+            )
+        normalized_checks.append(
+            {
+                "identity": identity.strip(),
+                "command": check["command"] if structured else command,
+                "result": EVIDENCE_PASS,
+            }
+        )
+
+    review_findings = value.get("review_findings", value.get("review", []))
+    if not isinstance(review_findings, list):
+        raise CodexiconError("task evidence review_findings must be a list")
+    normalized_reviews: list[dict[str, str]] = []
+    for finding in review_findings:
+        if not isinstance(finding, dict):
+            raise CodexiconError("task evidence review findings must be objects")
+        finding_id = finding.get("id", finding.get("finding"))
+        disposition = finding.get("disposition")
+        if not isinstance(finding_id, str) or not finding_id.strip() or disposition not in REVIEW_DISPOSITIONS:
+            raise CodexiconError(
+                "task evidence review findings require an id and a recognized disposition"
+            )
+        normalized_reviews.append({"id": finding_id.strip(), "disposition": disposition})
+
+    normalized: dict[str, Any] = {
+        "schema_version": EVIDENCE_SCHEMA_VERSION,
+        "task_id": row["id"],
+        "acceptance_ids": list(dict.fromkeys(acceptance)),
+        "checks": normalized_checks,
+        "result": EVIDENCE_PASS,
+        "timestamp": timestamp,
+        "source_digest": source_digest,
+        "contract_digest": contract_digest,
+    }
+    if normalized_reviews:
+        normalized["review_findings"] = normalized_reviews
+    return normalized
+
+
+def _completion_evidence_issues(
+    root: Path, rows: Sequence[dict[str, Any]], contract: ContractDetails
+) -> tuple[list[str], set[str], set[str]]:
+    issues: list[str] = []
+    covered: set[str] = set()
+    final_checks: set[str] = set()
+    for row in rows:
+        if row["state"] != "DONE":
+            continue
+        try:
+            evidence = validate_task_evidence(root, row, row["evidence"], contract=contract)
+            declared_tokens = _command_tokens(_declared_command_identity(str(row["verification"])))
+            if not any(
+                check["identity"] not in CANONICAL_CHECKS
+                and _command_tokens(_command_identity(check["command"])[0]) == declared_tokens
+                for check in evidence["checks"]
+            ):
+                raise CodexiconError(
+                    f"task evidence for {row['id']} requires a successful check matching its declared verification"
+                )
+        except CodexiconError as exc:
+            issues.append(str(exc))
+            continue
+        covered.update(evidence["acceptance_ids"])
+        final_checks.update(
+            check["identity"] for check in evidence["checks"] if check["identity"] in CANONICAL_CHECKS
+        )
+    issues.extend(
+        f"missing acceptance evidence: {identifier}"
+        for identifier in sorted(contract.acceptance - covered)
+    )
+    issues.extend(
+        f"missing final configured check evidence: {name}"
+        for name in CANONICAL_CHECKS
+        if name not in final_checks
+    )
+    return issues, covered, final_checks
+
+
+def _task_evidence_for_done(
+    root: Path, row: dict[str, Any], raw: Any, contract: ContractDetails
+) -> str:
+    """Validate a DONE receipt and return its stable JSON representation."""
+
+    normalized = validate_task_evidence(root, row, raw, contract=contract)
+    declared_tokens = _command_tokens(_declared_command_identity(str(row["verification"])))
+    if not any(
+        check["identity"] not in CANONICAL_CHECKS
+        and _command_tokens(_command_identity(check["command"])[0]) == declared_tokens
+        for check in normalized["checks"]
+    ):
+        raise CodexiconError(
+            f"task evidence for {row['id']} requires a successful check matching its declared verification"
+        )
+    return json.dumps(normalized, sort_keys=True, separators=(",", ":"))
+
+
+def _fence_marker(line: str) -> str | None:
+    match = re.match(r"^\s*(`{3,}|~{3,})", line)
+    return match.group(1)[0] if match else None
+
+
+def _outside_fence_lines(
+    lines: Sequence[str], *, label: str = "TASKS.md"
+) -> list[tuple[int, str]]:
+    outside: list[tuple[int, str]] = []
+    fence: str | None = None
+    fence_line = 0
+    for line_number, line in enumerate(lines, start=1):
+        marker = _fence_marker(line)
+        if marker:
+            if fence is None:
+                fence = marker
+                fence_line = line_number
+            elif marker == fence:
+                fence = None
+            continue
+        if fence is None:
+            outside.append((line_number, line))
+    if fence is not None:
+        raise CodexiconError(f"{label} line {fence_line}: unterminated fenced example")
+    return outside
+
+
+def _line_error(line_number: int, message: str, *, label: str = "TASKS.md") -> CodexiconError:
+    return CodexiconError(f"{label} line {line_number}: {message}")
+
+
+def _table_cells(
+    line_number: int, line: str, *, kind: str, expected_columns: int
+) -> list[str]:
+    stripped = line.strip()
+    if r"\|" in stripped:
+        raise _line_error(line_number, f"unsupported escaped pipe in {kind}")
+    if not stripped.startswith("|") or not stripped.endswith("|"):
+        raise _line_error(
+            line_number,
+            f"malformed {kind}; expected a leading and trailing pipe",
+        )
+    cells = [cell.strip() for cell in stripped[1:-1].split("|")]
+    if len(cells) != expected_columns:
+        detail = "extra columns or an unescaped pipe" if len(cells) > expected_columns else "missing columns"
+        raise _line_error(
+            line_number,
+            f"malformed {kind}; expected {expected_columns} columns, found {len(cells)} ({detail})",
+        )
+    return cells
+
+
+def _looks_like_task_row(line: str) -> bool:
+    stripped = line.strip()
+    if stripped.startswith("|"):
+        stripped = stripped[1:].lstrip()
+    return stripped.startswith("T-")
+
+
+def _declared_column_count(line: str) -> int:
+    stripped = line.strip()
+    if stripped.startswith("|") and stripped.endswith("|"):
+        return len(stripped[1:-1].split("|"))
+    return len(TASK_HEADERS)
+
+
+def _parse_task_row(
+    line_number: int,
+    line: str,
+    requirements: set[str],
+    interfaces: set[str],
+    *,
+    extended: bool = False,
+) -> dict[str, Any]:
+    columns = len(TASK_EXTENDED_HEADERS) if extended else len(TASK_HEADERS)
+    cells = _table_cells(line_number, line, kind="task row", expected_columns=columns)
+    task_id, state, requirement, interface, scope, verification = cells[:6]
+    if not re.fullmatch(r"T-\d+", task_id):
+        raise _line_error(line_number, f"invalid task ID: {task_id or '<empty>'}")
+    if state not in TASK_STATES:
+        raise _line_error(line_number, f"unsupported task state for {task_id}: {state or '<empty>'}")
+
+    requirement_refs = re.findall(r"\bR-\d+\b", requirement)
+    if len(requirement_refs) > 1:
+        raise _line_error(
+            line_number,
+            f"{task_id} has multiple requirement references; six-column migration rows support one",
+        )
+    if not re.fullmatch(r"R-\d+", requirement):
+        raise _line_error(
+            line_number,
+            f"{task_id} requires exactly one requirement reference (R-*)",
+        )
+    if requirement not in requirements:
+        raise _line_error(
+            line_number,
+            f"{task_id} references missing requirement: {requirement}",
+        )
+
+    interface_refs = re.findall(r"\bI-\d+\b", interface)
+    if len(interface_refs) > 1:
+        raise _line_error(
+            line_number,
+            f"{task_id} has multiple interface references; six-column migration rows support one",
+        )
+    if interface != "None" and not re.fullmatch(r"I-\d+", interface):
+        raise _line_error(
+            line_number,
+            f"{task_id} requires one interface reference (I-*) or None",
+        )
+    if interface != "None" and interface not in interfaces:
+        raise _line_error(
+            line_number,
+            f"{task_id} references missing interface: {interface}",
+        )
+    if not scope or scope == "-" or not verification or verification == "-":
+        raise _line_error(line_number, f"{task_id} requires scope and verification")
+    dependencies: list[str] = []
+    blocker = ""
+    evidence = ""
+    if extended:
+        dependencies = _parse_task_dependencies(line_number, task_id, cells[6])
+        blocker = "" if cells[7] in {"", "-", "None"} else cells[7]
+        evidence = "" if cells[8] in {"", "-", "None"} else cells[8]
+        if state == "BLOCKED" and not blocker:
+            raise _line_error(line_number, f"{task_id} BLOCKED rows require a blocker reason")
+    return {
+        "id": task_id,
+        "state": state,
+        "requirement": requirement,
+        "interface": interface,
+        "scope": scope,
+        "verification": verification,
+        "dependencies": dependencies,
+        "blocker": blocker,
+        "evidence": evidence,
+        "_line_number": line_number,
+        "_extended": extended,
+    }
+
+
+def _parse_task_dependencies(line_number: int, task_id: str, raw: str) -> list[str]:
+    if raw.strip() in {"", "-", "None"}:
+        return []
+    dependencies = [value.strip() for value in raw.split(",")]
+    if any(not re.fullmatch(r"T-\d+", dependency) for dependency in dependencies):
+        raise _line_error(
+            line_number,
+            f"{task_id} dependencies must be comma-separated T-* IDs or None",
+        )
+    if len(set(dependencies)) != len(dependencies):
+        raise _line_error(line_number, f"{task_id} has duplicate dependency references")
+    return dependencies
+
+
+def _is_placeholder_definition(definition: str) -> bool:
+    return not definition.strip() or bool(PLACEHOLDER_RE.fullmatch(definition.strip()))
+
+
+def _contract_sections(
+    outside: Sequence[tuple[int, str]],
+) -> tuple[dict[str, tuple[int, list[tuple[int, str]]]], list[tuple[int, str]]]:
+    sections: dict[str, tuple[int, list[tuple[int, str]]]] = {}
+    current_name: str | None = None
+    current_body: list[tuple[int, str]] = []
+    headings: list[tuple[int, str]] = []
+
+    def finish() -> None:
+        if current_name is not None:
+            sections[current_name] = (sections[current_name][0], current_body.copy())
+
+    for line_number, line in outside:
+        match = re.match(r"^\s*##\s+([^#].*?)\s*#*\s*$", line)
+        if match:
+            finish()
+            heading = match.group(1).strip()
+            headings.append((line_number, heading))
+            current_name = heading
+            if heading in sections:
+                raise _line_error(line_number, f"duplicate SPEC.md section: {heading}")
+            sections[heading] = (line_number, [])
+            current_body = sections[heading][1]
+            continue
+        if current_name is not None:
+            current_body.append((line_number, line))
+    finish()
+    return sections, headings
+
+
+def _validate_amendments(
+    section: tuple[int, list[tuple[int, str]]] | None,
+) -> str:
+    if section is None:
+        return "0"
+    _, body = section
+    entries = [(line_number, line.strip()) for line_number, line in body if line.strip()]
+    if not entries:
+        raise CodexiconError("SPEC.md Amendments section must not be empty")
+    if any(line.casefold() in {"- none.", "- none"} for _, line in entries):
+        if len(entries) != 1:
+            raise CodexiconError("SPEC.md Amendments: None cannot be combined with amendments")
+        return "0"
+    dates: list[tuple[int, str]] = []
+    for line_number, line in entries:
+        match = AMENDMENT_DATE_RE.match(line)
+        if not match:
+            raise _line_error(
+                line_number,
+                "amendments must be dated `- **YYYY-MM-DD:** description` entries",
+                label="SPEC.md",
+            )
+        dates.append((line_number, match.group(1)))
+    date_values = [date for _, date in dates]
+    if date_values != sorted(date_values):
+        raise CodexiconError("SPEC.md Amendments are append-only and must be chronological")
+    return date_values[-1]
+
+
+def read_contract_details(root: Path) -> ContractDetails:
     path = checked_path(root, "SPEC.md")
     if not path.is_file():
         raise CodexiconError("SPEC.md is missing; run $discover before building")
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        text = path.read_text(encoding="utf-8")
+        lines = text.splitlines()
     except (OSError, UnicodeDecodeError) as exc:
         raise CodexiconError(f"SPEC.md is unreadable: {exc}") from exc
-    if not any(line.strip() == "**Status:** ACTIVE" for line in lines):
-        raise CodexiconError("SPEC.md must declare **Status:** ACTIVE")
+    outside = _outside_fence_lines(lines, label="SPEC.md")
+    sections, _ = _contract_sections(outside)
+    missing_sections = [section for section in REQUIRED_SPEC_SECTIONS if section not in sections]
+    if missing_sections:
+        raise CodexiconError(
+            f"SPEC.md is missing required section(s): {', '.join(missing_sections)}"
+        )
+
+    statuses = [
+        (line_number, match.group(1).strip())
+        for line_number, line in outside
+        if (match := SPEC_STATUS_RE.match(line))
+    ]
+    if len(statuses) != 1 or statuses[0][1] != "ACTIVE":
+        rendered = ", ".join(value or "<empty>" for _, value in statuses) or "none"
+        raise CodexiconError(
+            "SPEC.md must declare exactly one unambiguous **Status:** ACTIVE "
+            f"(found: {rendered})"
+        )
+
+    revisions = [
+        (line_number, match.group(1).strip())
+        for line_number, line in outside
+        if (match := SPEC_REVISION_RE.match(line))
+    ]
+    if len(revisions) > 1:
+        raise CodexiconError("SPEC.md must declare at most one **Revision:**")
+    amendment_revision = _validate_amendments(sections.get("Amendments"))
+    revision = revisions[0][1] if revisions else amendment_revision
+    if _is_placeholder_definition(revision) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]*", revision):
+        raise CodexiconError("SPEC.md has an invalid or placeholder revision")
+
+    outcome_line, outcome_body = sections["Outcome"]
+    outcome = " ".join(line.strip() for _, line in outcome_body if line.strip())
+    if _is_placeholder_definition(outcome):
+        raise _line_error(
+            outcome_line,
+            "Outcome must contain a non-placeholder definition",
+            label="SPEC.md",
+        )
+
     found: dict[str, set[str]] = {section: set() for section in SPEC_SECTIONS}
-    current = ""
-    for line in lines:
-        heading = line.removeprefix("## ").strip()
-        if heading in SPEC_SECTIONS:
-            current = heading
-        elif current:
-            match = SPEC_SECTIONS[current].match(line)
-            if match:
-                found[current].add(match.group(1))
-    missing = [section for section, values in found.items() if not values]
-    if missing:
-        raise CodexiconError(f"SPEC.md has no entries in: {', '.join(missing)}")
-    return (
-        path.read_text(encoding="utf-8"),
-        found["Requirements"],
-        found["Interfaces"],
-        found["Acceptance"],
-        found["Anti-goals"],
+    definitions: dict[str, tuple[str, str, int]] = {}
+    for section, pattern in SPEC_SECTIONS.items():
+        _, body = sections[section]
+        for line_number, line in body:
+            match = pattern.match(line)
+            if not match:
+                if CONTRACT_REFERENCE_RE.search(line) and line.lstrip().startswith("-"):
+                    raise _line_error(line_number, f"malformed {section} entry", label="SPEC.md")
+                continue
+            identifier, definition = match.groups()
+            if identifier in definitions:
+                prior_section, _, prior_line = definitions[identifier]
+                raise _line_error(
+                    line_number,
+                    f"duplicate SPEC.md ID: {identifier} (first declared in {prior_section} on line {prior_line})",
+                    label="SPEC.md",
+                )
+            if _is_placeholder_definition(definition):
+                raise _line_error(
+                    line_number,
+                    f"{identifier} has a missing or placeholder definition",
+                    label="SPEC.md",
+                )
+            found[section].add(identifier)
+            definitions[identifier] = (section, definition, line_number)
+
+    missing_entries = [section for section, values in found.items() if not values]
+    if missing_entries:
+        raise CodexiconError(f"SPEC.md has no entries in: {', '.join(missing_entries)}")
+
+    known_ids = set(definitions)
+    for identifier, (section, definition, line_number) in definitions.items():
+        references = set(CONTRACT_REFERENCE_RE.findall(definition)) - {identifier}
+        unknown = sorted(references - known_ids)
+        if unknown:
+            raise _line_error(
+                line_number,
+                f"{identifier} references unknown contract ID(s): {', '.join(unknown)}",
+                label="SPEC.md",
+            )
+
+    # Hash the actual Markdown contract, normalized only for line endings and
+    # excluding fenced examples so examples cannot silently change the contract.
+    canonical = "\n".join(line for _, line in outside)
+    digest = sha256_bytes(canonical.encode("utf-8"))
+    return ContractDetails(
+        text=text,
+        revision=revision,
+        digest=digest,
+        requirements=found["Requirements"],
+        interfaces=found["Interfaces"],
+        acceptance=found["Acceptance"],
+        anti_goals=found["Anti-goals"],
     )
+
+
+def read_contract(root: Path) -> tuple[str, set[str], set[str], set[str], set[str]]:
+    """Return the legacy contract tuple; use read_contract_details for identity."""
+
+    contract = read_contract_details(root)
+    return (
+        contract.text,
+        contract.requirements,
+        contract.interfaces,
+        contract.acceptance,
+        contract.anti_goals,
+    )
+
+
+def contract_identity(root: Path) -> dict[str, str]:
+    contract = read_contract_details(root.resolve())
+    return {"revision": contract.revision, "digest": contract.digest, "identity": contract.identity}
 
 
 def contract_check(root: Path) -> int:
-    _, requirements, interfaces, acceptance, anti_goals = read_contract(root.resolve())
+    contract = read_contract_details(root.resolve())
     print(
         "[codexicon] SPEC.md valid: "
-        f"{len(requirements)} requirement(s), {len(interfaces)} interface(s), "
-        f"{len(acceptance)} acceptance condition(s), {len(anti_goals)} anti-goal(s)."
+        f"{len(contract.requirements)} requirement(s), {len(contract.interfaces)} interface(s), "
+        f"{len(contract.acceptance)} acceptance condition(s), {len(contract.anti_goals)} anti-goal(s); "
+        f"revision={contract.revision}, digest={contract.identity}."
     )
     return 0
 
 
-def task_rows(root: Path) -> tuple[Path, list[dict[str, str]], set[str], set[str]]:
+def _validate_task_contract_binding(
+    outside: Sequence[tuple[int, str]], contract: ContractDetails
+) -> None:
+    declarations: dict[str, list[tuple[int, str]]] = {"revision": [], "digest": []}
+    for line_number, line in outside:
+        revision_match = re.match(r"^\s*\*\*Contract revision:\*\*\s*(.*?)\s*$", line)
+        digest_match = re.match(r"^\s*\*\*Contract digest:\*\*\s*(.*?)\s*$", line)
+        if revision_match:
+            declarations["revision"].append((line_number, revision_match.group(1).strip()))
+        if digest_match:
+            declarations["digest"].append((line_number, digest_match.group(1).strip()))
+    if not any(declarations.values()):
+        return
+    if any(len(values) != 1 for values in declarations.values()):
+        raise CodexiconError("TASKS.md contract binding requires exactly one revision and digest")
+    expected_revision = declarations["revision"][0][1]
+    expected_digest = declarations["digest"][0][1].removeprefix("sha256:")
+    if not re.fullmatch(r"[a-f0-9]{64}", expected_digest):
+        raise CodexiconError("TASKS.md contract binding has an invalid digest")
+    if expected_revision != contract.revision or expected_digest != contract.digest:
+        raise CodexiconError(
+            "TASKS.md contract drift: declared revision/digest does not match SPEC.md; "
+            "reconcile the task baseline after an authorized append-only amendment"
+        )
+
+
+def task_rows(root: Path) -> tuple[Path, list[dict[str, Any]], set[str], set[str]]:
     root = root.resolve()
-    _, requirements, interfaces, _, _ = read_contract(root)
+    contract = read_contract_details(root)
+    requirements, interfaces = contract.requirements, contract.interfaces
     path = checked_path(root, "TASKS.md")
     if not path.is_file():
         raise CodexiconError("TASKS.md is missing; create a task register for multi-task work")
-    rows: list[dict[str, str]] = []
-    seen: set[str] = set()
-    for line in path.read_text(encoding="utf-8").splitlines():
-        match = TASK_ROW.match(line)
-        if not match:
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as exc:
+        raise CodexiconError(f"TASKS.md is unreadable: {exc}") from exc
+
+    outside = _outside_fence_lines(lines)
+    _validate_task_contract_binding(outside, contract)
+    header_indexes: list[int] = []
+    extended = False
+    for line_number, line in outside:
+        if not re.match(r"^\s*\|?\s*ID\b", line, re.IGNORECASE):
             continue
-        task_id, state, requirement, interface, scope, verification = match.groups()
-        if task_id in seen:
-            raise CodexiconError(f"TASKS.md contains duplicate task ID: {task_id}")
-        if requirement not in requirements:
-            raise CodexiconError(f"{task_id} references missing requirement: {requirement}")
-        if interface != "None" and interface not in interfaces:
-            raise CodexiconError(f"{task_id} references missing interface: {interface}")
-        if scope.strip() in {"", "-"} or verification.strip() in {"", "-"}:
-            raise CodexiconError(f"{task_id} requires scope and verification")
-        seen.add(task_id)
-        rows.append(
-            {
-                "id": task_id,
-                "state": state,
-                "requirement": requirement,
-                "interface": interface,
-                "scope": scope.strip(),
-                "verification": verification.strip(),
-            }
+        column_count = _declared_column_count(line)
+        cells = _table_cells(
+            line_number,
+            line,
+            kind="task table header",
+            expected_columns=column_count if column_count in {6, 9} else 6,
         )
+        normalized_header = tuple(cell.casefold() for cell in cells)
+        if normalized_header == TASK_HEADERS:
+            header_indexes.append(line_number - 1)
+            extended = False
+        elif normalized_header == tuple(value.casefold() for value in TASK_EXTENDED_HEADERS):
+            header_indexes.append(line_number - 1)
+            extended = True
+        elif cells and cells[0].casefold() == "id" and len(cells) > 1 and cells[1].casefold() == "state":
+            raise _line_error(
+                line_number,
+                "malformed task table header; expected the six-column migration format or "
+                "the nine-column format with Dependencies, Blocker, Evidence",
+            )
+    if not header_indexes:
+        for line_number, line in outside:
+            if _looks_like_task_row(line):
+                _parse_task_row(line_number, line, requirements, interfaces)
+        raise CodexiconError("TASKS.md has no declared six-column task table")
+    if len(header_indexes) > 1:
+        raise _line_error(header_indexes[1] + 1, "duplicate task table declaration")
+
+    header_index = header_indexes[0]
+    separator_index = header_index + 1
+    if separator_index >= len(lines):
+        raise _line_error(header_index + 1, "task table is missing its separator row")
+    separator_cells = _table_cells(
+        separator_index + 1,
+        lines[separator_index],
+        kind="task table separator",
+        expected_columns=9 if extended else 6,
+    )
+    if not all(re.fullmatch(r":?-{3,}:?", cell) for cell in separator_cells):
+        raise _line_error(
+            separator_index + 1,
+            f"malformed task table separator; each of the {'9' if extended else '6'} columns needs a markdown separator",
+        )
+
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    seen_lines: dict[str, int] = {}
+    parsed_line_indexes: set[int] = {header_index, separator_index}
+    table_line_index = separator_index + 1
+    while table_line_index < len(lines):
+        line = lines[table_line_index]
+        if not line.strip() or _fence_marker(line):
+            break
+        if not line.strip().startswith("|") and not _looks_like_task_row(line):
+            break
+        line_number = table_line_index + 1
+        row = _parse_task_row(
+            line_number, line, requirements, interfaces, extended=extended
+        )
+        task_id = row["id"]
+        if task_id in seen:
+            raise _line_error(
+                line_number,
+                f"duplicate task ID: {task_id} (first declared on line {seen_lines[task_id]})",
+            )
+        seen.add(task_id)
+        seen_lines[task_id] = line_number
+        rows.append(row)
+        parsed_line_indexes.add(table_line_index)
+        table_line_index += 1
+
+    for line_number, line in outside:
+        line_index = line_number - 1
+        if line_index in parsed_line_indexes or not _looks_like_task_row(line):
+            continue
+        row = _parse_task_row(
+            line_number, line, requirements, interfaces, extended=extended
+        )
+        task_id = row["id"]
+        if task_id in seen:
+            raise _line_error(
+                line_number,
+                f"duplicate task ID: {task_id} (first declared on line {seen_lines[task_id]})",
+            )
+        raise _line_error(line_number, "task-like row is outside the declared task table")
+
     if not rows:
         raise CodexiconError("TASKS.md contains no task rows")
+    _validate_task_graph(rows)
     return path, rows, requirements, interfaces
 
 
-def tasks_next(root: Path) -> int:
-    _, rows, _, _ = task_rows(root)
+def _validate_task_graph(rows: Sequence[dict[str, Any]]) -> None:
+    by_id = {row["id"]: row for row in rows}
     for row in rows:
-        if row["state"] == "TODO":
-            print(
-                f"{row['id']} | {row['requirement']} | {row['interface']} | "
-                f"{row['scope']} | {row['verification']}"
+        unknown = [dependency for dependency in row["dependencies"] if dependency not in by_id]
+        if unknown:
+            raise _line_error(
+                row["_line_number"],
+                f"{row['id']} references unknown dependency: {', '.join(unknown)}",
             )
-            return 0
-    print("[codexicon] TASKS.md has no TODO tasks.")
-    return 0
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(task_id: str, trail: list[str]) -> None:
+        if task_id in visiting:
+            cycle = " -> ".join([*trail, task_id])
+            raise CodexiconError(f"task dependency cycle detected: {cycle}")
+        if task_id in visited:
+            return
+        visiting.add(task_id)
+        for dependency in by_id[task_id]["dependencies"]:
+            visit(dependency, [*trail, task_id])
+        visiting.remove(task_id)
+        visited.add(task_id)
+
+    for task_id in by_id:
+        visit(task_id, [])
 
 
-def tasks_set_state(root: Path, task_id: str, state: str) -> int:
-    path, rows, _, _ = task_rows(root)
+def _dependency_blockers(
+    task: dict[str, Any], by_id: dict[str, dict[str, Any]], memo: dict[str, list[str]]
+) -> list[str]:
+    if task["id"] in memo:
+        return memo[task["id"]]
+    blockers: list[str] = []
+    for dependency_id in task["dependencies"]:
+        dependency = by_id[dependency_id]
+        if dependency["state"] == "DONE":
+            continue
+        if dependency["state"] == "BLOCKED":
+            detail = dependency["blocker"] or "blocked"
+            blockers.append(f"{dependency_id}: {detail}")
+        elif dependency["state"] == "TODO":
+            blockers.extend(_dependency_blockers(dependency, by_id, memo) or [f"{dependency_id}: not complete"])
+        else:
+            blockers.append(f"{dependency_id}: ACTIVE")
+    memo[task["id"]] = list(dict.fromkeys(blockers))
+    return memo[task["id"]]
+
+
+def select_runnable_task(rows: Sequence[dict[str, Any]]) -> QueueSelection:
+    """Select the resumable or first runnable task from an already validated register."""
+
+    active = [row for row in rows if row["state"] == "ACTIVE"]
+    if len(active) > 1:
+        return QueueSelection(
+            QUEUE_INVALID,
+            reason="multiple ACTIVE tasks violate the single implementation owner rule",
+        )
+    if active:
+        return QueueSelection(QUEUE_RESUME_ACTIVE, active[0])
+
+    by_id = {row["id"]: row for row in rows}
+    memo: dict[str, list[str]] = {}
+    dependency_blockers = {
+        row["id"]: _dependency_blockers(row, by_id, memo)
+        for row in rows
+        if row["state"] == "TODO"
+    }
+    for row in rows:
+        if row["state"] == "TODO" and not dependency_blockers[row["id"]]:
+            return QueueSelection(QUEUE_READY, row, blockers=dependency_blockers)
+
+    if all(row["state"] == "DONE" for row in rows):
+        return QueueSelection(QUEUE_COMPLETE, blockers=dependency_blockers)
+    blocked = {
+        row["id"]: ([row["blocker"]] if row["state"] == "BLOCKED" and row["blocker"] else dependency_blockers.get(row["id"], []))
+        for row in rows
+        if row["state"] in {"TODO", "BLOCKED"}
+    }
+    return QueueSelection(
+        QUEUE_BLOCKED,
+        reason="no runnable task; all remaining work is blocked",
+        blockers=blocked,
+    )
+
+
+@contextlib.contextmanager
+def _task_register_lock(path: Path):
+    """Serialize manager writers without depending on Git or a service."""
+
+    lock_path = path.with_name(f".{path.name}.codexicon-lock")
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError as exc:
+        raise CodexiconError("TASKS.md update conflict: another writer owns the register lock") from exc
+    try:
+        os.write(fd, f"pid={os.getpid()}\n".encode("ascii"))
+        yield
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            lock_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _public_task(row: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in row.items() if not key.startswith("_")}
+
+
+def _queue_payload(selection: QueueSelection) -> dict[str, Any]:
+    return {
+        "outcome": selection.outcome,
+        "task": _public_task(selection.task) if selection.task else None,
+        "reason": selection.reason,
+        "blockers": selection.blockers or {},
+    }
+
+
+def tasks_next(root: Path, *, json_output: bool = False) -> int:
+    root = root.resolve()
+    _, rows, _, _ = task_rows(root)
+    contract = read_contract_details(root)
+    selection = select_runnable_task(rows)
+    if selection.outcome == QUEUE_INVALID:
+        raise CodexiconError(selection.reason)
+    completion_issues: list[str] = []
+    if selection.outcome == QUEUE_COMPLETE:
+        completion_issues, _, _ = _completion_evidence_issues(root, rows, contract)
+        if completion_issues:
+            selection = QueueSelection(
+                QUEUE_BLOCKED,
+                reason="completion evidence is incomplete or stale",
+                blockers={"completion": completion_issues},
+            )
+    if json_output:
+        print(json.dumps(_queue_payload(selection), sort_keys=True))
+    elif selection.task:
+        row = selection.task
+        print(
+            f"[{selection.outcome}] {row['id']} | {row['requirement']} | {row['interface']} | "
+            f"{row['scope']} | {row['verification']}"
+        )
+    elif selection.outcome == QUEUE_BLOCKED:
+        print(f"[{selection.outcome}] {selection.reason}")
+    else:
+        print(f"[{selection.outcome}] TASKS.md has no remaining work.")
+    return QUEUE_EXIT_CODES[selection.outcome]
+
+
+def _replace_task_row(
+    line: str,
+    row: dict[str, Any],
+    *,
+    state: str,
+    reason: str | None,
+    evidence: str | None,
+) -> str:
+    newline = "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
+    content = line.rstrip("\r\n")
+    cells = _table_cells(
+        row["_line_number"],
+        content,
+        kind="task row",
+        expected_columns=9 if row["_extended"] else 6,
+    )
+    cells[1] = state
+    if row["_extended"]:
+        cells[7] = reason if state == "BLOCKED" and reason else "None"
+        if evidence is not None:
+            cells[8] = evidence if evidence else "None"
+    leading = re.match(r"^\s*", content).group(0)
+    return leading + "| " + " | ".join(cells) + " |" + newline
+
+
+def _write_task_register_if_unchanged(path: Path, original: bytes, output: bytes) -> None:
+    try:
+        current = path.read_bytes()
+    except OSError as exc:
+        raise CodexiconError(f"TASKS.md became unreadable during update: {exc}") from exc
+    if sha256_bytes(current) != sha256_bytes(original):
+        raise CodexiconError("TASKS.md update conflict: register changed concurrently; no edits applied")
+    atomic_write_bytes(path, output, mode=0o644)
+
+
+def _tasks_transition(
+    root: Path,
+    task_id: str,
+    state: str,
+    *,
+    reason: str | None = None,
+    evidence: str | None = None,
+    allow_reopen: bool = False,
+    expected_state: str | None = None,
+) -> int:
+    root = root.resolve()
     if not re.fullmatch(r"T-\d+", task_id):
         raise CodexiconError("task ID must look like T-001")
-    if state not in {"ACTIVE", "DONE", "BLOCKED"}:
-        raise CodexiconError("task state must be ACTIVE, DONE, or BLOCKED")
-    if not any(row["id"] == task_id for row in rows):
-        raise CodexiconError(f"unknown task ID: {task_id}")
-    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
-    pattern = re.compile(rf"^(\|\s*{re.escape(task_id)}\s*\|\s*)\w+(\s*\|.*)$")
-    replaced = False
-    output: list[str] = []
-    for line in lines:
-        match = pattern.match(line.rstrip("\r\n"))
-        if match:
-            newline = "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
-            output.append(f"{match.group(1)}{state}{match.group(2)}{newline}")
-            replaced = True
-        else:
-            output.append(line)
-    if not replaced:
-        raise CodexiconError(f"unable to update task row: {task_id}")
-    atomic_write_bytes(path, "".join(output).encode("utf-8"), mode=0o644)
+    if state not in TASK_STATES:
+        raise CodexiconError("unsupported task state")
+    register_path = checked_path(root, "TASKS.md")
+    with _task_register_lock(register_path):
+        path, rows, _, _ = task_rows(root)
+        contract = read_contract_details(root)
+        by_id = {row["id"]: row for row in rows}
+        if task_id not in by_id:
+            raise CodexiconError(f"unknown task ID: {task_id}")
+        row = by_id[task_id]
+        current = row["state"]
+        if expected_state is not None and current != expected_state:
+            raise CodexiconError(
+                f"{expected_state.lower()} task required for controlled reopen: {task_id}"
+            )
+        if current == state and state == "ACTIVE":
+            print(f"[codexicon] {task_id} is already ACTIVE; resume it")
+            return 0
+        legal = {
+            "TODO": {"ACTIVE", "BLOCKED"},
+            "ACTIVE": {"DONE", "BLOCKED"},
+            "BLOCKED": {"TODO"} if allow_reopen else set(),
+            "DONE": {"TODO"} if allow_reopen else set(),
+        }
+        if state not in legal[current]:
+            raise CodexiconError(f"illegal task transition: {current} -> {state} for {task_id}")
+        if state == "ACTIVE":
+            active = [item["id"] for item in rows if item["state"] == "ACTIVE" and item["id"] != task_id]
+            if active:
+                raise CodexiconError(
+                    f"task start conflict: {active[0]} is ACTIVE and owns the implementation slot"
+                )
+            blockers = _dependency_blockers(row, by_id, {})
+            if blockers:
+                raise CodexiconError(f"{task_id} is blocked by dependencies: {'; '.join(blockers)}")
+        if state == "BLOCKED" and not reason:
+            raise CodexiconError("tasks-blocked requires a persistent --reason")
+        if state == "BLOCKED" and not row["_extended"]:
+            raise CodexiconError("blocker reasons require the nine-column register; run tasks-migrate first")
+        if allow_reopen and current == "DONE" and not reason:
+            raise CodexiconError("reopening a DONE task requires a --reason")
+        normalized_evidence = None
+        if state == "DONE":
+            if not row["_extended"]:
+                raise CodexiconError("completion evidence requires the nine-column register; run tasks-migrate first")
+            normalized_evidence = _task_evidence_for_done(root, row, evidence, contract)
+
+        try:
+            original = path.read_bytes()
+            lines = original.decode("utf-8").splitlines(keepends=True)
+        except (OSError, UnicodeDecodeError) as exc:
+            raise CodexiconError(f"TASKS.md is unreadable: {exc}") from exc
+        output: list[str] = []
+        replaced = False
+        for index, line in enumerate(lines, start=1):
+            if index == row["_line_number"]:
+                output.append(
+                    _replace_task_row(
+                        line,
+                        row,
+                        state=state,
+                        reason=reason,
+                        evidence=normalized_evidence if normalized_evidence is not None else evidence,
+                    )
+                )
+                replaced = True
+            else:
+                output.append(line)
+        if not replaced:
+            raise CodexiconError(f"unable to update task row: {task_id}")
+        _write_task_register_if_unchanged(
+            path, original, "".join(output).encode("utf-8")
+        )
     print(f"[codexicon] {task_id} -> {state}")
     return 0
 
 
-def doctor(root: Path) -> int:
+def tasks_set_state(
+    root: Path,
+    task_id: str,
+    state: str,
+    *,
+    reason: str | None = None,
+    evidence: str | None = None,
+) -> int:
+    return _tasks_transition(root, task_id, state, reason=reason, evidence=evidence)
+
+
+def tasks_reopen(root: Path, task_id: str, *, reason: str, expected: str) -> int:
+    return _tasks_transition(
+        root,
+        task_id,
+        "TODO",
+        reason=reason,
+        allow_reopen=True,
+        expected_state=expected,
+    )
+
+
+def migrate_task_register(root: Path) -> int:
+    """Upgrade a legacy six-column register without changing task meaning."""
+
+    root = root.resolve()
+    path = checked_path(root, "TASKS.md")
+    with _task_register_lock(path):
+        path, rows, _, _ = task_rows(root)
+        if all(row["_extended"] for row in rows):
+            print("[codexicon] TASKS.md already uses the nine-column register format")
+            return 0
+        try:
+            original = path.read_bytes()
+            lines = original.decode("utf-8").splitlines(keepends=True)
+        except (OSError, UnicodeDecodeError) as exc:
+            raise CodexiconError(f"TASKS.md is unreadable: {exc}") from exc
+        header_index = None
+        outside = dict(_outside_fence_lines(lines))
+        for line_number, content in outside.items():
+            if not re.match(r"^\s*\|?\s*ID\b", content, re.IGNORECASE):
+                continue
+            column_count = _declared_column_count(content)
+            if column_count != 6:
+                continue
+            cells = _table_cells(
+                line_number, content, kind="task table header", expected_columns=6
+            )
+            if tuple(cell.casefold() for cell in cells) == TASK_HEADERS:
+                header_index = line_number - 1
+                break
+        if header_index is None:
+            raise CodexiconError("unable to locate the legacy six-column task table")
+        newline = "\r\n" if any(line.endswith("\r\n") for line in lines) else "\n"
+        output = list(lines)
+        output[header_index] = "| " + " | ".join(TASK_EXTENDED_HEADERS) + " |" + newline
+        output[header_index + 1] = "| " + " | ".join("---" for _ in TASK_EXTENDED_HEADERS) + " |" + newline
+        for row in rows:
+            old = lines[row["_line_number"] - 1]
+            cells = _table_cells(row["_line_number"], old.rstrip("\r\n"), kind="task row", expected_columns=6)
+            extended = cells + ["None", "None", "None"]
+            output[row["_line_number"] - 1] = "| " + " | ".join(extended) + " |" + ("\r\n" if old.endswith("\r\n") else "\n" if old.endswith("\n") else "")
+        identity = contract_identity(root)
+        metadata = (
+            f"**Register format:** 2{newline}"
+            f"**Contract revision:** {identity['revision']}{newline}"
+            f"**Contract digest:** {identity['identity']}{newline}{newline}"
+        )
+        if "**Register format:**" not in "".join(output):
+            output.insert(0, metadata)
+        _write_task_register_if_unchanged(path, original, "".join(output).encode("utf-8"))
+    print("[codexicon] TASKS.md migrated to the nine-column register format")
+    return 0
+
+
+def doctor(root: Path, *, mode: str = BUILD_MODE) -> int:
+    if mode not in VERIFICATION_MODES:
+        raise CodexiconError(f"unsupported verification mode: {mode}")
     root = root.resolve()
     diagnostics: list[tuple[str, str]] = []
     parse_config(root, diagnostics)
@@ -1271,18 +2571,19 @@ def doctor(root: Path) -> int:
             executable_path, os.X_OK
         ):
             diagnostics.append(("ERROR", f"executable path lacks filesystem execute mode: {relative}"))
-        mode = git_index_mode(root, relative)
-        if mode is None:
-            diagnostics.append(
-                (
-                    "WARN",
-                    f"executable path is not tracked yet; stage it, then run sync-git-modes: {relative}",
+        if mode == SHIP_MODE:
+            index_mode = git_index_mode(root, relative)
+            if index_mode is None:
+                diagnostics.append(
+                    (
+                        "WARN",
+                        f"executable path is not tracked yet; stage it, then run sync-git-modes: {relative}",
+                    )
                 )
-            )
-        elif mode != "100755":
-            diagnostics.append(
-                ("ERROR", f"executable path has Git index mode {mode}, expected 100755: {relative}")
-            )
+            elif index_mode != "100755":
+                diagnostics.append(
+                    ("ERROR", f"executable path has Git index mode {index_mode}, expected 100755: {relative}")
+                )
 
     try:
         pending_journal = transaction_path(root)
@@ -1315,7 +2616,6 @@ def doctor(root: Path) -> int:
         sessions = None
     if sessions is not None and sessions.is_dir():
         repo_id = repository_identity(root)
-        current_head = git_value(root, "rev-parse", "HEAD") or "none"
         for path in sorted(sessions.glob("*.md")):
             try:
                 path = checked_path(root, path.relative_to(root).as_posix())
@@ -1336,8 +2636,10 @@ def doctor(root: Path) -> int:
             if metadata["repository_id"] != repo_id:
                 diagnostics.append(("WARN", f"checkpoint {path.name} belongs to another repository"))
                 continue
-            if metadata["head"] != current_head:
-                diagnostics.append(("WARN", f"checkpoint {path.name} references stale HEAD {metadata['head']}"))
+            diagnostics.extend(
+                ("WARN", f"checkpoint {path.name}: {warning}")
+                for warning in checkpoint_identity_warnings(root, metadata)
+            )
             for related in metadata["related"]:
                 try:
                     related_path = checked_path(root, str(related))
@@ -1356,7 +2658,9 @@ def doctor(root: Path) -> int:
     return 1 if errors else 0
 
 
-def verify(root: Path, checks: Sequence[str]) -> int:
+def verify(root: Path, checks: Sequence[str], *, mode: str = BUILD_MODE) -> int:
+    if mode not in VERIFICATION_MODES:
+        raise CodexiconError(f"unsupported verification mode: {mode}")
     root = root.resolve()
     requested = list(checks) or list(CANONICAL_CHECKS)
     ordered = [name for name in CANONICAL_CHECKS if name in requested]
@@ -1378,8 +2682,12 @@ def verify(root: Path, checks: Sequence[str]) -> int:
             f"[codexicon] Running {name}: {script.relative_to(root).as_posix()}",
             flush=True,
         )
+        environment = None
+        if name == "security" and mode == SHIP_MODE:
+            environment = os.environ.copy()
+            environment["CODEXICON_SECURITY_MODE"] = SHIP_MODE
         try:
-            result = subprocess.run(command, cwd=root, check=False)
+            result = subprocess.run(command, cwd=root, check=False, env=environment)
         except OSError as exc:
             print(f"[codexicon] unable to run {name}: {exc}", file=sys.stderr)
             return 126
@@ -1493,23 +2801,28 @@ def create_checkpoint(args: argparse.Namespace) -> int:
     for relative in related:
         if not checked_path(root, relative).exists():
             raise CodexiconError(f"related checkpoint path does not exist: {relative}")
+    changed = [normalize_relative(path) for path in getattr(args, "changed", [])]
+    for relative in changed:
+        if not checked_path(root, relative).exists():
+            raise CodexiconError(f"changed checkpoint path does not exist: {relative}")
+    evidence_paths = sorted(set(related + changed))
     created = utc_now()
-    branch = git_value(root, "branch", "--show-current") or "none"
-    head = git_value(root, "rev-parse", "HEAD") or "none"
+    local_identities = checkpoint_local_identities(root, evidence_paths)
     metadata = {
         "schema_version": SCHEMA_VERSION,
         "checkpoint_id": secrets.token_hex(8),
         "created_at": created,
         "repository_id": repository_identity(root),
-        "branch": branch,
-        "head": head,
+        "branch": "local-build",
+        "head": "none",
         "related": related,
+        **local_identities,
+        "changed": changed,
     }
     filename = f"{created[:10]}-{slug}.md"
     output = checked_path(root, f"agent_docs/sessions/{filename}")
     if output.exists():
         raise CodexiconError(f"checkpoint already exists: {output.relative_to(root).as_posix()}")
-    changed = dirty_paths(root)
     marker = f"<!-- {CHECKPOINT_MARKER} {json.dumps(metadata, sort_keys=True)} -->"
     lines = [
         marker,
@@ -1518,16 +2831,17 @@ def create_checkpoint(args: argparse.Namespace) -> int:
         f"**Created:** {created}  ",
         f"**Checkpoint ID:** `{metadata['checkpoint_id']}`  ",
         f"**Repository:** `{metadata['repository_id']}`  ",
-        f"**Git branch / HEAD:** `{branch}` / `{head}`  ",
+        "**Build identity:** local filesystem (Git-free)  ",
+        f"**Contract / task:** `{metadata['contract_identity']}` / `{metadata['task_identity']}`  ",
         f"**Related:** {', '.join(f'`{item}`' for item in related) if related else 'none'}",
         "",
         "## Current state",
         "",
         args.summary.strip(),
         "",
-        "## Dirty paths",
+        "## Changed paths",
         "",
-        *([f"- `{path}`" for path in changed] or ["- None."]),
+        *([f"- `{path}`" for path in changed] or ["- None supplied; related-path evidence is recorded in the checkpoint header."]),
         "",
         "## Verification",
         "",
@@ -1558,13 +2872,9 @@ def resume(root: Path) -> int:
     if not candidates:
         raise CodexiconError("no compatible Codexicon checkpoint was found")
     _, path, metadata = candidates[0]
-    current_head = git_value(root, "rev-parse", "HEAD") or "none"
     print(f"[codexicon] Resume checkpoint: {path.relative_to(root).as_posix()}")
-    if metadata.get("head") != current_head:
-        print(
-            f"[codexicon] Warning: checkpoint HEAD {metadata.get('head')} differs from current HEAD {current_head}.",
-            file=sys.stderr,
-        )
+    for warning in checkpoint_identity_warnings(root, metadata):
+        print(f"[codexicon] Warning: {warning}.", file=sys.stderr)
     print(path.read_text(encoding="utf-8"))
     return 0
 
@@ -1589,10 +2899,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     doctor_parser = subparsers.add_parser("doctor", help="diagnose installed or source harness state")
     doctor_parser.add_argument("--root", type=Path, default=ROOT)
+    doctor_parser.add_argument("--mode", choices=VERIFICATION_MODES, default=BUILD_MODE)
 
     verify_parser = subparsers.add_parser("verify", help="run project-defined canonical checks")
     verify_parser.add_argument("checks", nargs="*", choices=CANONICAL_CHECKS)
     verify_parser.add_argument("--root", type=Path, default=ROOT)
+    verify_parser.add_argument("--mode", choices=VERIFICATION_MODES, default=BUILD_MODE)
 
     hooks_parser = subparsers.add_parser("install-git-hooks", help="install tracked Git hooks safely")
     hooks_parser.add_argument("--root", type=Path, default=ROOT)
@@ -1610,6 +2922,7 @@ def build_parser() -> argparse.ArgumentParser:
     checkpoint_parser.add_argument("--resume-note", required=True)
     checkpoint_parser.add_argument("--next", action="append", required=True)
     checkpoint_parser.add_argument("--related", action="append", default=[])
+    checkpoint_parser.add_argument("--changed", action="append", default=[])
     checkpoint_parser.add_argument("--verification", action="append", default=[])
     checkpoint_parser.add_argument("--blocker", action="append", default=[])
     checkpoint_parser.add_argument("--decision", action="append", default=[])
@@ -1620,8 +2933,11 @@ def build_parser() -> argparse.ArgumentParser:
     contract_parser = subparsers.add_parser("spec-check", help="validate the active root SPEC.md contract")
     contract_parser.add_argument("--root", type=Path, default=ROOT)
 
-    next_parser = subparsers.add_parser("tasks-next", help="print the next TODO task from TASKS.md")
+    next_parser = subparsers.add_parser(
+        "tasks-next", help="select the resumable or next runnable task from TASKS.md"
+    )
     next_parser.add_argument("--root", type=Path, default=ROOT)
+    next_parser.add_argument("--json", action="store_true", dest="json_output")
 
     for state in ("start", "done", "blocked"):
         task_parser = subparsers.add_parser(
@@ -1629,6 +2945,20 @@ def build_parser() -> argparse.ArgumentParser:
         )
         task_parser.add_argument("task_id")
         task_parser.add_argument("--root", type=Path, default=ROOT)
+        task_parser.add_argument("--reason")
+        task_parser.add_argument("--evidence")
+    for command, expected in (("tasks-unblock", "BLOCKED"), ("tasks-reopen", "DONE")):
+        task_parser = subparsers.add_parser(
+            command, help=f"controlled reopen of a {expected.lower()} TASKS.md row"
+        )
+        task_parser.add_argument("task_id")
+        task_parser.add_argument("--reason", required=True)
+        task_parser.add_argument("--root", type=Path, default=ROOT)
+
+    migrate_parser = subparsers.add_parser(
+        "tasks-migrate", help="upgrade a six-column register to the additive nine-column format"
+    )
+    migrate_parser.add_argument("--root", type=Path, default=ROOT)
     return parser
 
 
@@ -1643,9 +2973,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "update":
             return run_install(args.source, args.root, apply=args.apply, update=True)
         if args.command == "doctor":
-            return doctor(args.root)
+            return doctor(args.root, mode=args.mode)
         if args.command == "verify":
-            return verify(args.root, args.checks)
+            return verify(args.root, args.checks, mode=args.mode)
         if args.command == "install-git-hooks":
             return install_git_hooks(args.root)
         if args.command == "sync-git-modes":
@@ -1657,15 +2987,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "spec-check":
             return contract_check(args.root)
         if args.command == "tasks-next":
-            return tasks_next(args.root)
+            return tasks_next(args.root, json_output=args.json_output)
         if args.command == "tasks-start":
             return tasks_set_state(args.root, args.task_id, "ACTIVE")
         if args.command == "tasks-done":
-            return tasks_set_state(args.root, args.task_id, "DONE")
+            return tasks_set_state(args.root, args.task_id, "DONE", evidence=args.evidence)
         if args.command == "tasks-blocked":
-            return tasks_set_state(args.root, args.task_id, "BLOCKED")
+            return tasks_set_state(args.root, args.task_id, "BLOCKED", reason=args.reason)
+        if args.command == "tasks-unblock":
+            return tasks_reopen(args.root, args.task_id, reason=args.reason, expected="BLOCKED")
+        if args.command == "tasks-reopen":
+            return tasks_reopen(args.root, args.task_id, reason=args.reason, expected="DONE")
+        if args.command == "tasks-migrate":
+            return migrate_task_register(args.root)
         parser.error(f"unsupported command: {args.command}")
     except CodexiconError as exc:
+        if getattr(args, "command", None) == "tasks-next" and getattr(args, "json_output", False):
+            print(json.dumps({"outcome": QUEUE_INVALID, "task": None, "reason": str(exc), "blockers": {}}, sort_keys=True))
         print(f"[codexicon] {exc}", file=sys.stderr)
         return 2
     return 2

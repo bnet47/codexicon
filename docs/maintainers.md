@@ -14,7 +14,7 @@ This guide covers the public template itself, not projects created from it.
 ## Release checklist
 
 1. Update the version and dated notes in `TEMPLATE_VERSION`.
-2. Confirm `README.md`, `START_HERE.md`, the visual playbook, and skill catalog describe the same lifecycle.
+2. Confirm `README.md`, `START_HERE.md`, the visual playbook, skill catalog, root `SPEC.md`/`TASKS.md` guidance, and writer policy describe the same lifecycle.
 3. Run `python scripts/codexicon.py doctor --root .` and require zero errors and warnings.
 4. Run Windows and POSIX lint, tests, and security checks.
 5. Run `python scripts/validate_template.py --release` to reject repository-local briefs, plans, and checkpoints before tagging.
@@ -41,7 +41,7 @@ The shell file supplies the standalone wrapper. Do not edit the generated standa
 
 ## Updating skills
 
-Keep the `SKILL.md` body procedural and concise. Put detailed variant guidance in a directly linked reference only when the main workflow does not need it. Validate new or changed skills with the current official skill-creator validator, but never commit a machine-specific validator path.
+Keep the `SKILL.md` body procedural and concise. Put detailed variant guidance in a directly linked reference only when the main workflow does not need it. Validate new or changed skills with the current official skill-creator validator, but never commit a machine-specific validator path. Implementation entry points must route to the root contract/register and shared Build states; pure explanations and read-only reviews remain exempt from code ceremonies.
 
 ## Supporting generated projects
 

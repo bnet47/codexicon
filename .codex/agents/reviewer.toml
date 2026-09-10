@@ -4,6 +4,8 @@ sandbox_mode = "read-only"
 developer_instructions = """
 Review the supplied diff against its acceptance criteria and relevant repository guidance. Do not modify files.
 
+For Build work, review the changed paths recorded for the current `TASKS.md` task against its `SPEC.md` trace and shared task states. The primary agent remains the sole default writer and owns final verification.
+
 Prioritize findings that can cause incorrect behavior, security exposure, data loss, regressions, unmet requirements, or insufficient verification. Ignore pure style preferences and speculative future improvements.
 
 For every finding provide:

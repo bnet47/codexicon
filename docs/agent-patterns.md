@@ -2,7 +2,7 @@
 
 Use subagents when independent context or parallelism materially improves the task. Every subagent consumes additional tokens and introduces coordination cost, so file counts and token guesses are not sufficient reasons by themselves.
 
-The repository skill `$autonomous-build` is the default routing aid for multi-task implementation. `$engineering-loop` is selective and read-only: trivial changes stay direct, and the primary agent remains responsible for implementation, integration, and final verification.
+The repository skill `$autonomous-build` is the default routing aid for multi-task implementation. `$engineering-loop` is selective and read-only: trivial changes stay direct, and the primary agent remains the default sole writer, responsible for integration and final verification.
 
 Use Codex's built-in `explorer` for read-heavy repository mapping. The project `researcher` is narrower: it verifies current external documentation and specifications from primary sources. The primary agent integrates both forms of evidence.
 
@@ -25,13 +25,13 @@ Use when implementation spans multiple tasks with clear requirement traces in `S
 
 ```text
 Primary agent
-├── reads next TODO from TASKS.md
-├── implements locally and verifies
-├── reviewer: read-only, when risk warrants
+├── reads the root SPEC.md and next task from TASKS.md
+├── writes locally by default, or explicitly selects one sequential implementer
+├── re-reads delegated changes and owns verification
 └── continues until the queue is complete or blocked
 ```
 
-Parallelize read-heavy or non-overlapping work. Execute tasks that share interfaces or files sequentially. The primary agent owns full lint, tests, and acceptance coverage.
+Parallelize only read-only research or review. Implementation tasks run sequentially in the shared checkout; an explicitly selected `implementer` writes at most its assigned bounded task, then the primary agent re-reads and integrates it. The primary agent owns full lint, tests, and acceptance coverage. Never create concurrent writers.
 
 ## Pattern 3: architecture research
 
@@ -63,7 +63,7 @@ For a large or high-risk diff, use separate read-only review passes for correctn
 
 Build stays in the current checkout and active branch. Do not create worktrees, branches, or concurrent writers during Build. Delegated agents are read-only research or review lanes. Git status, diffs, staging, and publication belong to `$ship`.
 
-Keep `SPEC.md` and `TASKS.md` in the active checkout so continuation does not depend on ignored state. Use `$context-dump` only for longer-lived semantic handoffs.
+Keep root `SPEC.md` and `TASKS.md` in the active checkout so continuation does not depend on ignored state. Use `$context-dump` only for longer-lived semantic handoffs. Pure explanations and read-only reviews do not require code ceremonies or task-register writes.
 
 ## Brief template
 

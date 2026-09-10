@@ -1,6 +1,6 @@
 # Starting a project with Codexicon
 
-Codexicon begins deliberately unconfigured. Define the project contract before selecting a stack, then let Build consume and verify local tasks without intermediate sign-offs.
+Codexicon begins deliberately unconfigured. Define the project contract before selecting a stack, then let Build create, consume, and verify local tasks without intermediate sign-offs.
 
 For a visual overview of the lifecycle, workflow routing, token model, and safety boundaries, open [the live interactive template playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html). The same guide is available locally at `docs/repo-template-playbook.html`.
 
@@ -49,7 +49,7 @@ Invoke:
 $discover
 ```
 
-Codex will clarify only consequential unknowns and save an active contract as root `SPEC.md`. Be ready to describe:
+Codex will clarify only consequential unknowns and create or amend the active contract in root `SPEC.md`. Be ready to describe:
 
 - the problem or cost today;
 - the specific person or role affected;
@@ -106,12 +106,12 @@ Choose only the workflow the change needs:
 
 | Situation | Workflow |
 |---|---|
-| Clear change affecting a few files | `$quick` |
+| Clear change affecting a few files | `$quick` with an existing trace or minimal authorized `SPEC.md` amendment |
 | Feature behavior or approach is genuinely uncertain | `$brainstorm` |
 | Precise requirement needs a durable contract | `$spec` |
-| Approved multi-step spec needs task decomposition | `$write-plan` |
+| Approved multi-step spec needs task decomposition | `$write-plan` creates/validates root `TASKS.md` |
 | Multi-task implementation from `TASKS.md` | `$autonomous-build` |
-| Existing durable plan needs execution | `$execute-plan` |
+| Existing durable plan needs execution | `$execute-plan` adapts into `$autonomous-build` |
 | Medium/high-complexity work with independent lanes | `$engineering-loop` |
 | Explicit search for an external agent skill | `$find-skills` |
 | Existing repository needs Codexicon inspection, adoption, or update | `$adopt-codexicon` |
@@ -135,6 +135,38 @@ repository lint and test commands pass. Do not add deployment yet.
 ```
 
 Codex can select these workflows automatically. Name a skill when you want to force that exact workflow.
+
+All implementation routes use the same root `SPEC.md` → `TASKS.md` contract. The
+persisted task states are `TODO`, `ACTIVE`, `BLOCKED`, and `DONE`; queue outcomes are
+`READY`, `RESUME_ACTIVE`, `BLOCKED`, `COMPLETE`, and `INVALID`. When an authorized
+Build has no register, it creates the smallest traced `TASKS.md` without another
+approval turn. `$quick` does not invent task IDs when no register is needed. Pure
+explanations and read-only reviews do not create or amend either artifact.
+
+The primary agent is the default sole writer in the shared checkout. An explicitly
+chosen `implementer` may write one bounded task sequentially; the primary agent
+re-reads the changed paths and owns integration and final verification. Runnable
+work continues without a suggested-next-prompt stop.
+
+### Optional sustained execution
+
+If the current client offers native Goal mode, it may be used optionally when
+you explicitly request sustained work toward a defined outcome. Availability is
+client-dependent and unmeasured here unless a client smoke test says otherwise;
+Goal mode is not required for this template and does not replace the portable
+`SPEC.md` → `TASKS.md` contract.
+
+Continuation has distinct cases: active-turn chaining is only work performed
+while the current turn is alive; compaction recovery rereads the authoritative
+contract and register; restart after termination begins a fresh session from
+those files; and cancellation or a stop request is respected without an
+automatic relaunch. In a plain-session resume, run `tasks-next --json` and use
+`resume` when relevant to select the `ACTIVE` or next runnable task.
+
+Neither Goal mode nor persistence grants Git, deployment, publication, or
+external-write authority. Build remains local and Git-free; those actions stay
+with an explicitly authorized `$ship` workflow. No daemon, scheduler, or
+third-party memory service is part of the default template.
 
 ### Customer-facing execution
 

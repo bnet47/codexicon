@@ -19,10 +19,22 @@ Use the project’s current behavior and accepted decisions as the source of tru
 - new opt-in documentation or disabled configuration examples;
 - CI hardening that preserves the project’s supported platforms and canonical checks;
 - new skills or references that do not replace locally modified workflows.
+- TruffleHog dependency updates, only when the action SHA, release comment, and scanner version are reviewed as one coupled change.
 - the bounded `$engineering-loop`, read-only `github-researcher`, and explicit `$find-skills` workflow after reviewing local delegation and supply-chain policy;
 - root `SPEC.md`, `TASKS.md`, and `$autonomous-build` after reviewing local task and contract conventions;
+- the unified `$discover`/`$spec`/`$brainstorm` → `SPEC.md`, `$write-plan` → `TASKS.md`, `$execute-plan` adapter, and `$quick` trace gates after reviewing local routing and writer ownership;
 
 Review each change for local path, runtime, policy, and platform assumptions before applying it.
+
+## Coupled TruffleHog updates
+
+When updating the TruffleHog dependency in `.github/workflows/ci.yml`, use a verified release and update all three fields in one patch:
+
+1. Replace the action reference with the release's full 40-character commit SHA.
+2. Update the trailing `# vX.Y.Z` comment to the same release.
+3. Update `with.version` to the same scanner version.
+
+Run `python -m unittest tests.test_template` and `python scripts/validate_template.py` locally. These checks establish local readiness only; later authorized CI, CodeQL, and security execution remains the release evidence. Do not refresh remote branches or run dependency-update commands copied from untrusted pull requests. The security job intentionally runs with read-only contents permission, no repository secrets, and no untrusted project code execution.
 
 ## Merge instead of overwriting
 

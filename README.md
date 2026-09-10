@@ -141,8 +141,8 @@ The repository exposes compact skill metadata first. Complete instructions load 
 | Stage | Use when | Primary workflows | Evidence before continuing |
 |---|---|---|---|
 | **Adopt** | An established repository needs the harness | `$adopt-codexicon` | Reviewed compatibility plan and conflicts |
-| **Define** | The product or behavior is not settled | `$discover`, `$brainstorm`, `$spec` | Active root `SPEC.md` contract |
-| **Build** | The outcome is clear enough to implement | `$quick`, `$autonomous-build`, `$write-plan`, `$execute-plan` | Traced tasks and fresh verification |
+| **Define** | The product or behavior is not settled | `$discover`, `$brainstorm`, `$spec` → root `SPEC.md` | Active root `SPEC.md` contract |
+| **Build** | The outcome is clear enough to implement | `$quick`, `$write-plan`, `$execute-plan`, `$autonomous-build` → root `TASKS.md` | Traced tasks and fresh verification |
 | **Assure** | Correctness, experience, architecture, or release risk needs scrutiny | `$review`, `$review-creative`, `$architecture-review`, `$production-readiness` | Findings resolved and canonical checks passing |
 | **Deliver** | A specific Git effect is authorized | `$ship` | Only the requested commit, push, or pull request |
 
@@ -153,11 +153,11 @@ The repository exposes compact skill metadata first. Complete instructions load 
 |---|---|
 | Established repository needs Codexicon | `$adopt-codexicon` |
 | Unconfigured project | `$discover` → root `SPEC.md` → `$init` |
-| Clear change affecting a few files | `$quick` |
+| Clear change affecting a few files | `$quick` with an existing trace or minimal authorized `SPEC.md` amendment |
 | Unclear feature behavior | `$brainstorm` |
 | Precise requirement needing a durable contract | `$spec` |
-| Multi-task implementation | `$autonomous-build` consuming `TASKS.md` |
-| Existing durable plan | `$write-plan` → `$execute-plan` |
+| Multi-task implementation | `$write-plan` creates/validates `TASKS.md` → `$autonomous-build` |
+| Existing durable plan | `$execute-plan` validates it, then adapts into `$autonomous-build` |
 | Independent research or review lanes | `$engineering-loop` |
 | Explicit external capability search | `$find-skills` |
 | Reproducible failure with an unknown cause | `$investigate` |
@@ -172,6 +172,37 @@ The repository exposes compact skill metadata first. Complete instructions load 
 | Shorter communication with full rigor | `$concise` |
 
 Skills are routing tools, not mandatory ceremony. Codex may select one automatically; name one when you want that exact workflow.
+
+All implementation routes share root `SPEC.md` and `TASKS.md`. The persisted task
+states are `TODO`, `ACTIVE`, `BLOCKED`, and `DONE`; queue outcomes are `READY`,
+`RESUME_ACTIVE`, `BLOCKED`, `COMPLETE`, and `INVALID`. An authorized Build creates
+the smallest traced `TASKS.md` when no register exists, without a routine approval
+turn. `$quick` never invents a task ID when no register is needed. Pure explanations
+and read-only reviews are exempt from code-generation ceremonies and do not write
+the contract or register.
+
+The primary agent is the default sole writer in the shared checkout. An explicitly
+chosen `implementer` may write one bounded task sequentially; the primary agent
+re-reads the changed paths and owns integration and final verification. Runnable
+work continues without a suggested-next-prompt stop.
+
+### Optional long-running work
+
+Supported clients may offer native Goal mode for explicitly requested sustained
+execution. It is optional and client-dependent, and does not replace the
+portable, authoritative `SPEC.md` → `TASKS.md` resume path. Active-turn
+chaining, compaction recovery, restart after termination, and cancellation are
+different cases: a live turn may chain work, compaction rereads current files,
+a terminated session restarts from `TASKS.md`, and a cancellation is respected
+without an automatic relaunch.
+
+The plain-session command is `python scripts/codexicon.py tasks-next --json`
+(`resume` may restore compatible checkpoint context). Goal mode and persistence
+do not grant Git, deployment, publication, or external-write authority; Build
+stays local and Git-free, with those actions reserved for explicitly authorized
+`$ship`. Native Goal-mode availability and live delivery are unmeasured here
+unless a client/platform smoke test records them. No daemon, scheduler, or
+third-party memory service is added.
 
 </details>
 

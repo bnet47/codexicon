@@ -117,6 +117,49 @@ class SecurityScanTests(unittest.TestCase):
             ],
         )
 
+    def test_quoted_json_yaml_and_dictionary_keys_detect_literal_secrets(self) -> None:
+        source = self.root / "config.txt"
+        json_key = '"' + "password" + '": "'
+        json_value = "json" + "-" + "secret" + "-" + "value"
+        yaml_key = "'" + "api-key" + "': '"
+        yaml_value = "yaml" + "-" + "secret" + "-" + "value"
+        dictionary_key = '{"' + "auth_token" + '": "'
+        dictionary_value = "dictionary" + "-" + "secret" + "-" + "value"
+        source.write_text(
+            f"{json_key}{json_value}\"\n"
+            f"{yaml_key}{yaml_value}'\n"
+            f"{dictionary_key}{dictionary_value}\"}}\n",
+            encoding="utf-8",
+        )
+
+        findings = SECURITY_SCAN.scan_repository(self.root)
+
+        self.assertEqual(
+            [(finding.line, finding.detector) for finding in findings],
+            [
+                (1, "literal-secret-assignment"),
+                (2, "literal-secret-assignment"),
+                (3, "literal-secret-assignment"),
+            ],
+        )
+
+    def test_quoted_key_placeholders_and_environment_references_pass(self) -> None:
+        source = self.root / "config.json"
+        password_key = '"' + "password" + '": "'
+        password_value = "${" + "PASSWORD" + "}"
+        api_key = '"' + "api_key" + '": '
+        api_value = "process" + ".env." + "API_KEY"
+        auth_key = "'" + "auth-token" + "': "
+        auth_value = "os" + ".environ['AUTH_TOKEN']"
+        source.write_text(
+            f"{password_key}{password_value}\"\n"
+            f"{api_key}{api_value}\n"
+            f"{auth_key}{auth_value}\n",
+            encoding="utf-8",
+        )
+
+        self.assertEqual(SECURITY_SCAN.scan_repository(self.root), [])
+
     def test_unreadable_candidate_fails_closed_without_value_output(self) -> None:
         source = self.root / "restricted.txt"
         source.write_text("safe\n", encoding="utf-8")
@@ -129,7 +172,7 @@ class SecurityScanTests(unittest.TestCase):
             [SECURITY_SCAN.Finding("restricted.txt", 0, "unreadable-file")],
         )
 
-    def test_failed_git_enumeration_is_reported_and_falls_back(self) -> None:
+    def test_failed_ship_git_enumeration_is_reported_without_build_fallback(self) -> None:
         source = self.root / "app.py"
         source.write_text("print('safe')\n", encoding="utf-8")
         with (
@@ -140,11 +183,89 @@ class SecurityScanTests(unittest.TestCase):
                 side_effect=[["app.py"], None],
             ),
         ):
-            files, findings = SECURITY_SCAN.repository_files(self.root)
+            files, findings = SECURITY_SCAN.repository_files(
+                self.root, mode=SECURITY_SCAN.SHIP_MODE
+            )
 
-        self.assertEqual(files, [source])
+        self.assertEqual(files, [])
         self.assertIn(
             SECURITY_SCAN.Finding(".", 0, "git-enumeration-failed"),
+            findings,
+        )
+
+    def test_failed_first_ship_git_enumeration_is_reported(self) -> None:
+        with (
+            mock.patch.object(SECURITY_SCAN, "is_git_root", return_value=True),
+            mock.patch.object(SECURITY_SCAN, "git_paths", return_value=None),
+        ):
+            files, findings = SECURITY_SCAN.repository_files(
+                self.root, mode=SECURITY_SCAN.SHIP_MODE
+            )
+
+        self.assertEqual(files, [])
+        self.assertEqual(
+            findings,
+            [SECURITY_SCAN.Finding(".", 0, "git-enumeration-failed")],
+        )
+
+    def test_build_scan_does_not_call_git_when_git_is_unavailable(self) -> None:
+        source = self.root / "app.py"
+        source.write_text("print('safe')\n", encoding="utf-8")
+        with mock.patch.object(
+            SECURITY_SCAN.subprocess, "run", side_effect=AssertionError("Git is forbidden")
+        ):
+            files, findings = SECURITY_SCAN.repository_files(self.root)
+        self.assertEqual(files, [source])
+        self.assertEqual(findings, [])
+
+    def test_build_scan_prunes_generated_and_protected_files_before_reads(self) -> None:
+        source = self.root / "app.py"
+        protected = self.root / ".env.local"
+        generated = self.root / "build" / "generated.py"
+        source.write_text("print('safe')\n", encoding="utf-8")
+        protected.write_text("protected-but-not-a-secret\n", encoding="utf-8")
+        generated.parent.mkdir()
+        generated.write_text("credential = 'should-not-be-read'\n", encoding="utf-8")
+        original_open = Path.open
+
+        def guarded_open(path: Path, *args, **kwargs):
+            if path == protected or path == generated:
+                raise AssertionError(f"unsafe read: {path}")
+            return original_open(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "open", new=guarded_open):
+            findings = SECURITY_SCAN.scan_repository(self.root)
+
+        self.assertEqual(findings, [])
+
+    def test_ship_scan_fails_closed_without_a_git_repository(self) -> None:
+        with mock.patch.object(SECURITY_SCAN, "is_git_root", return_value=False):
+            files, findings = SECURITY_SCAN.repository_files(
+                self.root, mode=SECURITY_SCAN.SHIP_MODE
+            )
+        self.assertEqual(files, [])
+        self.assertEqual(
+            findings,
+            [SECURITY_SCAN.Finding(".", 0, "git-repository-required")],
+        )
+
+    def test_ship_scan_reports_protected_paths_in_history_without_opening_them(self) -> None:
+        safe_source = self.root / "app.py"
+        safe_source.write_text("print('safe')\n", encoding="utf-8")
+        with (
+            mock.patch.object(SECURITY_SCAN, "is_git_root", return_value=True),
+            mock.patch.object(
+                SECURITY_SCAN,
+                "git_paths",
+                side_effect=[["app.py"], ["app.py"], [".env.local"]],
+            ),
+        ):
+            files, findings = SECURITY_SCAN.repository_files(
+                self.root, mode=SECURITY_SCAN.SHIP_MODE
+            )
+        self.assertEqual(files, [safe_source])
+        self.assertIn(
+            SECURITY_SCAN.Finding(".env.local", 0, "protected-history-path"),
             findings,
         )
 
@@ -156,10 +277,12 @@ class SecurityScanTests(unittest.TestCase):
             mock.patch.object(
                 SECURITY_SCAN,
                 "git_paths",
-                side_effect=[[".env.local", "app.py"], [".env.local", "app.py"]],
+                side_effect=[[".env.local", "app.py"], [".env.local", "app.py"], []],
             ),
         ):
-            files, findings = SECURITY_SCAN.repository_files(self.root)
+            files, findings = SECURITY_SCAN.repository_files(
+                self.root, mode=SECURITY_SCAN.SHIP_MODE
+            )
 
         self.assertEqual(files, [safe_source])
         self.assertEqual(

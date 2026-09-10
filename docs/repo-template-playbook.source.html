@@ -1079,14 +1079,19 @@
         <span role="cell"><span class="route-label">Result · </span>Executable contract; plan only when dependencies justify it</span>
       </div>
       <div class="route-row" role="row">
-        <span role="cell"><span class="route-label">Signal · </span>Approved independent work packages</span>
+        <span role="cell"><span class="route-label">Signal · </span>An authorized implementation has runnable task-register work</span>
+        <code role="cell">$autonomous-build</code>
+        <span role="cell"><span class="route-label">Result · </span>Traced local implementation with fresh task evidence and bounded review</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Signal · </span>Approved durable plan and task register</span>
         <code role="cell">$execute-plan</code>
-        <span role="cell"><span class="route-label">Result · </span>Bounded execution with integrated verification</span>
+        <span role="cell"><span class="route-label">Result · </span>Plan adapted into the shared autonomous-build loop with integrated verification</span>
       </div>
       <div class="route-row" role="row">
         <span role="cell"><span class="route-label">Signal · </span>Medium/high-complexity work with independent lanes</span>
         <code role="cell">$engineering-loop</code>
-        <span role="cell"><span class="route-label">Result · </span>Isolated implementation, review, integration, and final verification</span>
+        <span role="cell"><span class="route-label">Result · </span>Read-only research or review findings for the primary agent</span>
       </div>
       <div class="route-row" role="row">
         <span role="cell"><span class="route-label">Signal · </span>Explicit external capability search</span>
@@ -1133,6 +1138,7 @@
           <optgroup label="Implement">
             <option value="quick">$quick</option>
             <option value="execute-plan">$execute-plan</option>
+            <option value="autonomous-build">$autonomous-build</option>
             <option value="engineering-loop">$engineering-loop</option>
           </optgroup>
           <optgroup label="Customer experience">
@@ -1261,7 +1267,7 @@
         build: {
           title: 'Build the first useful slice',
           purpose: 'Deliver the smallest complete behaviour that proves value, using the least ceremonial workflow that fits.',
-          command: '$quick · $brainstorm · $spec · $execute-plan · $engineering-loop',
+          command: '$quick · $execute-plan · $autonomous-build',
           model: 'Default coding tier · lighter effort',
           modelNote: 'Raise reasoning effort for architecture, long-context work, security, data integrity, or expensive failure modes.',
           evidence: 'Observable behaviour, focused tests, canonical lint and tests, and a concise report of residual gaps.',
@@ -1352,17 +1358,24 @@
         },
         'execute-plan': {
           title: '$execute-plan',
-          when: 'Independent read-only research or review can reduce context load without moving implementation out of the active checkout.',
-          produces: 'Integrated implementation of the approved tasks with bounded delegation and final verification.',
-          next: '$review',
-          prompt: '$execute-plan Implement the approved Matchday standings and team-page plan. Delegate only independent tasks, preserve unrelated work, integrate centrally, and run every acceptance check in the plan.'
+          when: 'An existing durable plan and validated task register are ready for local execution.',
+          produces: 'The approved plan executed through the shared $autonomous-build loop with task evidence and final verification.',
+          next: '$autonomous-build',
+          prompt: '$execute-plan Validate the approved Matchday plan, SPEC.md, and TASKS.md, then execute runnable tasks through the shared $autonomous-build loop. Preserve unrelated work, run every acceptance check, and do not use Git or write externally.'
+        },
+        'autonomous-build': {
+          title: '$autonomous-build',
+          when: 'An authorized implementation has a task register and should run locally through requirement tracing, verification, review, and refinement.',
+          produces: 'Completed traced tasks with fresh evidence and no routine suggested-next-prompt stop while runnable work remains.',
+          next: '$review or $ship when the queue is complete and authorized',
+          prompt: '$autonomous-build Execute the runnable Matchday tasks from TASKS.md. Trace every change to SPEC.md, preserve unrelated work, verify each task, review meaningful risk, and continue until the queue is complete. Do not use Git, deploy, or write externally.'
         },
         'engineering-loop': {
           title: '$engineering-loop',
-          when: 'Medium/high-complexity work, multiple independent workstreams, or an explicit request for bounded parallel agents makes isolation worthwhile.',
-          produces: 'Integrated implementation, independent review, and final verification with every delegated lane bounded by scope and authority.',
-          next: '$review and the canonical repository checks',
-          prompt: '$autonomous-build Implement the Matchday tasks from TASKS.md. Trace every change to SPEC.md, work in the current checkout, verify each task, review meaningful risk, and continue until the queue is complete.'
+          when: 'Medium/high-complexity work where independent read-only research or review would materially improve implementation or assurance.',
+          produces: 'Bounded read-only findings for the primary agent; implementation, integration, and final verification remain with the primary agent.',
+          next: '$autonomous-build for implementation, or apply the findings in the current task',
+          prompt: '$engineering-loop Research and review the Matchday event-streaming plan using independent read-only lanes. Return concise evidence, risks, and verification gaps for the primary agent; do not edit, use Git, create worktrees, or write externally.'
         },
         'find-skills': {
           title: '$find-skills',

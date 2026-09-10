@@ -9,7 +9,7 @@ Announce: "I'm using brainstorm to resolve the feature choices before implementa
 
 ## 1. Load relevant project context
 
-Read root `SPEC.md` when present plus only the architecture, conventions, decisions, or prior specs relevant to the feature. If the repository is still unconfigured, route to `$discover`.
+Read root `SPEC.md` and `TASKS.md` when present plus only the architecture, conventions, decisions, or prior specs relevant to the feature. If the repository is still unconfigured, route to `$discover` so the root contract is created.
 
 ## 2. Resolve the problem
 
@@ -27,36 +27,19 @@ Present two or three genuinely viable approaches with tradeoffs in behavior, com
 
 ## 4. Write the spec
 
-After the direction is clear, append the requirements, interfaces, acceptance, anti-goals, assumptions, and any amendment to root `SPEC.md`:
+After the direction is clear, append the requirements, interfaces, acceptance, anti-goals, assumptions, and a dated amendment to the root `SPEC.md` in place. Use the existing contract sections; do not create a separate brainstorm artifact:
 
 ```markdown
-# Specification amendment: [Feature]
-
-**Date:** [YYYY-MM-DD]
-**Status:** ACTIVE
-
-## Problem
-[Who is affected and what fails today.]
-
-## Chosen solution
-[User-visible behavior and the selected approach.]
-
-## Acceptance criteria
-- [ ] [Specific observable result.]
-
-## Non-goals
-- [Explicit exclusion.]
-
-## Constraints and risks
-- [Constraint, risk, or dependency.]
-
-## First shippable slice
-[Smallest complete proof of value.]
-
-## Open questions
-- [Unresolved question, or "None".]
+## Amendments
+- **[YYYY-MM-DD]:** [Chosen direction and rationale.]
 ```
 
-Run `python scripts/codexicon.py spec-check`. Self-check that every criterion is testable, no placeholder remains, anti-goals are explicit, and the first slice is complete rather than scaffolding.
+Put the chosen problem, solution, acceptance, non-goals, constraints, first slice,
+and open questions in the matching root `SPEC.md` sections before adding the dated
+amendment entry.
 
-For multi-step work, write `TASKS.md` and continue to `$autonomous-build` when implementation is authorized. Do not invoke Git.
+Run `python scripts/codexicon.py spec-check`. Self-check that every criterion is testable, no placeholder remains, anti-goals are explicit, and the first slice is complete rather than scaffolding. For authorized implementation, use `$write-plan` to create or validate `TASKS.md`, then enter the shared `$autonomous-build` loop without a routine approval turn. Use task states `TODO`, `ACTIVE`, `BLOCKED`, and `DONE`; queue outcomes are `READY`, `RESUME_ACTIVE`, `BLOCKED`, `COMPLETE`, and `INVALID`.
+
+Pure explanations and read-only reviews are exempt from code-generation ceremonies and do not write `SPEC.md` or `TASKS.md`.
+
+Build has one writer in the shared checkout: the primary agent by default. An explicitly chosen `implementer` may write one bounded task sequentially; the primary agent re-reads the changed paths and owns integration and final verification. Never run concurrent writers. Do not invoke Git.

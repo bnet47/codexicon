@@ -21,9 +21,10 @@ Run the narrowest feature checks plus:
 ./scripts/lint.sh
 ./scripts/test.sh
 ./scripts/security.sh
+python scripts/security_scan.py --mode ship
 ```
 
-If a check fails, diagnose and fix only in-scope problems, rerun it, and stop if safe completion needs a product decision or unrelated change. Run the canonical scripts directly so lint/test one-use hook receipts reflect the real result; do not mark verification manually.
+If a check fails, diagnose and fix only in-scope problems, rerun it, and stop if safe completion needs a product decision or unrelated change. The final scanner command is the explicit tracked/history Ship gate; it is not a Build substitute. Run the canonical scripts directly so lint/test one-use hook receipts reflect the real result; do not mark verification manually.
 
 For a first production launch or material production change, run `$production-readiness` before publication. A NOT READY verdict blocks shipping; only the accountable human can accept a named residual risk.
 

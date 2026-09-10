@@ -6,6 +6,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -52,6 +53,163 @@ class TemplateValidationTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_implementation_entry_points_share_contract_and_writer_policy(self) -> None:
+        skill_paths = {
+            name: ROOT / ".agents" / "skills" / name / "SKILL.md"
+            for name in (
+                "discover",
+                "spec",
+                "brainstorm",
+                "write-plan",
+                "quick",
+                "execute-plan",
+                "autonomous-build",
+            )
+        }
+        skills = {name: path.read_text(encoding="utf-8") for name, path in skill_paths.items()}
+
+        for name in skills:
+            with self.subTest(skill=name):
+                self.assertIn("SPEC.md", skills[name])
+                self.assertIn("TASKS.md", skills[name])
+                self.assertIn("RESUME_ACTIVE", skills[name])
+                self.assertRegex(skills[name], r"Pure explanations.*read-only reviews")
+
+        self.assertIn("root `SPEC.md`", skills["discover"])
+        self.assertIn("root `SPEC.md`", skills["spec"])
+        self.assertIn("historical brief", skills["spec"])
+        self.assertIn("spec-check", skills["brainstorm"])
+        self.assertIn("tasks-next --json", skills["write-plan"])
+        self.assertIn("second execution engine", skills["execute-plan"])
+        self.assertIn("do not invent a task ID", skills["quick"])
+        self.assertIn("no `TASKS.md`", skills["autonomous-build"])
+
+        contract = (ROOT / "docs" / "build-contracts.md").read_text(encoding="utf-8")
+        self.assertIn("One contract and one Build vocabulary", contract)
+        for state in ("TODO", "ACTIVE", "BLOCKED", "DONE", "READY", "RESUME_ACTIVE", "COMPLETE", "INVALID"):
+            self.assertIn(f"`{state}`", contract)
+
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        implementer = (ROOT / ".codex" / "agents" / "implementer.toml").read_text(encoding="utf-8")
+        self.assertNotIn("[PROJECT_NAME]", agents)
+        self.assertIn("default sole writer", agents)
+        self.assertIn("explicitly chooses sequential implementation", implementer)
+
+        for path in (ROOT / "README.md", ROOT / "START_HERE.md"):
+            content = path.read_text(encoding="utf-8")
+            with self.subTest(path=path):
+                self.assertIn("SPEC.md", content)
+                self.assertIn("TASKS.md", content)
+                self.assertIn("suggested-next-prompt", content)
+
+        codex_docs = (ROOT / "docs" / "codex.md").read_text(encoding="utf-8")
+        self.assertIn("runnable", codex_docs.lower())
+
+    def test_optional_goal_mode_preserves_portable_resume_contract(self) -> None:
+        codex_docs = (ROOT / "docs" / "codex.md").read_text(encoding="utf-8")
+        build_contracts = (ROOT / "docs" / "build-contracts.md").read_text(encoding="utf-8")
+        start_here = (ROOT / "START_HERE.md").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+        codex_lower = codex_docs.lower()
+        for phrase in (
+            "Goal mode",
+            "optional",
+            "client-dependent",
+            "active-turn chaining",
+            "compaction recovery",
+            "restart after termination",
+            "cancellation",
+            "TASKS.md",
+            "authoritative",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase.lower(), codex_lower)
+
+        for document in (build_contracts, start_here, readme):
+            with self.subTest(document=document[:24]):
+                self.assertIn("Goal mode", document)
+                self.assertIn("plain-session", document.lower())
+                self.assertIn("Git", document)
+                self.assertIn("deployment", document)
+
+        combined = "\n".join((codex_docs, build_contracts, start_here, readme)).lower()
+        self.assertIn("unmeasured", combined)
+        self.assertIn("no daemon", combined)
+        self.assertNotIn("third-party memory service is required", combined)
+
+    def test_playbook_implementation_routing_is_complete_and_readable(self) -> None:
+        source = (ROOT / "docs" / "repo-template-playbook.source.html").read_text(encoding="utf-8")
+        skill_details_match = re.search(
+            r"const skillDetails = \{(?P<body>.*?)\n      \};",
+            source,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(skill_details_match)
+        assert skill_details_match is not None
+        skill_details = skill_details_match.group("body")
+
+        selector_values = set(re.findall(r'<option value="([^"]+)">', source))
+        detail_keys = {
+            quoted or bare
+            for quoted, bare in re.findall(
+                r"(?m)^\s*(?:'([^']+)'|([a-z][a-z0-9-]*)): \{",
+                skill_details,
+            )
+        }
+        self.assertEqual(selector_values, detail_keys)
+        self.assertIn("<option value=\"autonomous-build\">$autonomous-build</option>", source)
+        self.assertRegex(
+            source,
+            r"command: '\$quick · \$execute-plan · \$autonomous-build'",
+        )
+
+        expected = {
+            "autonomous-build": {
+                "title": "$autonomous-build",
+                "when": ("authorized implementation", "task register"),
+                "produces": ("fresh evidence",),
+                "next": ("$review", "$ship"),
+                "prompt": ("$autonomous-build", "TASKS.md", "SPEC.md"),
+            },
+            "engineering-loop": {
+                "title": "$engineering-loop",
+                "when": ("read-only research", "review"),
+                "produces": ("read-only findings", "primary agent"),
+                "next": ("$autonomous-build",),
+                "prompt": ("$engineering-loop", "do not edit"),
+            },
+            "execute-plan": {
+                "title": "$execute-plan",
+                "when": ("durable plan", "task register"),
+                "produces": ("$autonomous-build", "task evidence"),
+                "next": ("$autonomous-build",),
+                "prompt": ("$execute-plan", "SPEC.md", "TASKS.md", "$autonomous-build"),
+            },
+        }
+        for name, fields in expected.items():
+            with self.subTest(skill=name):
+                block_match = re.search(
+                    rf"(?ms)^\s*(?:'{re.escape(name)}'|{re.escape(name)}): \{{(?P<block>.*?)^\s*\}},",
+                    skill_details,
+                )
+                self.assertIsNotNone(block_match)
+                assert block_match is not None
+                block = block_match.group("block")
+                self.assertIn(f"title: '{fields['title']}'", block)
+                for field in ("when", "produces", "next", "prompt"):
+                    self.assertRegex(block, rf"(?m)^\s*{field}: '[^']*'")
+                    for expected_text in fields[field]:
+                        self.assertIn(expected_text, block)
+
+        engineering_block = re.search(
+            r"(?ms)^\s*'engineering-loop': \{(?P<block>.*?)^\s*\},",
+            skill_details,
+        )
+        self.assertIsNotNone(engineering_block)
+        assert engineering_block is not None
+        self.assertNotIn("$autonomous-build Implement", engineering_block.group("block"))
+
     def test_durable_guidance_policy_detects_brittle_external_assumptions(self) -> None:
         samples = {
             "Use gpt-5.4 for every review.": "named or versioned model choice",
@@ -77,6 +235,68 @@ class TemplateValidationTests(unittest.TestCase):
             ),
             [],
         )
+
+    def test_durable_guidance_scope_excludes_project_documents(self) -> None:
+        root = make_test_directory()
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "AGENTS.md").write_text("Use gpt-5.4 for every review.\n", encoding="utf-8")
+        brief = root / "agent_docs" / "briefs" / "model-comparison.md"
+        brief.parent.mkdir(parents=True)
+        brief.write_text("Compare gpt-5.4 with the current alternatives.\n", encoding="utf-8")
+        original_root = TEMPLATE_VALIDATOR.ROOT
+        TEMPLATE_VALIDATOR.ROOT = root
+        try:
+            guidance = TEMPLATE_VALIDATOR.guidance_files()
+            guidance_names = {path.relative_to(root).as_posix() for path in guidance}
+        finally:
+            TEMPLATE_VALIDATOR.ROOT = original_root
+
+        self.assertIn("AGENTS.md", guidance_names)
+        self.assertNotIn("agent_docs/briefs/model-comparison.md", guidance_names)
+        self.assertIn(
+            "named or versioned model choice",
+            TEMPLATE_VALIDATOR.durable_guidance_findings(
+                (root / "AGENTS.md").read_text(encoding="utf-8")
+            ),
+        )
+
+    def test_template_discovery_prunes_generated_and_protected_files_before_reads(self) -> None:
+        root = make_test_directory()
+        self.addCleanup(shutil.rmtree, root, True)
+        safe = root / "application.md"
+        protected = root / ".env.local"
+        generated = root / "dist" / "generated.md"
+        safe.write_text("Application notes.\n", encoding="utf-8")
+        protected.write_text("protected-but-not-a-secret\n", encoding="utf-8")
+        generated.parent.mkdir()
+        generated.write_text("Use gpt-5.4 for generated output.\n", encoding="utf-8")
+
+        files, findings = TEMPLATE_VALIDATOR.safe_discover_files(
+            root,
+            suffixes=TEMPLATE_VALIDATOR.TEXT_SUFFIXES,
+        )
+
+        self.assertEqual(files, [safe])
+        self.assertEqual(findings, [])
+
+        original_read_text = Path.read_text
+
+        def guarded_read(path: Path, *args, **kwargs):
+            if path in {protected, generated}:
+                raise AssertionError(f"unsafe read: {path}")
+            return original_read_text(path, *args, **kwargs)
+
+        original_root = TEMPLATE_VALIDATOR.ROOT
+        TEMPLATE_VALIDATOR.ROOT = root
+        try:
+            with mock.patch.object(Path, "read_text", new=guarded_read):
+                self.assertEqual(TEMPLATE_VALIDATOR.read_template_text(safe), "Application notes.\n")
+                with self.assertRaises(OSError):
+                    TEMPLATE_VALIDATOR.read_template_text(protected)
+                with self.assertRaises(OSError):
+                    TEMPLATE_VALIDATOR.read_template_text(generated)
+        finally:
+            TEMPLATE_VALIDATOR.ROOT = original_root
 
     def test_toml_fallback_preserves_nested_mcp_sections(self) -> None:
         config = self.temp_config(
@@ -151,6 +371,25 @@ class TemplateValidationTests(unittest.TestCase):
             "  env:\n    version: 3.97.0\n  with:\n    version: 3.96.0\n",
         )
         self.assertTrue(TEMPLATE_VALIDATOR.trufflehog_version_mismatch(masked))
+        self.assertTrue(
+            TEMPLATE_VALIDATOR.trufflehog_version_mismatch(
+                workflow.replace(
+                    "0123456789abcdef0123456789abcdef01234567",
+                    "v3.97.0",
+                ).replace("3.96.0", "3.97.0")
+            )
+        )
+
+    def test_simulated_trufflehog_bump_keeps_action_pin_and_versions_coupled(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        bumped = workflow.replace(
+            "bcfcf73aaf4759d4dadc2783177c245a02792318 # v3.97.0",
+            "0123456789abcdef0123456789abcdef01234567 # v3.98.0",
+        ).replace("version: 3.97.0", "version: 3.98.0")
+
+        self.assertNotEqual(bumped, workflow)
+        self.assertEqual(TEMPLATE_VALIDATOR.mutable_action_references(bumped), [])
+        self.assertFalse(TEMPLATE_VALIDATOR.trufflehog_version_mismatch(bumped))
 
     def temp_config(self, content: str) -> Path:
         directory = make_test_directory()
@@ -864,14 +1103,6 @@ class CodexHookTests(unittest.TestCase):
     def test_common_read_only_shell_commands_do_not_require_verification(self) -> None:
         self.assertEqual(self.run_hook("session-start", {"session_id": "s1"}).returncode, 0)
         read_only_commands = [
-            "git diff",
-            "git diff --stat",
-            "git diff --name-only",
-            "git grep needle",
-            "git branch --show-current",
-            "git ls-tree HEAD",
-            "git show HEAD",
-            "git status; git branch --show-current",
             "find . -maxdepth 1",
             "tree",
             "grep needle README.md",
@@ -899,11 +1130,6 @@ class CodexHookTests(unittest.TestCase):
 
     def test_common_inspection_does_not_invalidate_fresh_verification(self) -> None:
         commands = [
-            "git diff",
-            "git diff --stat",
-            "git diff --name-only",
-            "git grep needle",
-            "git ls-tree HEAD",
             "find . -maxdepth 1",
             "tree",
             "grep needle README.md",
@@ -934,6 +1160,21 @@ class CodexHookTests(unittest.TestCase):
                     {"session_id": "s1", "stop_hook_active": False},
                 )
                 self.assertEqual(allowed.returncode, 0, allowed.stderr)
+
+    def test_git_inspection_does_not_preserve_build_verification(self) -> None:
+        self.run_hook("session-start", {"session_id": "s1"})
+        self.record_success("lint")
+        self.record_success("test")
+        recorded = self.run_hook(
+            "record-shell",
+            {"session_id": "s1", "tool_input": {"command": "git status"}},
+        )
+        self.assertEqual(recorded.returncode, 0, recorded.stderr)
+        blocked = self.run_hook(
+            "verify-stop", {"session_id": "s1", "stop_hook_active": False}
+        )
+        self.assertEqual(blocked.returncode, 2)
+        self.assertIn("Missing or stale: lint, tests", blocked.stderr)
 
     def test_read_only_commands_with_write_options_still_invalidate_verification(self) -> None:
         commands = [

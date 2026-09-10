@@ -51,7 +51,7 @@ Official reference: [Codex configuration](https://developers.openai.com/codex/co
 - records completed patch/write events;
 - requires lint after any write and tests after behavior-relevant writes;
 - accepts verification only when an exact canonical command returns a one-use success receipt;
-- recognizes only a narrow complete allowlist of read-only inspections, including manager plans and diagnostics that omit `--apply`; execution syntax and unknown options conservatively invalidate prior verification;
+- recognizes only a narrow, argument-validated allowlist of read-only inspections, including `spec-check`, `tasks-next [--json]`, manager plans, and diagnostics that omit `--apply`; validated task state/evidence bookkeeping (including JSON `tasks-done`) preserves fresh source-check evidence, while source/configuration edits, mutating manager commands, unsafe composition, and unknown options invalidate prior verification;
 - conservatively invalidates verification after shell commands that are not definitely read-only;
 - records supported turn, compaction, and session lifecycle telemetry in a local summary without treating it as a project checkpoint;
 - asks Codex to run any missing checks before stopping.
@@ -74,17 +74,81 @@ Official reference: [Codex hooks](https://developers.openai.com/codex/hooks)
 
 ### Credential and Git gates
 
-The pre-tool policy blocks common repository and user credential stores, broad environment enumeration, and direct reads of secret-like environment variables. `.env.example` remains the only credential-shaped placeholder path agents may open. The dependency-free `scripts/security.sh` and `scripts/security.ps1` scan tracked and non-ignored safe text without opening protected credential paths; findings reveal only path, line, and detector.
+The pre-tool policy blocks common repository and user credential stores, broad environment enumeration, and direct reads of secret-like environment variables. `.env.example` remains the only credential-shaped placeholder path agents may open. The dependency-free `scripts/security.sh` and `scripts/security.ps1` run the filesystem-local Build scan without opening protected credential paths; the explicit `python scripts/security_scan.py --mode ship` gate adds Git-tracked and historical protected-path checks without opening those paths. The scanner detects high-confidence token patterns plus literal assignments in unquoted, quoted JSON/YAML, and dictionary-style keys, while preserving placeholder/environment filtering. If either Ship-mode Git enumeration fails, Ship fails closed. Findings reveal only path, line, and detector.
 
-Git is intentionally deferred during Explore and Build. Do not create branches or worktrees, stage files, commit, or push until `$ship`. When a project uses Git, run `scripts/install-git-hooks.sh` or `.ps1` only as part of the authorized shipping setup.
+Template validation uses the same safe filesystem discovery policy: generated directories are pruned before descent, protected paths are excluded before reads, and unsafe symlinks are rejected. Broad application-document checks such as UTF-8, mojibake, machine-path, and Markdown-link validation remain active on safe relevant text files. Durable guidance checks are limited to template-owned instructions and agent profiles (`AGENTS.md`, the root template entry points, `docs/codex.md`, `docs/build-contracts.md`, `.agents/skills/`, and `.codex/agents/`); project briefs and other application research remain document lint, not reusable harness policy. This scope does not weaken the separate credential scanner.
+
+Git is intentionally absent from normal Explore and Build journeys. Checkpoints, resume, doctor, task evidence, hooks, and `verify` use local contract/task/path identities and caller-supplied changed-path evidence; they must continue to work when Git is unavailable. Do not create branches or worktrees, inspect checkout status/history, stage files, commit, or push until `$ship`. A narrow read-only Git diagnostic is not a substitute for this policy. Test fixtures may initialize and mutate isolated temporary repositories solely to exercise Ship behavior; that fixture authority never applies to the user checkout.
 
 Hook registration is structurally and behaviorally tested, but Codex trust is local to each clone and surface. After trusting the project, use `/hooks` and complete the live smoke checklist below; repository code cannot grant that trust itself.
 
 ### Durable checkpoints and resume
 
-`$context-dump` uses `python scripts/codexicon.py checkpoint` to atomically create an explicit Markdown checkpoint under `agent_docs/sessions/`. The first line contains schema 1 metadata: checkpoint ID, creation time, repository fingerprint, branch/HEAD, and related project paths. The body remains human-readable and records current state, dirty path names, verification claims, next actions, blockers, decisions, and a compact resume note. It never includes transcript contents or diffs automatically.
+`$context-dump` uses `python scripts/codexicon.py checkpoint` to atomically create an explicit Markdown checkpoint under `agent_docs/sessions/`. The first line contains schema 1 metadata: checkpoint ID, creation time, a local repository fingerprint, contract/task identities, related paths, and explicit changed-path evidence. The body remains human-readable and records current state, local identities, verification claims, next actions, blockers, decisions, and a compact resume note. It never includes transcript contents or diffs automatically.
 
-`python scripts/codexicon.py resume` selects the newest checkpoint whose repository fingerprint matches the current Git common directory (or repository path outside Git), warns when HEAD changed, and prints it for verification against the current plan and diff. `doctor` reports missing related paths. Compaction does not silently write a checkpoint: `PreCompact` remains mechanical metadata, while a subsequent documented `SessionStart` source of `compact` preserves/reconstructs verification state and surfaces the compatible checkpoint.
+`python scripts/codexicon.py resume` selects the newest checkpoint whose local repository fingerprint matches the current checkout, warns when its contract, task register, or recorded path evidence changed, and prints it for verification against the current plan and changed paths. `doctor` reports missing related paths and stale local identities. Compaction does not silently write a checkpoint: `PreCompact` remains mechanical metadata, while a subsequent documented `SessionStart` source of `compact` preserves/reconstructs verification state and surfaces the compatible checkpoint.
+
+The `SessionStart` `resume` and `compact` matchers emit a bounded `hookSpecificOutput.additionalContext` block. It contains the current `SPEC.md` path/revision/digest, the parsed active or next runnable task, unresolved blocker IDs, and a metadata-only evidence freshness summary. It explicitly requires rereading authoritative `SPEC.md` and `TASKS.md`; a checkpoint contributes only its validated header path and never overrides newer contract or task state. Malformed task state, stale contract bindings, missing or stale evidence, and multiple `ACTIVE` rows are reported as repair or verification actions. The block is capped at 4096 characters and omits transcript text, checkpoint bodies, commands, and secret values. Live client delivery smoke testing is unmeasured in this repository; hook unit/structural tests cover the emitted schema.
+
+### Optional long-running execution
+
+Native Goal mode is an optional, client-dependent route for work that the user
+explicitly wants to continue toward a sustained outcome. It is a client
+capability, not a Codexicon service or a second source of truth. Goal mode may
+keep an active client run moving across several turns, but it does not promise
+that a client remains open, survives termination, or supports the feature at
+all. Cancellation and a request to stop remain authoritative; do not resume a
+cancelled run merely because a goal or task is still unfinished.
+
+Use these continuation cases deliberately:
+
+- **Active-turn chaining:** while one client turn is alive, Build may continue
+  through the runnable task queue and record ordinary local evidence. This is
+  not a background process.
+- **Compaction recovery:** after compaction, the client must reread the current
+  root `SPEC.md` and `TASKS.md`, then use compatible checkpoint metadata only as
+  supplemental context. Newer contract, task, and evidence state wins.
+- **Restart after termination:** a new session starts from the filesystem. Run
+  `python scripts/codexicon.py tasks-next --json` (and `resume` when a
+  checkpoint is relevant) to recover the active task or next runnable task.
+  Do not infer progress from a lost transcript.
+- **Cancellation:** stopping, cancelling, or declining continuation ends the
+  requested run. The next explicit request may inspect the durable state, but
+  it must not silently relaunch work.
+
+The plain-session route is deterministic: reread `SPEC.md` and `TASKS.md`,
+validate the queue, resume an `ACTIVE` task first, and continue only with
+explicit user intent. Goal mode does not add a daemon, scheduler, or
+third-party memory store, and it cannot grant Git, deployment, publication, or
+external-write authority. Build remains local and Git-free; those effects stay
+behind the explicitly authorized `$ship` workflow.
+
+Availability evidence is intentionally separated from documentation: the
+deterministic Python harness and its local resume fixtures are observed on the
+recorded Windows host, while native Goal-mode availability and live delivery
+are unmeasured unless a specific client/platform smoke test records them. Do
+not generalize an observed client result to every Codex surface.
+
+### Capability evidence matrix
+
+The matrix distinguishes local deterministic evidence from live client
+compatibility. “Unmeasured” is intentional: repository tests cannot establish
+that a client trusted hooks, delivered resume context, or surfaced a completed
+unified exec. Last-tested values are recorded only when the test surface
+exposes them.
+
+| Client / platform surface | Last tested date/version | Hook trust | Resume/compact delivery | Unified-exec completion | Native verification |
+|---|---|---|---|---|---|
+| Deterministic Python harness / Windows host | 2026-09-11 / Python 3.13.13 | N/A | Fixture/schema only; live delivery unmeasured | Measured by local subprocess return codes | Measured on this Windows host |
+| Codex desktop/local client | Unmeasured / version not exposed | Unmeasured | Unmeasured | Unmeasured | Unmeasured |
+| Codex CLI | Unmeasured / version not exposed | Unmeasured | Unmeasured | Unmeasured | Unmeasured |
+| POSIX host | Unmeasured / no run in this task | N/A | Unmeasured | Unmeasured | Unmeasured |
+| Browser/live client | Unmeasured / no browser trial | Unmeasured | Unmeasured | Unmeasured | Unmeasured |
+
+The reproducible fixture command and its denominators are documented in
+`docs/evals/agent-loop-benchmark.md`. This matrix does not rank models or
+infer compatibility from raw tool names; live/browser trials must be recorded
+as separate evidence.
 
 Checkpoints are project files but are never auto-committed or synchronized. `.codex-state/` is not a checkpoint store.
 
@@ -97,25 +161,25 @@ Checkpoints are project files but are never auto-committed or synchronized. `.co
 - `doctor --root TARGET` diagnoses malformed config/hooks/lock data, missing canonical commands, partial adoption, local harness modifications, and broken checkpoint references without assuming the project is still a template.
 - `update --root TARGET --source SOURCE` compares an installed lock with a trusted local release source. `--apply` updates or retires only files unchanged since their recorded baseline.
 - `sync-git-modes --root TARGET` sets manifest-declared executable bits only on files the user has already staged or tracked. Run it after staging a Windows-origin adoption and before committing so POSIX clones retain runnable hooks and shell entry points.
-- `verify` invokes the platform-native project-owned lint, test, and security scripts in canonical order and stops on the first failure.
+- `verify` invokes the platform-native project-owned lint, test, and security scripts in canonical order and stops on the first failure. Its default `--mode build` is Git-free; the explicit `--mode ship` passes the stronger tracked/history scanner to the security check.
 
-`.codexicon.json` is the source's schema-1 whole-file ownership list, including executable intent. An adopted project receives `.codexicon.lock.json`, which stores only release/provenance metadata, paths, policies, executable intent, and SHA-256 baselines. Locally modified or deleted files become explicit conflicts. Apply uses atomic writes plus a write-ahead `.codexicon/` transaction journal, backups, rollback, and a committed cleanup phase; the next authorized mutation recovers a valid interrupted journal before planning new work. Unsafe traversal, source/target symlinks, malformed state, and source or target bytes changed during apply are refused.
+`.codexicon.json` is the source's schema-1 whole-file ownership list, including executable intent. An adopted project receives `.codexicon.lock.json`, which stores only release/provenance metadata, paths, policies, executable intent, and SHA-256 baselines. Locally modified or deleted files become explicit conflicts. Apply uses atomic writes plus a write-ahead `.codexicon/` transaction journal, backups, rollback, and terminal `committed` or `rolled-back` phases. The journal carries the planned manifest and source-file digests, so source drift is refused before the first target write. Cleanup is retry-safe after interruption, concurrent target edits are preserved during rollback, and existing schema-1 journals without the newer digest fields remain recoverable. Unsafe traversal, source/target symlinks, malformed state, and source or target bytes changed during apply are refused.
 
 The manager never downloads, commits, pushes, publishes, deploys, or writes to external systems.
 
 ## Local Build contracts
 
-`$discover` creates the active root `SPEC.md`, including stable requirement and interface IDs, acceptance conditions, anti-goals, assumptions, and append-only amendments. `$autonomous-build` consumes a multi-task `TASKS.md` register, requires a trace from each task to `SPEC.md`, verifies each task, and continues to the next actionable task without a sign-off turn. See `docs/build-contracts.md` for the format and local validation commands.
+`$discover`, `$spec`, and `$brainstorm` create or amend the active root `SPEC.md`, including stable requirement and interface IDs, acceptance conditions, anti-goals, assumptions, and append-only amendments. `$write-plan` creates or amends a validated root `TASKS.md` register from that contract. `$execute-plan` is an adapter into `$autonomous-build`; the plan supplies context, while `SPEC.md` and `TASKS.md` remain authoritative. An authorized `$autonomous-build` creates the smallest traced register when none exists, without a routine approval stop. `$quick` uses an existing trace or a minimal authorized contract amendment and does not invent task IDs when no register is needed. Pure explanations and read-only reviews are exempt from code-generation ceremonies. See `docs/build-contracts.md` for the shared state vocabulary and local validation commands.
 
-Explore and Build remain Git-free: do not create branches or worktrees, stage files, commit, or push. `$ship` is the only workflow that performs Git operations.
+Explore and Build remain Git-free: do not create branches or worktrees, inspect Git state, stage files, commit, or push. `$ship` is the only workflow that performs Git operations and may run `python scripts/codexicon.py verify --mode ship` plus the explicit Ship security audit.
 
 ## Subagents and local-first Build
 
-Project-scoped custom agents live in `.codex/agents/`. The template includes a read-only external-documentation `researcher`, a read-only `reviewer`, and a bounded `implementer`. Use Codex's built-in `explorer` for repository mapping; the custom researcher deliberately does not duplicate it.
+Project-scoped custom agents live in `.codex/agents/`. The template includes a read-only external-documentation `researcher`, a read-only `reviewer`, and a bounded `implementer`. The primary agent is the default sole writer; an implementer is used only when explicitly chosen to write one task sequentially, after which the primary agent re-reads the changed paths and owns integration and final verification. Use Codex's built-in `explorer` for repository mapping; the custom researcher deliberately does not duplicate it.
 
 The read-only `github-researcher` profile is for upstream repositories, issues, pull requests, releases, and skill sources. It does not grant GitHub access by itself; a maintainer must configure and trust a reviewed source or use the browser. Keep GitHub toolsets read-only and narrowly scoped.
 
-Use subagents for independent work with clear inputs and outputs. Parallel read-heavy exploration is usually safer than parallel edits. The main agent owns integration and final verification.
+Use subagents for independent read-only work with clear inputs and outputs. Parallel read-heavy exploration or review is safer than parallel edits. Implementation remains sequential in the shared checkout; never run concurrent writers. The primary agent owns integration and final verification.
 
 Read-only custom-agent sandbox settings are defaults: a parent turn's live permission mode can override them, so agent instructions and the primary agent's review still matter.
 
