@@ -14,7 +14,7 @@ Create or resume a concise checkpoint without transcript archaeology. Semantic c
 
 ## 2. Create
 
-Inspect the active request/spec/plan, current diff or changed files, latest verification, and blockers. Do not copy secrets, large logs, transcript content, or code that already exists in tracked files.
+Inspect the active request/spec/plan, declared changed files, latest verification, and blockers. Do not copy secrets, large logs, transcript content, or code that already exists in project files.
 
 Run the repository manager from the root:
 
@@ -24,7 +24,9 @@ python scripts/codexicon.py checkpoint --slug [short-slug] --title "[short title
 
 Repeat `--next`, `--related`, `--verification`, `--blocker`, and `--decision` as needed. Omit optional categories that are empty. Quote values for the active shell; never interpolate command output or untrusted text into the command.
 
-The manager validates related paths, captures only dirty path names plus Git identity, and atomically writes `agent_docs/sessions/[YYYY-MM-DD]-[slug].md`. It refuses an existing filename. Do not hand-edit the first metadata line.
+Use `--changed [relative-path]` for each source or document path changed in the current task. These are explicit evidence names, not a request to inspect Git status.
+
+The manager validates related and explicitly supplied changed paths, captures local contract/task/path identities without invoking Git, and atomically writes `agent_docs/sessions/[YYYY-MM-DD]-[slug].md`. It refuses an existing filename. Do not hand-edit the first metadata line.
 
 ## 3. Resume
 
@@ -35,9 +37,9 @@ python scripts/codexicon.py resume
 python scripts/codexicon.py doctor
 ```
 
-Use the newest repository-compatible checkpoint as orientation, then verify its HEAD, related paths, current diff, and verification claims before acting. A checkpoint is evidence, not authority to discard later user changes or repeat external side effects.
+Use the newest path-compatible checkpoint as orientation, then verify its local contract/task/path identities, related paths, changed-path evidence, and verification claims before acting. A checkpoint is evidence, not authority to discard later user changes or repeat external side effects. Git branch, index, and history checks belong only to `$ship`.
 
-If no compatible checkpoint exists, inspect the latest plan and current diff directly; do not select a checkpoint from a different clone by filename alone.
+If no compatible checkpoint exists, inspect the latest plan and declared changed paths directly; do not select a checkpoint from a different clone by filename alone.
 
 ## 4. Keep durable and ephemeral guidance separate
 

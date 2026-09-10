@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -13,6 +14,9 @@ from typing import Iterable
 
 
 ROOT = Path(__file__).resolve().parents[1]
+BUILD_MODE = "build"
+SHIP_MODE = "ship"
+SCAN_MODES = (BUILD_MODE, SHIP_MODE)
 EXCLUDED_DIRS = {
     ".codex-state",
     ".git",
@@ -26,7 +30,10 @@ EXCLUDED_DIRS = {
     ".wrangler",
     "__pycache__",
     "build",
+    "coverage",
     "dist",
+    "generated",
+    "htmlcov",
     "node_modules",
     "out",
     "venv",
@@ -60,7 +67,11 @@ TOKEN_PATTERNS = (
     ("stripe-live-secret", re.compile(r"\b(?:sk|rk)_live_[0-9A-Za-z]{16,}\b")),
 )
 SECRET_ASSIGNMENT = re.compile(
-    r"(?ix)\b(?:api[_-]?key|client[_-]?secret|password|passwd|secret|access[_-]?token|auth[_-]?token)"
+    r"(?ix)(?<![a-z0-9_])(?:"
+    r"\"(?:api[_-]?key|client[_-]?secret|password|passwd|secret|access[_-]?token|auth[_-]?token)\"|"
+    r"'(?:api[_-]?key|client[_-]?secret|password|passwd|secret|access[_-]?token|auth[_-]?token)'|"
+    r"(?:api[_-]?key|client[_-]?secret|password|passwd|secret|access[_-]?token|auth[_-]?token)"
+    r")"
     r"\s*[:=]\s*(?:['\"]([^'\"]{8,})['\"]|([^\s#;,]{8,}))"
 )
 SAFE_VALUE = re.compile(
@@ -159,40 +170,101 @@ def safe_candidate(path: Path, relative: str, root: Path, findings: list[Finding
     return target if target.is_file() else None
 
 
-def repository_files(root: Path) -> tuple[list[Path], list[Finding]]:
+def safe_discover_files(
+    root: Path,
+    *,
+    suffixes: set[str] | None = None,
+    names: set[str] | None = None,
+) -> tuple[list[Path], list[Finding]]:
+    """Discover local files without descending into unsafe or generated trees."""
+
+    root = root.resolve()
     findings: list[Finding] = []
-    tracked = git_paths(root, "ls-files", "--cached") if is_git_root(root) else None
-    if tracked is not None:
-        findings.extend(
-            Finding(path, 0, "protected-tracked-path") for path in tracked if is_protected_path(path)
-        )
-        candidates = git_paths(root, "ls-files", "--cached", "--others", "--exclude-standard")
-        if candidates is None:
-            findings.append(Finding(".", 0, "git-enumeration-failed"))
-            return filesystem_files(root, findings)
-        files = []
-        for relative in candidates:
-            path = root / relative
-            if is_protected_path(relative):
+    files: list[Path] = []
+    for directory, directory_names, file_names in os.walk(
+        root, topdown=True, followlinks=False
+    ):
+        directory_path = Path(directory)
+        kept_directories: list[str] = []
+        for name in directory_names:
+            path = directory_path / name
+            relative = normalized_relative(path, root)
+            if name in EXCLUDED_DIRS or is_protected_path(relative):
+                continue
+            if path.is_symlink():
+                safe_candidate(path, relative, root, findings)
+                continue
+            kept_directories.append(name)
+        directory_names[:] = kept_directories
+
+        for name in file_names:
+            path = directory_path / name
+            relative = normalized_relative(path, root)
+            if name in EXCLUDED_DIRS or is_protected_path(relative):
+                continue
+            if (
+                suffixes is not None
+                and path.suffix.lower() not in suffixes
+                and (names is None or name not in names)
+            ):
                 continue
             candidate = safe_candidate(path, relative, root, findings)
             if candidate is not None:
                 files.append(candidate)
-        return sorted(set(files)), findings
-
-    return filesystem_files(root, findings)
+    return sorted(set(files)), findings
 
 
-def filesystem_files(root: Path, findings: list[Finding]) -> tuple[list[Path], list[Finding]]:
-    files: list[Path] = []
-    for path in root.rglob("*"):
-        relative = normalized_relative(path, root)
-        if EXCLUDED_DIRS.intersection(Path(relative).parts) or is_protected_path(relative):
+def ship_repository_files(root: Path) -> tuple[list[Path], list[Finding]]:
+    """Enumerate current and historical Git paths for the explicit Ship gate."""
+
+    findings: list[Finding] = []
+    if not is_git_root(root):
+        return [], [Finding(".", 0, "git-repository-required")]
+    tracked = git_paths(root, "ls-files", "--cached")
+    if tracked is None:
+        findings.append(Finding(".", 0, "git-enumeration-failed"))
+        return [], findings
+    findings.extend(
+        Finding(path, 0, "protected-tracked-path") for path in tracked if is_protected_path(path)
+    )
+    candidates = git_paths(root, "ls-files", "--cached", "--others", "--exclude-standard")
+    if candidates is None:
+        findings.append(Finding(".", 0, "git-enumeration-failed"))
+        return [], findings
+    history = git_paths(root, "log", "--all", "--format=", "--name-only")
+    if history is None:
+        findings.append(Finding(".", 0, "git-history-enumeration-failed"))
+    else:
+        findings.extend(
+            Finding(path, 0, "protected-history-path")
+            for path in history
+            if path and is_protected_path(path)
+        )
+    files = []
+    for relative in candidates:
+        path = root / relative
+        if is_protected_path(relative):
             continue
         candidate = safe_candidate(path, relative, root, findings)
         if candidate is not None:
             files.append(candidate)
     return sorted(set(files)), findings
+
+
+def repository_files(root: Path, mode: str = BUILD_MODE) -> tuple[list[Path], list[Finding]]:
+    """Discover scan candidates; Build is filesystem-only, Ship is Git-backed."""
+
+    if mode == BUILD_MODE:
+        return filesystem_files(root, [])
+    if mode == SHIP_MODE:
+        return ship_repository_files(root)
+    raise ValueError(f"unsupported security scan mode: {mode}")
+
+
+def filesystem_files(root: Path, findings: list[Finding]) -> tuple[list[Path], list[Finding]]:
+    files, discovery_findings = safe_discover_files(root)
+    findings.extend(discovery_findings)
+    return files, findings
 
 
 def scan_lines(path: Path, root: Path) -> Iterable[Finding]:
@@ -218,8 +290,8 @@ def scan_lines(path: Path, root: Path) -> Iterable[Finding]:
                 yield Finding(relative, line_number, "literal-secret-assignment")
 
 
-def scan_repository(root: Path) -> list[Finding]:
-    files, findings = repository_files(root)
+def scan_repository(root: Path, mode: str = BUILD_MODE) -> list[Finding]:
+    files, findings = repository_files(root, mode=mode)
     for path in files:
         findings.extend(scan_lines(path, root))
     return sorted(set(findings), key=lambda item: (item.path, item.line, item.detector))
@@ -228,9 +300,15 @@ def scan_repository(root: Path) -> list[Finding]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT, help="repository root to scan")
+    parser.add_argument(
+        "--mode",
+        choices=SCAN_MODES,
+        default=os.environ.get("CODEXICON_SECURITY_MODE", BUILD_MODE),
+        help="Build scans safe local files; Ship also verifies Git-tracked and historical paths",
+    )
     args = parser.parse_args(argv)
     root = args.root.resolve()
-    findings = scan_repository(root)
+    findings = scan_repository(root, mode=args.mode)
     if findings:
         print("Security scan failed; potential credentials were found:", file=sys.stderr)
         for finding in findings:

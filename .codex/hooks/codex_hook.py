@@ -10,7 +10,6 @@ import os
 import re
 import secrets
 import shlex
-import subprocess
 import sys
 import tempfile
 import time
@@ -34,6 +33,9 @@ SUMMARY_DIR = STATE_DIR / "summaries"
 RECEIPT_TTL_SECONDS = 3600
 STATE_LOCK_TIMEOUT_SECONDS = 2.0
 STATE_LOCK_RETRY_SECONDS = 0.025
+RESUME_CONTEXT_MAX_CHARS = 4096
+RESUME_CONTEXT_FILE_MAX_CHARS = 1_048_576
+RESUME_CONTEXT_ITEM_MAX = 8
 
 SENSITIVE_PATH = re.compile(
     r"(?ix)(?:"
@@ -146,6 +148,18 @@ SEARCH_BOOLEAN_OPTIONS = {
     "--stats",
 }
 CHECKPOINT_MARKER = re.compile(r"^<!--\s*codexicon-checkpoint:\s*(\{.*\})\s*-->$")
+CONTEXT_FENCE_MARKER = re.compile(r"^\s*(`{3,}|~{3,})")
+CONTEXT_REVISION = re.compile(r"^\s*\*\*Revision:\*\*\s*(.*?)\s*$")
+CONTEXT_TASK_BINDING_REVISION = re.compile(
+    r"^\s*\*\*Contract revision:\*\*\s*(.*?)\s*$"
+)
+CONTEXT_TASK_BINDING_DIGEST = re.compile(
+    r"^\s*\*\*Contract digest:\*\*\s*(.*?)\s*$"
+)
+CONTEXT_TASK_ID = re.compile(r"^T-\d+$")
+CONTEXT_TASK_STATES = {"TODO", "ACTIVE", "DONE", "BLOCKED"}
+CONTEXT_DIGEST = re.compile(r"^(?:sha256:)?[a-f0-9]{64}$")
+CONTEXT_TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T")
 READ_ONLY_COMMANDS = {
     "cat",
     "find",
@@ -179,7 +193,6 @@ READ_ONLY_COMMANDS = {
     "which",
     "write-output",
 }
-READ_ONLY_GIT_COMMANDS = {"ls-files", "log", "rev-parse", "show", "status"}
 UNSAFE_READ_ONLY_TOKENS = {
     "--ext-diff",
     "--exec",
@@ -706,38 +719,26 @@ def reset_state(payload: dict[str, Any]) -> int:
     return 0
 
 
-def repository_identity() -> str:
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--git-common-dir"],
-            cwd=ROOT,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-    except OSError:
-        result = None
-    if result is not None and result.returncode == 0 and result.stdout.strip():
-        common = Path(result.stdout.strip())
-        if not common.is_absolute():
-            common = ROOT / common
-        material = str(common.resolve())
-    else:
-        material = str(ROOT.resolve())
+def repository_identity(root: Path | None = None) -> str:
+    """Return a checkout-local identity without consulting Git metadata."""
+
+    root = (root or ROOT).resolve()
+    material = str(root)
     return hashlib.sha256(material.encode("utf-8")).hexdigest()[:20]
 
 
-def latest_compatible_checkpoint() -> str | None:
-    sessions = ROOT / "agent_docs" / "sessions"
+def latest_compatible_checkpoint(root: Path | None = None) -> str | None:
+    root = (root or ROOT).resolve()
+    sessions = root / "agent_docs" / "sessions"
     if not sessions.is_dir() or sessions.is_symlink():
         return None
-    repo_id = repository_identity()
+    repo_id = repository_identity(root)
     candidates: list[tuple[datetime, str]] = []
     for path in sessions.glob("*.md"):
         if path.is_symlink():
             continue
         try:
-            path.resolve().relative_to(ROOT.resolve())
+            path.resolve().relative_to(root)
         except (OSError, ValueError):
             continue
         try:
@@ -782,8 +783,320 @@ def latest_compatible_checkpoint() -> str | None:
             normalized_related.add(relative.as_posix())
         if not related_valid:
             continue
-        candidates.append((created, path.relative_to(ROOT).as_posix()))
+        candidates.append((created, path.relative_to(root).as_posix()))
     return max(candidates)[1] if candidates else None
+
+
+def _context_read(relative: str, root: Path) -> str:
+    """Read one bounded authoritative file; never read arbitrary task paths."""
+
+    path = root / relative
+    if path.is_symlink() or not path.is_file():
+        raise OSError(f"{relative} is missing or unsafe")
+    with path.open("r", encoding="utf-8") as handle:
+        value = handle.read(RESUME_CONTEXT_FILE_MAX_CHARS + 1)
+    if len(value) > RESUME_CONTEXT_FILE_MAX_CHARS:
+        raise ValueError(f"{relative} is too large for resume context")
+    return value
+
+
+def _context_outside_fences(text: str) -> list[tuple[int, str]]:
+    outside: list[tuple[int, str]] = []
+    fence: str | None = None
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        match = CONTEXT_FENCE_MARKER.match(line)
+        if match:
+            if fence is None:
+                fence = match.group(1)[0]
+            elif fence == match.group(1)[0]:
+                fence = None
+            continue
+        if fence is None:
+            outside.append((line_number, line))
+    return outside
+
+
+def _context_cells(line: str, expected: int) -> list[str] | None:
+    stripped = line.strip()
+    if not stripped.startswith("|") or not stripped.endswith("|"):
+        return None
+    cells = [cell.strip() for cell in stripped[1:-1].split("|")]
+    return cells if len(cells) == expected else None
+
+
+def _context_contract(root: Path) -> dict[str, str]:
+    try:
+        text = _context_read("SPEC.md", root)
+        outside = _context_outside_fences(text)
+        digest = hashlib.sha256(
+            "\n".join(line for _, line in outside).encode("utf-8")
+        ).hexdigest()
+        revisions = [match.group(1).strip() for _, line in outside if (match := CONTEXT_REVISION.match(line))]
+        if not revisions:
+            amendment_dates: list[str] = []
+            in_amendments = False
+            for _, line in outside:
+                heading = re.match(r"^\s*##\s+([^#].*?)\s*#*\s*$", line)
+                if heading:
+                    in_amendments = heading.group(1).strip() == "Amendments"
+                    continue
+                if in_amendments:
+                    amendment = re.match(r"^\s*-\s+\*\*(\d{4}-\d{2}-\d{2}):\*\*\s+\S", line)
+                    if amendment:
+                        amendment_dates.append(amendment.group(1))
+            revisions = [amendment_dates[-1]] if amendment_dates else []
+        revision = revisions[0] if len(revisions) == 1 else "unavailable"
+        if revision != "unavailable" and not re.fullmatch(
+            r"[A-Za-z0-9][A-Za-z0-9._:-]*", revision
+        ):
+            revision = "invalid"
+        return {
+            "path": "SPEC.md",
+            "revision": revision,
+            "digest": f"sha256:{digest}",
+            "status": "current file identity",
+        }
+    except (OSError, UnicodeError, ValueError) as exc:
+        return {
+            "path": "SPEC.md",
+            "revision": "unavailable",
+            "digest": "unavailable",
+            "status": f"unavailable ({type(exc).__name__})",
+        }
+
+
+def _context_task_rows(root: Path) -> tuple[list[dict[str, Any]], str | None, str | None]:
+    """Parse only task metadata needed for resume; arbitrary cell prose is discarded."""
+
+    try:
+        text = _context_read("TASKS.md", root)
+    except (OSError, UnicodeError, ValueError) as exc:
+        return [], None, f"TASKS.md unavailable ({type(exc).__name__})"
+
+    outside = _context_outside_fences(text)
+    binding_revision = [
+        match.group(1).strip()
+        for _, line in outside
+        if (match := CONTEXT_TASK_BINDING_REVISION.match(line))
+    ]
+    binding_digest = [
+        match.group(1).strip()
+        for _, line in outside
+        if (match := CONTEXT_TASK_BINDING_DIGEST.match(line))
+    ]
+    header_index = None
+    columns = 0
+    for index, (_, line) in enumerate(outside):
+        cells = _context_cells(line, 6) or _context_cells(line, 9)
+        if not cells:
+            continue
+        normalized = tuple(cell.casefold() for cell in cells)
+        if normalized == ("id", "state", "requirement", "interface", "scope", "verification"):
+            header_index, columns = index, 6
+            break
+        if normalized == (
+            "id", "state", "requirement", "interface", "scope", "verification",
+            "dependencies", "blocker", "evidence",
+        ):
+            header_index, columns = index, 9
+            break
+    if header_index is None:
+        return [], None, "malformed task state (no declared task table)"
+    if header_index + 1 >= len(outside):
+        return [], None, "malformed task state (missing table separator)"
+
+    separator = _context_cells(outside[header_index + 1][1], columns)
+    if not separator or not all(re.fullmatch(r":?-{3,}:?", cell) for cell in separator):
+        return [], None, "malformed task state (invalid table separator)"
+
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for line_number, line in outside[header_index + 2 :]:
+        if not line.strip():
+            break
+        if not line.strip().startswith("|"):
+            if line.strip().startswith("T-"):
+                return [], None, f"malformed task state (line {line_number})"
+            break
+        cells = _context_cells(line, columns)
+        if cells is None:
+            return [], None, f"malformed task state (line {line_number})"
+        task_id, state = cells[:2]
+        if not CONTEXT_TASK_ID.fullmatch(task_id) or state not in CONTEXT_TASK_STATES:
+            return [], None, f"malformed task state (line {line_number})"
+        if task_id in seen:
+            return [], None, f"malformed task state (duplicate {task_id})"
+        seen.add(task_id)
+        dependencies = []
+        blocker = ""
+        evidence = ""
+        if columns == 9:
+            dependencies = [] if cells[6] in {"", "-", "None"} else [
+                item.strip() for item in cells[6].split(",")
+            ]
+            if any(not CONTEXT_TASK_ID.fullmatch(item) for item in dependencies):
+                return [], None, f"malformed task state (dependencies for {task_id})"
+            blocker = "" if cells[7] in {"", "-", "None"} else "recorded"
+            evidence = "" if cells[8] in {"", "-", "None"} else cells[8]
+            if state == "BLOCKED" and not blocker:
+                return [], None, f"malformed task state (BLOCKED {task_id} lacks a reason)"
+        rows.append({"id": task_id, "state": state, "dependencies": dependencies, "blocker": blocker, "evidence": evidence})
+
+    if not rows:
+        return [], None, "malformed task state (no task rows)"
+    known = {row["id"] for row in rows}
+    for row in rows:
+        if any(dependency not in known for dependency in row["dependencies"]):
+            return [], None, f"malformed task state (unknown dependency for {row['id']})"
+    binding_error = None
+    if len(binding_revision) > 1 or len(binding_digest) > 1:
+        binding_error = "malformed contract binding in TASKS.md"
+    elif binding_digest and not CONTEXT_DIGEST.fullmatch(binding_digest[0]):
+        binding_error = "malformed contract digest in TASKS.md"
+    return rows, ":".join(binding_revision) if binding_revision else None, binding_error or (binding_digest[0] if binding_digest else None)
+
+
+def _context_evidence(rows: list[dict[str, Any]], contract_digest: str) -> str:
+    counts = {"healthy": 0, "stale": 0, "malformed": 0, "missing": 0}
+    for row in rows:
+        raw = row.get("evidence", "")
+        if not raw:
+            if row["state"] == "DONE":
+                counts["missing"] += 1
+            continue
+        try:
+            value = json.loads(raw)
+            evidence_digest = value.get("contract_digest") if isinstance(value, dict) else None
+            timestamp = value.get("timestamp") if isinstance(value, dict) else None
+            checks = value.get("checks") if isinstance(value, dict) else None
+            source_digest = value.get("source_digest") if isinstance(value, dict) else None
+            timestamp_valid = False
+            timestamp_current = False
+            if isinstance(timestamp, str) and CONTEXT_TIMESTAMP.match(timestamp):
+                try:
+                    parsed_timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                    timestamp_valid = parsed_timestamp.tzinfo is not None
+                    timestamp_current = timestamp_valid and parsed_timestamp <= datetime.now(timezone.utc)
+                except ValueError:
+                    pass
+            healthy = (
+                isinstance(value, dict)
+                and value.get("task_id") == row["id"]
+                and value.get("result") == "passed"
+                and evidence_digest == contract_digest
+                and timestamp_current
+                and isinstance(checks, list)
+                and bool(checks)
+                and all(isinstance(check, dict) and check.get("result") == "passed" for check in checks)
+                and isinstance(source_digest, str)
+                and bool(CONTEXT_DIGEST.fullmatch(source_digest))
+            )
+            if healthy:
+                counts["healthy"] += 1
+            elif evidence_digest != contract_digest or (timestamp_valid and not timestamp_current):
+                counts["stale"] += 1
+            else:
+                counts["malformed"] += 1
+        except (TypeError, ValueError, json.JSONDecodeError):
+            counts["malformed"] += 1
+    status = "healthy evidence present" if counts["healthy"] else "no healthy evidence"
+    return (
+        f"{status}; healthy={counts['healthy']}, stale={counts['stale']}, "
+        f"malformed={counts['malformed']}, missing_done={counts['missing']}"
+    )
+
+
+def _context_task_summary(
+    rows: list[dict[str, Any]], binding_revision: str | None, binding_digest: str | None, contract: dict[str, str]
+) -> tuple[str, str, str]:
+    if not rows:
+        detail = binding_digest or binding_revision or "unavailable"
+        return "unavailable", "inspect TASKS.md and repair its task table", detail
+    if binding_revision and binding_revision != contract["revision"]:
+        return "unavailable", "reconcile the stale TASKS.md contract baseline", "stale contract baseline"
+    if binding_digest and binding_digest.removeprefix("sha256:") != contract["digest"].removeprefix("sha256:"):
+        return "unavailable", "reconcile the stale TASKS.md contract baseline", "stale contract baseline"
+
+    by_id = {row["id"]: row for row in rows}
+    active = [row for row in rows if row["state"] == "ACTIVE"]
+    blockers: list[str] = []
+
+    def dependency_blockers(task: dict[str, Any], trail: set[str] | None = None) -> list[str]:
+        trail = trail or set()
+        if task["id"] in trail:
+            return [f"{task['id']}: dependency cycle"]
+        result: list[str] = []
+        for dependency_id in task["dependencies"]:
+            dependency = by_id[dependency_id]
+            if dependency["state"] == "DONE":
+                continue
+            if dependency["state"] == "BLOCKED":
+                result.append(f"{dependency_id}: BLOCKED (reason recorded)")
+            elif dependency["state"] == "TODO":
+                result.extend(dependency_blockers(dependency, {*trail, task["id"]}) or [f"{dependency_id}: TODO"])
+            else:
+                result.append(f"{dependency_id}: ACTIVE")
+        return list(dict.fromkeys(result))
+
+    for row in rows:
+        if row["state"] == "BLOCKED":
+            blockers.append(f"{row['id']}: BLOCKED (reason recorded)")
+        elif row["state"] == "TODO":
+            blockers.extend(dependency_blockers(row))
+    blockers = list(dict.fromkeys(blockers))[:RESUME_CONTEXT_ITEM_MAX]
+    blocker_summary = ", ".join(blockers) if blockers else "none"
+    if len(active) > 1:
+        return "multiple ACTIVE tasks (invalid)", "repair TASKS.md before continuing", blocker_summary
+    if active:
+        return f"{active[0]['id']} (ACTIVE)", f"resume {active[0]['id']}", blocker_summary
+    for row in rows:
+        if row["state"] == "TODO" and not dependency_blockers(row):
+            return f"none; runnable={row['id']}", f"start {row['id']}", blocker_summary
+    if all(row["state"] == "DONE" for row in rows):
+        return "none; queue COMPLETE", "verify completion evidence before stopping", blocker_summary
+    return "none; queue BLOCKED", "resolve the listed blockers", blocker_summary
+
+
+def build_resume_context(root: Path | None = None, checkpoint: str | None = None) -> str:
+    """Render bounded, authoritative resume context without transcript or checkpoint bodies."""
+
+    root = (root or ROOT).resolve()
+    contract = _context_contract(root)
+    rows, binding_revision, binding_digest = _context_task_rows(root)
+    task_summary, next_action, blockers = _context_task_summary(
+        rows, binding_revision, binding_digest, contract
+    )
+    if checkpoint is None:
+        checkpoint = latest_compatible_checkpoint(root)
+    checkpoint_label = "none found (supplemental only)"
+    if checkpoint:
+        candidate = PurePosixPath(str(checkpoint).replace("\\", "/"))
+        if (
+            not candidate.is_absolute()
+            and not re.match(r"^[A-Za-z]:", str(candidate))
+            and all(part not in {"", ".", ".."} for part in candidate.parts)
+            and candidate.parts[:2] == ("agent_docs", "sessions")
+        ):
+            checkpoint_label = f"{candidate.as_posix()} (supplemental; authoritative files win)"
+        else:
+            checkpoint_label = "unavailable (unsafe checkpoint header)"
+    context = "\n".join(
+        [
+            "Codexicon resume context (bounded; metadata only).",
+            "Authoritative reread required: SPEC.md and TASKS.md; checkpoints supplement newer state and never override it.",
+            f"Contract: path={contract['path']}; revision={contract['revision']}; digest={contract['digest']}; status={contract['status']}.",
+            f"Task state: active={task_summary}.",
+            f"Next runnable action: {next_action}.",
+            f"Unresolved blockers: {blockers}.",
+            f"Evidence freshness: {_context_evidence(rows, contract['digest'])}.",
+            f"Checkpoint: {checkpoint_label}.",
+            "Safety: transcript, checkpoint bodies, commands, and secret values are omitted.",
+        ]
+    )
+    if len(context) <= RESUME_CONTEXT_MAX_CHARS:
+        return context
+    suffix = "\n[resume context truncated; reread SPEC.md and TASKS.md]"
+    return context[: RESUME_CONTEXT_MAX_CHARS - len(suffix)] + suffix
 
 
 def resume_state(payload: dict[str, Any]) -> int:
@@ -823,19 +1136,21 @@ def resume_state(payload: dict[str, Any]) -> int:
         )
         save_json_atomic(STATE_FILE, state)
 
-    checkpoint = latest_compatible_checkpoint()
+    checkpoint = latest_compatible_checkpoint(ROOT)
     messages: list[str] = []
     if recovered:
         messages.append(
             "Local verification state was unavailable; lint and tests are required again."
         )
-    if checkpoint:
-        messages.append(
-            f"Compatible checkpoint: {checkpoint}. Run `python scripts/codexicon.py resume` "
-            "and verify it against the current diff before continuing."
-        )
+    output: dict[str, Any] = {
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": build_resume_context(ROOT, checkpoint),
+        }
+    }
     if messages:
-        print(json.dumps({"systemMessage": " ".join(messages)}))
+        output["systemMessage"] = " ".join(messages)
+    print(json.dumps(output))
     return 0
 
 
@@ -1163,9 +1478,17 @@ def canonical_checks(command: str) -> list[str] | None:
     script = tokens[0].replace("\\", "/").removeprefix("./").lower()
     if script != "scripts/codexicon.py" or tokens[1].lower() != "verify":
         return None
-    requested = [token.lower() for token in tokens[2:]]
-    if any(token not in {"lint", "test", "security"} for token in requested):
-        return None
+    requested: list[str] = []
+    index = 2
+    while index < len(tokens):
+        token = tokens[index].lower()
+        if token == "--mode" and index + 1 < len(tokens) and tokens[index + 1].lower() in {"build", "ship"}:
+            index += 2
+            continue
+        if token not in {"lint", "test", "security"}:
+            return None
+        requested.append(token)
+        index += 1
     return [check for check in ("lint", "test") if not requested or check in requested]
 
 
@@ -1178,30 +1501,122 @@ def definitely_read_only(command: str) -> bool:
     return bool(segments) and all(definitely_read_only_segment(segment) for segment in segments)
 
 
-def read_only_codexicon_manager_command(command: str) -> bool:
-    """Recognize only manager invocations whose current contract cannot apply changes."""
+def codexicon_manager_classification(command: str) -> str | None:
+    """Classify one exact, standalone Codexicon invocation.
+
+    The classifier is deliberately narrower than the manager CLI.  In
+    particular, only commands with a fully recognized argument shape are
+    allowed to preserve verification state.
+    """
 
     try:
         tokens = shlex.split(command.replace("\\", "/"), posix=True)
     except ValueError:
-        return False
+        return None
     if tokens and tokens[0] == "&":
         tokens = tokens[1:]
     if len(tokens) < 3:
-        return False
+        return None
     if Path(tokens[0]).name.lower() not in {"python", "python3", "python.exe"}:
-        return False
+        return None
     script = tokens[1].removeprefix("./").lower()
     if script != "scripts/codexicon.py":
-        return False
+        return None
+
     subcommand = tokens[2].lower()
+    args = tokens[3:]
+
+    def option_values(
+        allowed: set[str], *, boolean: set[str] = set()
+    ) -> tuple[list[str], bool, set[str]]:
+        positional: list[str] = []
+        seen: set[str] = set()
+        index = 0
+        while index < len(args):
+            token = args[index]
+            if token in boolean:
+                seen.add(token)
+                index += 1
+                continue
+            if token in allowed:
+                if index + 1 >= len(args) or args[index + 1].startswith("-"):
+                    return [], False, set()
+                seen.add(token)
+                index += 2
+                continue
+            if token.startswith("-"):
+                return [], False, set()
+            positional.append(token)
+            index += 1
+        return positional, True, seen
+
+    if subcommand in {"spec-check", "tasks-next"}:
+        positional, valid, _ = option_values({"--root"}, boolean={"--json"} if subcommand == "tasks-next" else set())
+        return "inspection" if valid and not positional else None
+
     if subcommand in {"inspect", "doctor", "resume"}:
-        return True
-    apply_requested = any(
-        len(token) > 2 and token.startswith("--") and "--apply".startswith(token)
-        for token in (value.lower() for value in tokens[3:])
-    )
-    return subcommand in {"adopt", "update"} and not apply_requested
+        positional, valid, _ = option_values({"--root"})
+        expected = 1 if subcommand == "inspect" else 0
+        return "inspection" if valid and len(positional) == expected else None
+
+    if subcommand in {"adopt", "update"}:
+        if any(
+            token.startswith("--") and "--apply".startswith(token.lower())
+            for token in args
+        ):
+            return "mutation"
+        positional, valid, seen = option_values(
+            {"--root", "--source"}, boolean={"--update"} if subcommand == "adopt" else set()
+        )
+        if not valid or (subcommand == "update" and (positional or "--source" not in seen)):
+            return None
+        if subcommand == "adopt" and len(positional) < 1:
+            return None
+        # --apply, including abbreviated forms, is intentionally not accepted.
+        return "inspection"
+
+    if subcommand in {"tasks-start", "tasks-done", "tasks-blocked", "tasks-unblock", "tasks-reopen"}:
+        # State transitions are bookkeeping only when their required metadata
+        # is present and the evidence argument (when supplied) is valid JSON.
+        task_ids: list[str] = []
+        metadata: dict[str, str] = {}
+        index = 0
+        while index < len(args):
+            token = args[index]
+            if token.startswith("--"):
+                if token not in {"--root", "--reason", "--evidence"} or index + 1 >= len(args):
+                    return None
+                metadata[token] = args[index + 1]
+                index += 2
+                continue
+            if re.fullmatch(r"T-\d+", token):
+                task_ids.append(token)
+                index += 1
+                continue
+            return None
+        if len(task_ids) != 1:
+            return None
+        if subcommand == "tasks-done":
+            if set(metadata) - {"--root", "--evidence"} or "--evidence" not in metadata:
+                return None
+            try:
+                evidence = json.loads(metadata["--evidence"])
+            except (TypeError, json.JSONDecodeError):
+                return None
+            if not isinstance(evidence, dict):
+                return None
+        elif subcommand in {"tasks-blocked", "tasks-unblock", "tasks-reopen"}:
+            if set(metadata) - {"--root", "--reason"} or "--reason" not in metadata or not metadata["--reason"].strip():
+                return None
+        elif metadata:
+            return None
+        return "bookkeeping"
+
+    return "mutation"
+
+
+def read_only_codexicon_manager_command(command: str) -> bool:
+    return codexicon_manager_classification(command) == "inspection"
 
 
 def definitely_read_only_segment(command: str) -> bool:
@@ -1225,14 +1640,10 @@ def definitely_read_only_segment(command: str) -> bool:
         return False
     if executable in {"rg", "rg.exe"}:
         return True
+    # Git inspection is never a Build-preserving read-only operation. The
+    # explicit Ship workflow owns tracked/history/branch/index authority.
     if executable == "git":
-        if len(lowered) >= 2 and lowered[1] == "branch":
-            return lowered[2:] in ([], ["--show-current"], ["--list"])
-        return len(lowered) >= 2 and lowered[1] in READ_ONLY_GIT_COMMANDS | {
-            "diff",
-            "grep",
-            "ls-tree",
-        }
+        return False
     if executable == "sed":
         return not any(
             token == "--in-place"
@@ -1280,7 +1691,12 @@ def prepare_write(payload: dict[str, Any]) -> int:
     tool_name = str(payload.get("tool_name", "")).lower()
     if tool_name == "bash":
         command = command_text(payload)
-        if canonical_checks(command) is not None or definitely_read_only(command):
+        manager_classification = codexicon_manager_classification(command)
+        if (
+            canonical_checks(command) is not None
+            or manager_classification in {"inspection", "bookkeeping"}
+            or definitely_read_only(command)
+        ):
             return 0
         test_relevant = True
     elif tool_name in {"apply_patch", "edit", "write"}:
@@ -1447,6 +1863,8 @@ def record_shell(payload: dict[str, Any]) -> int:
                 claim_path.unlink()
             except FileNotFoundError:
                 pass
+        return 0
+    if codexicon_manager_classification(command) in {"inspection", "bookkeeping"}:
         return 0
     if definitely_read_only(command):
         return 0

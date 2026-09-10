@@ -11,6 +11,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from security_scan import (  # noqa: E402
+    EXCLUDED_DIRS,
+    is_protected_path,
+    safe_candidate,
+    safe_discover_files,
+)
 from skill_provenance import validate_lock  # noqa: E402
 
 try:
@@ -53,6 +59,18 @@ MAX_SKILL_DESCRIPTION_CHARS = 200
 MAX_REPO_SKILL_CATALOG_CHARS = 4200
 NUMBER_WORD = r"(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)"
 WORKFLOW_UNIT = r"(?:files?|agents?|subagents?|questions?|lines?|steps?|tasks?|reviewers?|reviews?)"
+TEMPLATE_GUIDANCE_FILES = {
+    "AGENTS.md",
+    "README.md",
+    "START_HERE.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "SUPPORT.md",
+    "docs/build-contracts.md",
+    "docs/codex.md",
+}
+TEMPLATE_GUIDANCE_DIRECTORIES = (".agents/skills", ".codex/agents")
 DURABLE_GUIDANCE_PATTERNS = {
     "named or versioned model choice": re.compile(
         r"\b(?:(?:gpt|o)[-_]?\d|claude|gemini|sol|luna|terra)\b",
@@ -105,28 +123,55 @@ def rel(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
 
 
+def safe_template_path(path: Path) -> Path:
+    """Resolve a known validator input through the shared read boundary."""
+
+    relative = rel(path)
+    if is_protected_path(relative) or EXCLUDED_DIRS.intersection(Path(relative).parts):
+        raise OSError(f"unsafe or unavailable template path: {relative}")
+    findings = []
+    candidate = safe_candidate(path, relative, ROOT, findings)
+    if candidate is None:
+        raise OSError(f"unsafe or unavailable template path: {relative}")
+    return candidate
+
+
+def read_template_text(path: Path, *, encoding: str = "utf-8") -> str:
+    return safe_template_path(path).read_text(encoding=encoding)
+
+
+def read_template_bytes(path: Path) -> bytes:
+    return safe_template_path(path).read_bytes()
+
+
 def text_files() -> list[Path]:
-    ignored = {".git", "__pycache__", ".pytest_cache"}
-    return sorted(
-        path
-        for path in ROOT.rglob("*")
-        if path.is_file()
-        and path.suffix.lower() in TEXT_SUFFIXES
-        and not ignored.intersection(path.relative_to(ROOT).parts)
-        and ".codex-state" not in path.relative_to(ROOT).parts
-    )
+    files, _ = safe_discover_files(ROOT, suffixes=TEXT_SUFFIXES)
+    return files
 
 
 def guidance_files() -> list[Path]:
-    files = [
+    files, _ = safe_discover_files(
+        ROOT,
+        suffixes=GUIDANCE_SUFFIXES,
+        names={"TEMPLATE_VERSION"},
+    )
+    return sorted(
         path
-        for path in text_files()
-        if path.suffix.lower() in GUIDANCE_SUFFIXES or path.name == "TEMPLATE_VERSION"
-    ]
-    version_file = ROOT / "TEMPLATE_VERSION"
-    if version_file.is_file():
-        files.append(version_file)
-    return sorted(set(files))
+        for path in files
+        if (
+            path.name == "TEMPLATE_VERSION"
+            or (
+                path.suffix.lower() in GUIDANCE_SUFFIXES
+                and (
+                    rel(path) in TEMPLATE_GUIDANCE_FILES
+                    or any(
+                        rel(path).startswith(f"{directory}/")
+                        for directory in TEMPLATE_GUIDANCE_DIRECTORIES
+                    )
+                )
+            )
+        )
+    )
 
 
 def durable_guidance_findings(content: str) -> list[str]:
@@ -180,9 +225,17 @@ def trufflehog_version_mismatch(workflow: str) -> bool:
     found = False
     for index, line in enumerate(lines):
         references = workflow_action_references(line)
-        if not any(value.startswith("trufflesecurity/trufflehog@") for value in references):
+        trufflehog_references = [
+            value for value in references if value.startswith("trufflesecurity/trufflehog@")
+        ]
+        if not trufflehog_references:
             continue
         found = True
+        if any(
+            not re.fullmatch(r"trufflesecurity/trufflehog@[a-fA-F0-9]{40}", value)
+            for value in trufflehog_references
+        ):
+            return True
         action_version = re.search(r"#\s*v(\d+\.\d+\.\d+)\s*$", line)
         if action_version is None:
             return True
@@ -288,9 +341,14 @@ def parse_template_toml(path: Path) -> dict:
 
 
 def context_budget() -> tuple[int, int]:
-    guidance_chars = len((ROOT / "AGENTS.md").read_text(encoding="utf-8"))
+    guidance_chars = len(read_template_text(ROOT / "AGENTS.md"))
     catalog_chars = 0
-    for path in sorted((ROOT / ".agents/skills").glob("*/SKILL.md")):
+    skill_paths = [
+        path
+        for path in text_files()
+        if rel(path).startswith(".agents/skills/") and path.name == "SKILL.md"
+    ]
+    for path in skill_paths:
         metadata = parse_frontmatter(path)
         catalog_chars += len(metadata.get("name", ""))
         catalog_chars += len(metadata.get("description", ""))
@@ -301,7 +359,7 @@ def context_budget() -> tuple[int, int]:
 def validate(*, release: bool = False) -> list[str]:
     errors: list[str] = []
 
-    guidance_chars = len((ROOT / "AGENTS.md").read_text(encoding="utf-8"))
+    guidance_chars = len(read_template_text(ROOT / "AGENTS.md"))
     if guidance_chars > MAX_PROJECT_GUIDANCE_CHARS:
         errors.append(
             f"AGENTS.md exceeds the {MAX_PROJECT_GUIDANCE_CHARS}-character always-loaded guidance budget"
@@ -376,7 +434,11 @@ def validate(*, release: bool = False) -> list[str]:
     ]
     for item in obsolete:
         path = ROOT / item
-        if path.is_file() or (path.is_dir() and any(candidate.is_file() for candidate in path.rglob("*"))):
+        if path.is_symlink():
+            errors.append(f"obsolete compatibility surface remains: {item}")
+            continue
+        obsolete_files, _ = safe_discover_files(path) if path.is_dir() else ([], [])
+        if path.is_file() or obsolete_files:
             errors.append(f"obsolete compatibility surface remains: {item}")
 
     mojibake = (
@@ -389,7 +451,7 @@ def validate(*, release: bool = False) -> list[str]:
     )
     for path in text_files():
         try:
-            content = path.read_text(encoding="utf-8")
+            content = read_template_text(path)
         except UnicodeDecodeError:
             errors.append(f"not valid UTF-8: {rel(path)}")
             continue
@@ -398,7 +460,7 @@ def validate(*, release: bool = False) -> list[str]:
             errors.append(f"mojibake marker {markers[0]!r}: {rel(path)}")
 
     try:
-        hooks = json.loads((ROOT / ".codex/hooks.json").read_text(encoding="utf-8"))
+        hooks = json.loads(read_template_text(ROOT / ".codex/hooks.json"))
     except (OSError, json.JSONDecodeError) as exc:
         errors.append(f"invalid .codex/hooks.json: {exc}")
         hooks = {}
@@ -438,12 +500,12 @@ def validate(*, release: bool = False) -> list[str]:
     for check in ("lint", "test"):
         for suffix in ("sh", "ps1"):
             path = ROOT / "scripts" / f"{check}.{suffix}"
-            if path.is_file() and f"emit-success {check}" not in path.read_text(encoding="utf-8"):
+            if path.is_file() and f"emit-success {check}" not in read_template_text(path):
                 errors.append(f"{rel(path)} does not emit a success receipt after verification")
 
     for suffix in ("sh", "ps1"):
         path = ROOT / "scripts" / f"security.{suffix}"
-        if path.is_file() and "security_scan.py" not in path.read_text(encoding="utf-8"):
+        if path.is_file() and "security_scan.py" not in read_template_text(path):
             errors.append(f"{rel(path)} does not run the canonical credential scanner")
 
     git_hook_contract = {
@@ -454,25 +516,30 @@ def validate(*, release: bool = False) -> list[str]:
         path = ROOT / relative
         if not path.is_file():
             continue
-        content = path.read_text(encoding="utf-8")
+        content = read_template_text(path)
         for command in commands:
             if command not in content:
                 errors.append(f"{relative} does not run {command}")
 
-    workflow_directory = ROOT / ".github" / "workflows"
-    workflow_paths = sorted(workflow_directory.glob("*.yml")) + sorted(
-        workflow_directory.glob("*.yaml")
+    workflow_paths = sorted(
+        path
+        for path in text_files()
+        if rel(path).startswith(".github/workflows/")
+        and path.suffix.lower() in {".yml", ".yaml"}
     )
     for candidate in workflow_paths:
-        mutable = mutable_action_references(candidate.read_text(encoding="utf-8"))
+        mutable = mutable_action_references(read_template_text(candidate))
         if mutable:
             errors.append(
                 f"{rel(candidate)} action is not pinned to an immutable commit SHA: {mutable[0]}"
             )
 
-    workflow_path = workflow_directory / "ci.yml"
+    workflow_path = next(
+        (path for path in workflow_paths if path.name == "ci.yml"),
+        ROOT / ".github/workflows/ci.yml",
+    )
     if workflow_path.is_file():
-        workflow = workflow_path.read_text(encoding="utf-8")
+        workflow = read_template_text(workflow_path)
         if trufflehog_version_mismatch(workflow):
             errors.append("TruffleHog action and scanner versions do not match")
         if "windows-latest" not in workflow or "scripts/test.ps1" not in workflow:
@@ -495,9 +562,14 @@ def validate(*, release: bool = False) -> list[str]:
             errors.append("CI does not execute the tracked POSIX Git hooks")
 
     config_value: dict = {}
-    for toml_path in [ROOT / ".codex/config.toml", *sorted((ROOT / ".codex/agents").glob("*.toml"))]:
+    agent_paths = sorted(
+        path
+        for path in text_files()
+        if rel(path).startswith(".codex/agents/") and path.suffix.lower() == ".toml"
+    )
+    for toml_path in [ROOT / ".codex/config.toml", *agent_paths]:
         try:
-            value = parse_template_toml(toml_path)
+            value = parse_template_toml(safe_template_path(toml_path))
         except (OSError, ValueError) as exc:
             errors.append(f"invalid TOML {rel(toml_path)}: {exc}")
             continue
@@ -509,7 +581,7 @@ def validate(*, release: bool = False) -> list[str]:
             for field in ("name", "description", "developer_instructions"):
                 if not value.get(field):
                     errors.append(f"{rel(toml_path)} missing required field: {field}")
-            lowered = toml_path.read_text(encoding="utf-8").lower()
+            lowered = read_template_text(toml_path).lower()
             for stale in ("haiku", "sonnet", "opus", "mcp__mem0"):
                 if stale in lowered:
                     errors.append(f"{rel(toml_path)} contains stale agent assumption: {stale}")
@@ -531,7 +603,7 @@ def validate(*, release: bool = False) -> list[str]:
 
     for suffix in ("sh", "ps1"):
         test_script = ROOT / "scripts" / f"test.{suffix}"
-        test_content = test_script.read_text(encoding="utf-8")
+        test_content = read_template_text(test_script)
         if re.search(
             r"-m\s+unittest\s+discover[^\r\n]*\s-v(?:\s|$)",
             test_content,
@@ -546,14 +618,14 @@ def validate(*, release: bool = False) -> list[str]:
         ):
             errors.append("scripts/test.ps1 does not preserve complete failure diagnostics")
 
-    agent_names = {path.stem for path in (ROOT / ".codex/agents").glob("*.toml")}
+    agent_names = {path.stem for path in agent_paths}
     missing_agents = {"implementer", "researcher", "reviewer"} - agent_names
     if missing_agents:
         errors.append(f"missing expected project agents: {', '.join(sorted(missing_agents))}")
 
     manifest_path = ROOT / ".codexicon.json"
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = json.loads(read_template_text(manifest_path))
     except (OSError, json.JSONDecodeError) as exc:
         errors.append(f"invalid .codexicon.json: {exc}")
         manifest = {}
@@ -563,7 +635,7 @@ def validate(*, release: bool = False) -> list[str]:
     if manifest_schema != 1 or not isinstance(manifest_files, list):
         errors.append(".codexicon.json requires schema_version 1 and a files list")
     else:
-        expected_version = (ROOT / "TEMPLATE_VERSION").read_text(encoding="utf-8").splitlines()[0]
+        expected_version = read_template_text(ROOT / "TEMPLATE_VERSION").splitlines()[0]
         if manifest_version != expected_version:
             errors.append(".codexicon.json version must match TEMPLATE_VERSION")
         seen_manifest_paths: set[str] = set()
@@ -610,13 +682,17 @@ def validate(*, release: bool = False) -> list[str]:
 
     skill_names: dict[str, str] = {}
     skill_catalog_chars = 0
-    skills = sorted((ROOT / ".agents/skills").glob("*/SKILL.md"))
+    skills = sorted(
+        path
+        for path in text_files()
+        if rel(path).startswith(".agents/skills/") and path.name == "SKILL.md"
+    )
     if not skills:
         errors.append("no repository skills found in .agents/skills")
     slash_pattern = re.compile(r"(?<![\w.])/(?:" + "|".join(map(re.escape, SKILL_INVOCATIONS)) + r")\b")
     for path in skills:
         try:
-            metadata = parse_frontmatter(path)
+            metadata = parse_frontmatter(safe_template_path(path))
         except ValueError as exc:
             errors.append(f"invalid skill metadata {rel(path)}: {exc}")
             continue
@@ -633,7 +709,7 @@ def validate(*, release: bool = False) -> list[str]:
         skill_names[name] = rel(path)
         skill_catalog_chars += len(name) + len(description) + len(rel(path))
 
-        content = path.read_text(encoding="utf-8")
+        content = read_template_text(path)
         match = slash_pattern.search(content)
         if match:
             errors.append(f"Claude-style invocation {match.group(0)!r} in {rel(path)}")
@@ -656,12 +732,12 @@ def validate(*, release: bool = False) -> list[str]:
     errors.extend(validate_lock(ROOT))
 
     for root_doc in ("AGENTS.md", "README.md", "START_HERE.md"):
-        content = (ROOT / root_doc).read_text(encoding="utf-8").lower()
+        content = read_template_text(ROOT / root_doc).lower()
         for stale in ("antigravity", "gemini.md", "claude.md"):
             if stale in content:
                 errors.append(f"{root_doc} retains obsolete harness reference: {stale}")
 
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = read_template_text(ROOT / "README.md")
     for public_requirement in ("# Codexicon", "Use this template", "$production-readiness", "What Codexicon does not do"):
         if public_requirement not in readme:
             errors.append(f"README.md is missing public explanation: {public_requirement}")
@@ -670,16 +746,16 @@ def validate(*, release: bool = False) -> list[str]:
     mac_user_root = "/" + "users" + r"/[^/]+/"
     machine_path = re.compile(f"(?:{windows_root}|{mac_user_root})", flags=re.IGNORECASE)
     for path in text_files():
-        content = path.read_text(encoding="utf-8")
+        content = read_template_text(path)
         if machine_path.search(content):
             errors.append(f"machine-specific path or identity remains in {rel(path)}")
 
     for path in guidance_files():
-        content = path.read_text(encoding="utf-8")
+        content = read_template_text(path)
         for label in durable_guidance_findings(content):
             errors.append(f"{rel(path)} contains prohibited {label}")
 
-    config_text = (ROOT / ".codex/config.toml").read_text(encoding="utf-8")
+    config_text = read_template_text(ROOT / ".codex/config.toml")
     for required_example in (
         "# [mcp_servers.",
         "# enabled = false",
@@ -689,7 +765,11 @@ def validate(*, release: bool = False) -> list[str]:
             errors.append(f".codex/config.toml lacks disabled MCP example: {required_example}")
 
     for directory in ("briefs", "plans", "sessions"):
-        task_records = sorted((ROOT / "agent_docs" / directory).glob("*.md"))
+        task_records = sorted(
+            path
+            for path in text_files()
+            if rel(path).startswith(f"agent_docs/{directory}/") and path.suffix.lower() == ".md"
+        )
         if not release:
             task_records = [path for path in task_records if path.name.startswith("task-")]
         if task_records:
@@ -698,15 +778,15 @@ def validate(*, release: bool = False) -> list[str]:
                 + ", ".join(path.name for path in task_records)
             )
 
-    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    license_text = read_template_text(ROOT / "LICENSE")
     if "[YEAR]" in license_text or "[OWNER]" in license_text:
         errors.append("LICENSE retains template identity placeholders")
 
-    security_policy = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    security_policy = read_template_text(ROOT / "SECURITY.md")
     if "private vulnerability reporting" not in security_policy.lower():
         errors.append("SECURITY.md lacks a private reporting route")
 
-    hook_policy = (ROOT / ".codex/hooks/codex_hook.py").read_text(encoding="utf-8")
+    hook_policy = read_template_text(ROOT / ".codex/hooks/codex_hook.py")
     for required_policy in (
         ".npmrc",
         ".aws",
@@ -721,13 +801,13 @@ def validate(*, release: bool = False) -> list[str]:
         if required_policy not in hook_policy:
             errors.append(f"credential hook policy is missing {required_policy}")
 
-    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+    attributes = read_template_text(ROOT / ".gitattributes")
     for required_attribute in ("/scripts/*.sh text eol=lf", "/.githooks/* text eol=lf"):
         if required_attribute not in attributes:
             errors.append(f".gitattributes is missing {required_attribute}")
     posix_paths = sorted((ROOT / "scripts").glob("*.sh")) + sorted((ROOT / ".githooks").glob("*"))
     for path in posix_paths:
-        if b"\r\n" in path.read_bytes():
+        if b"\r\n" in read_template_bytes(path):
             errors.append(f"POSIX entry point contains CRLF: {rel(path)}")
     try:
         mode_result = subprocess.run(
@@ -750,7 +830,7 @@ def validate(*, release: bool = False) -> list[str]:
             if modes.get(relative) != "100755":
                 errors.append(f"POSIX entry point is not executable in Git: {relative}")
 
-    playbook_source = (ROOT / "docs/repo-template-playbook.source.html").read_text(encoding="utf-8")
+    playbook_source = read_template_text(ROOT / "docs/repo-template-playbook.source.html")
     if not playbook_source.lstrip().startswith('<div id="codex-template-playbook">'):
         errors.append("playbook editable source is not an HTML fragment")
     if len(playbook_source.encode("utf-8")) >= 2 * 1024 * 1024:
@@ -775,10 +855,8 @@ def validate(*, release: bool = False) -> list[str]:
         errors.append(render_check.stderr.strip() or "playbook source and standalone output differ")
 
     markdown_link = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
-    for path in sorted(ROOT.rglob("*.md")):
-        if {".git", ".codex-state"}.intersection(path.relative_to(ROOT).parts):
-            continue
-        for raw_target in markdown_link.findall(path.read_text(encoding="utf-8")):
+    for path in (path for path in text_files() if path.suffix.lower() == ".md"):
+        for raw_target in markdown_link.findall(read_template_text(path)):
             target = raw_target.strip().strip("<>").split("#", 1)[0]
             if not target or re.match(r"^[a-z][a-z0-9+.-]*:", target, flags=re.IGNORECASE):
                 continue

@@ -1834,14 +1834,19 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Result · &lt;/span&gt;Executable contract; plan only when dependencies justify it&lt;/span&gt;
       &lt;/div&gt;
       &lt;div class=&quot;route-row&quot; role=&quot;row&quot;&gt;
-        &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Signal · &lt;/span&gt;Approved independent work packages&lt;/span&gt;
+        &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Signal · &lt;/span&gt;An authorized implementation has runnable task-register work&lt;/span&gt;
+        &lt;code role=&quot;cell&quot;&gt;$autonomous-build&lt;/code&gt;
+        &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Result · &lt;/span&gt;Traced local implementation with fresh task evidence and bounded review&lt;/span&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;route-row&quot; role=&quot;row&quot;&gt;
+        &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Signal · &lt;/span&gt;Approved durable plan and task register&lt;/span&gt;
         &lt;code role=&quot;cell&quot;&gt;$execute-plan&lt;/code&gt;
-        &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Result · &lt;/span&gt;Bounded execution with integrated verification&lt;/span&gt;
+        &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Result · &lt;/span&gt;Plan adapted into the shared autonomous-build loop with integrated verification&lt;/span&gt;
       &lt;/div&gt;
       &lt;div class=&quot;route-row&quot; role=&quot;row&quot;&gt;
         &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Signal · &lt;/span&gt;Medium/high-complexity work with independent lanes&lt;/span&gt;
         &lt;code role=&quot;cell&quot;&gt;$engineering-loop&lt;/code&gt;
-        &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Result · &lt;/span&gt;Isolated implementation, review, integration, and final verification&lt;/span&gt;
+        &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Result · &lt;/span&gt;Read-only research or review findings for the primary agent&lt;/span&gt;
       &lt;/div&gt;
       &lt;div class=&quot;route-row&quot; role=&quot;row&quot;&gt;
         &lt;span role=&quot;cell&quot;&gt;&lt;span class=&quot;route-label&quot;&gt;Signal · &lt;/span&gt;Explicit external capability search&lt;/span&gt;
@@ -1888,6 +1893,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;optgroup label=&quot;Implement&quot;&gt;
             &lt;option value=&quot;quick&quot;&gt;$quick&lt;/option&gt;
             &lt;option value=&quot;execute-plan&quot;&gt;$execute-plan&lt;/option&gt;
+            &lt;option value=&quot;autonomous-build&quot;&gt;$autonomous-build&lt;/option&gt;
             &lt;option value=&quot;engineering-loop&quot;&gt;$engineering-loop&lt;/option&gt;
           &lt;/optgroup&gt;
           &lt;optgroup label=&quot;Customer experience&quot;&gt;
@@ -2016,7 +2022,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         build: {
           title: &#x27;Build the first useful slice&#x27;,
           purpose: &#x27;Deliver the smallest complete behaviour that proves value, using the least ceremonial workflow that fits.&#x27;,
-          command: &#x27;$quick · $brainstorm · $spec · $execute-plan · $engineering-loop&#x27;,
+          command: &#x27;$quick · $execute-plan · $autonomous-build&#x27;,
           model: &#x27;Default coding tier · lighter effort&#x27;,
           modelNote: &#x27;Raise reasoning effort for architecture, long-context work, security, data integrity, or expensive failure modes.&#x27;,
           evidence: &#x27;Observable behaviour, focused tests, canonical lint and tests, and a concise report of residual gaps.&#x27;,
@@ -2107,17 +2113,24 @@ html&gt;body{padding:0}&lt;/style&gt;
         },
         &#x27;execute-plan&#x27;: {
           title: &#x27;$execute-plan&#x27;,
-          when: &#x27;Independent read-only research or review can reduce context load without moving implementation out of the active checkout.&#x27;,
-          produces: &#x27;Integrated implementation of the approved tasks with bounded delegation and final verification.&#x27;,
-          next: &#x27;$review&#x27;,
-          prompt: &#x27;$execute-plan Implement the approved Matchday standings and team-page plan. Delegate only independent tasks, preserve unrelated work, integrate centrally, and run every acceptance check in the plan.&#x27;
+          when: &#x27;An existing durable plan and validated task register are ready for local execution.&#x27;,
+          produces: &#x27;The approved plan executed through the shared $autonomous-build loop with task evidence and final verification.&#x27;,
+          next: &#x27;$autonomous-build&#x27;,
+          prompt: &#x27;$execute-plan Validate the approved Matchday plan, SPEC.md, and TASKS.md, then execute runnable tasks through the shared $autonomous-build loop. Preserve unrelated work, run every acceptance check, and do not use Git or write externally.&#x27;
+        },
+        &#x27;autonomous-build&#x27;: {
+          title: &#x27;$autonomous-build&#x27;,
+          when: &#x27;An authorized implementation has a task register and should run locally through requirement tracing, verification, review, and refinement.&#x27;,
+          produces: &#x27;Completed traced tasks with fresh evidence and no routine suggested-next-prompt stop while runnable work remains.&#x27;,
+          next: &#x27;$review or $ship when the queue is complete and authorized&#x27;,
+          prompt: &#x27;$autonomous-build Execute the runnable Matchday tasks from TASKS.md. Trace every change to SPEC.md, preserve unrelated work, verify each task, review meaningful risk, and continue until the queue is complete. Do not use Git, deploy, or write externally.&#x27;
         },
         &#x27;engineering-loop&#x27;: {
           title: &#x27;$engineering-loop&#x27;,
-          when: &#x27;Medium/high-complexity work, multiple independent workstreams, or an explicit request for bounded parallel agents makes isolation worthwhile.&#x27;,
-          produces: &#x27;Integrated implementation, independent review, and final verification with every delegated lane bounded by scope and authority.&#x27;,
-          next: &#x27;$review and the canonical repository checks&#x27;,
-          prompt: &#x27;$autonomous-build Implement the Matchday tasks from TASKS.md. Trace every change to SPEC.md, work in the current checkout, verify each task, review meaningful risk, and continue until the queue is complete.&#x27;
+          when: &#x27;Medium/high-complexity work where independent read-only research or review would materially improve implementation or assurance.&#x27;,
+          produces: &#x27;Bounded read-only findings for the primary agent; implementation, integration, and final verification remain with the primary agent.&#x27;,
+          next: &#x27;$autonomous-build for implementation, or apply the findings in the current task&#x27;,
+          prompt: &#x27;$engineering-loop Research and review the Matchday event-streaming plan using independent read-only lanes. Return concise evidence, risks, and verification gaps for the primary agent; do not edit, use Git, create worktrees, or write externally.&#x27;
         },
         &#x27;find-skills&#x27;: {
           title: &#x27;$find-skills&#x27;,
