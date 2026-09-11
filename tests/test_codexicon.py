@@ -11,6 +11,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 import uuid
@@ -32,6 +33,25 @@ assert HOOK_SPEC and HOOK_SPEC.loader
 CODEX_HOOK = importlib.util.module_from_spec(HOOK_SPEC)
 sys.modules[HOOK_SPEC.name] = CODEX_HOOK
 HOOK_SPEC.loader.exec_module(CODEX_HOOK)
+
+
+def _supports_execute_modes() -> bool:
+    if os.name == "nt":
+        return False
+    TEST_TEMP_ROOT.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix="codexicon-mode-probe-", dir=TEST_TEMP_ROOT.parent
+    ) as name:
+        probe = Path(name) / "probe"
+        probe.write_text("probe\n", encoding="utf-8")
+        probe.chmod(0o755)
+        executable = bool(probe.stat().st_mode & stat.S_IXUSR)
+        probe.chmod(0o644)
+        non_executable = not bool(probe.stat().st_mode & stat.S_IXUSR)
+        return executable and non_executable
+
+
+EXECUTE_MODES_SUPPORTED = _supports_execute_modes()
 
 
 def remove_test_directory(path: Path) -> None:
@@ -827,7 +847,7 @@ class CodexiconManagerTests(unittest.TestCase):
         self.assertEqual(lock["unresolved"], ["merge.txt"])
         self.assertNotIn("merge.txt", lock["files"])
 
-    @unittest.skipIf(os.name == "nt", "filesystem execute modes are not portable on Windows")
+    @unittest.skipUnless(EXECUTE_MODES_SUPPORTED, "filesystem execute modes are unavailable")
     def test_adoption_journals_mode_correction_for_identical_executable_file(self) -> None:
         source = self.make_source("mode-source", {"tool.sh": ("managed", "#!/bin/sh\n")})
         source.joinpath("tool.sh").chmod(0o755)
@@ -854,7 +874,7 @@ class CodexiconManagerTests(unittest.TestCase):
         )
         self.assertTrue(target_file.stat().st_mode & 0o111)
 
-    @unittest.skipIf(os.name == "nt", "filesystem execute modes are not portable on Windows")
+    @unittest.skipUnless(EXECUTE_MODES_SUPPORTED, "filesystem execute modes are unavailable")
     def test_mode_correction_rollback_restores_original_mode(self) -> None:
         source = self.make_source("rollback-mode-source", {"tool.sh": ("managed", "#!/bin/sh\n")})
         source.joinpath("tool.sh").chmod(0o755)
@@ -883,7 +903,7 @@ class CodexiconManagerTests(unittest.TestCase):
                 CODEXICON.apply_transaction(source, target, actions, next_lock)
         self.assertEqual(target_file.stat().st_mode & 0o777, 0o644)
 
-    @unittest.skipIf(os.name == "nt", "filesystem execute modes are not portable on Windows")
+    @unittest.skipUnless(EXECUTE_MODES_SUPPORTED, "filesystem execute modes are unavailable")
     def test_project_owned_mode_is_preserved(self) -> None:
         source = self.make_source("project-mode-source", {"AGENTS.md": ("project", "guidance\n")})
         manifest_path = source / ".codexicon.json"

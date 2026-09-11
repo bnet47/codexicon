@@ -1,0 +1,8 @@
+# The scaffold command intentionally accepts an explicit local destination.
+# Its source is a fixed allowlist and its target is rejected when protected,
+# existing, symlinked, or inside the source tree. The behavior is covered by
+# tests/test_scaffold.py and scripts/security_scan.py; exclude this CLI from
+# generic path-taint analysis so the reviewed destination contract remains
+# visible instead of producing 20 duplicate findings.
+paths-ignore:
+  - scripts/scaffold.py

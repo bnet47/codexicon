@@ -13,20 +13,21 @@ This guide covers the public template itself, not projects created from it.
 
 ## Release checklist
 
-1. Update the version and dated notes in `TEMPLATE_VERSION`.
-2. Confirm `README.md`, `START_HERE.md`, the visual playbook, skill catalog, root `SPEC.md`/`TASKS.md` guidance, and writer policy describe the same lifecycle.
-3. Run `python scripts/codexicon.py doctor --root .` and require zero errors and warnings.
-4. Run Windows and POSIX lint, tests, and security checks.
-5. Run `python scripts/validate_template.py --release` to reject repository-local briefs, plans, and checkpoints before tagging.
-6. Run the production-readiness skill validator and creative scanner when those surfaces changed.
-7. Run `python scripts/skill_provenance.py verify --root .` and review any external-skill lock changes.
-8. Confirm the playbook source and standalone output match.
-9. Search for machine-specific paths, credentials, obsolete harness files, placeholders outside intentional project templates, and internal task records.
-10. Confirm repository Actions settings require full commit SHA pins and `main` protection requires the complete Ubuntu, macOS, Windows, security, and CodeQL check set.
-11. Confirm repository-level CodeQL default setup still analyzes Python and GitHub Actions with the `default` query suite and local-source threat modeling; triage open alerts explicitly and keep provider-specific SAST workflows out of the reusable template.
-12. Open a pull request and require CI before merging.
-13. Tag the exact merge commit as `vX.Y.Z` and publish release notes from `TEMPLATE_VERSION`.
-14. Confirm the repository remains public, marked as a template, and private vulnerability reporting is enabled.
+1. Choose one canonical semantic version, update the dated notes in `TEMPLATE_VERSION`, and update `.codexicon.json` and the public README badge together.
+2. Run `python scripts/release.py check --tag vX.Y.Z`; require the exact tag, public references, manifest, and reproducible clean starter identity to pass. The check is Git-free and does not inspect internal development records.
+3. Confirm `README.md`, `START_HERE.md`, the visual playbook, skill catalog, root `SPEC.md`/`TASKS.md` guidance, and writer policy describe the same lifecycle.
+4. Run `python scripts/codexicon.py doctor --root .` and require zero errors and warnings.
+5. Run Windows and POSIX lint, tests, and security checks.
+6. Run `python scripts/validate_template.py --release` only against the prepared publication source after internal development records have been excluded from that source.
+7. Run the production-readiness skill validator and creative scanner when those surfaces changed.
+8. Run `python scripts/skill_provenance.py verify --root .` and review any external-skill lock changes.
+9. Confirm the playbook source and standalone output match.
+10. Search for machine-specific paths, credentials, obsolete harness files, placeholders outside intentional project templates, and internal task records.
+11. Confirm repository Actions settings require full commit SHA pins and `main` protection requires the complete Ubuntu, macOS, Windows, security, and CodeQL check set.
+12. Confirm repository-level CodeQL default setup still analyzes Python and GitHub Actions with the `default` query suite and local-source threat modeling; triage open alerts explicitly and keep provider-specific SAST workflows out of the reusable template.
+13. Open a pull request and require CI before merging.
+14. Tag the exact merge commit as `vX.Y.Z` and publish release notes from `TEMPLATE_VERSION`.
+15. Confirm the repository remains public, marked as a template, and private vulnerability reporting is enabled.
 
 ## Updating the playbook
 

@@ -17,6 +17,20 @@ Do not add provider accounts, API keys, databases, or deployment services before
 
 Use your normal template or repository creation flow. For a new local project, start with a fresh Git repository rather than retaining template history. Git initialization, remotes, commits, and pushes are explicit actions: ask Codex for them when wanted.
 
+When the source checkout is the Codexicon repository itself, create a clean
+starter instead of copying its development state:
+
+```bash
+python scripts/codexicon.py scaffold /path/to/new-project
+python scripts/codexicon.py doctor --root /path/to/new-project
+```
+
+The scaffold uses an explicit safe allowlist, omits the source `SPEC.md`,
+`TASKS.md`, internal briefs/plans/checkpoints/receipts/evaluation records, and
+refuses protected paths or an existing target. Read [clean Codexicon starters](docs/scaffolding.md)
+for the complete interface and smoke-test contract. The new project begins
+with `$discover`.
+
 For an established repository, do not copy the template over it. From a separate trusted Codexicon source, invoke `$adopt-codexicon` or run `python scripts/codexicon.py inspect TARGET`. Review the read-only inventory, especially existing guidance, hooks, canonical scripts, CI, and project facts. Run `adopt TARGET --apply` only after authorizing those repository writes; conflicts remain untouched for deliberate integration.
 
 Open the resulting directory in Codex from its root. Review and trust `.codex/config.toml` and `.codex/hooks.json`; project configuration and hooks do not run until the project is trusted.

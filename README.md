@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/bnet47/codexicon/actions/workflows/ci.yml"><img src="https://github.com/bnet47/codexicon/actions/workflows/ci.yml/badge.svg" alt="Template CI"></a>
-  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.9.0-339cff.svg" alt="Template version 2.9.0"></a>
+  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.10.0-339cff.svg" alt="Template version 2.10.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-46a862.svg" alt="MIT License"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-f39a56.svg" alt="Python 3.10 or newer"></a>
 </p>
@@ -115,6 +115,19 @@ smallest suitable stack, replace every template command with a real one,
 configure equivalent CI checks, and explain any irreversible choice before
 making it. Do not add hosting or deploy anything unless I ask.
 ```
+
+For a local clean copy that must not inherit this repository's development
+contract or internal records, run the reviewed scaffold command from a trusted
+Codexicon checkout:
+
+```bash
+python scripts/codexicon.py scaffold /path/to/new-project
+python scripts/codexicon.py doctor --root /path/to/new-project
+```
+
+See [clean Codexicon starters](docs/scaffolding.md) for the exact allowlist and
+the protected-path and existing-target safety rules. The generated project
+starts with `$discover`.
 
 ### Adopt into an existing repository
 
@@ -331,6 +344,14 @@ No provider account, API key, database, hosting platform, or optional integratio
 ## Versioning and updates
 
 Template releases are recorded in [`TEMPLATE_VERSION`](TEMPLATE_VERSION). Projects remain independent and never receive automatic or network-fetched upgrades.
+
+Maintainers can verify a release identity locally before Ship:
+
+```bash
+python scripts/release.py check --tag v2.10.0
+```
+
+The check requires the supplied tag to match the canonical version and reproduces the clean starter twice, without invoking Git or reading the development contract and task ledger.
 
 Adopted repositories can compare a trusted local release source and apply only baseline-unchanged files:
 

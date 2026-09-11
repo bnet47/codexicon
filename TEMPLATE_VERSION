@@ -1,6 +1,11 @@
-2.9.0
+2.10.0
 
-Status: Released 2026-08-26
+Status: Release candidate 2026-09-11
+
+## 2.10.0 — Reproducible template releases
+
+- Added a Git-free release identity check for the canonical version, manifest, public references, exact release tag, and clean starter artifact.
+- Added deterministic starter and manifest hashes so published template artifacts can be reproduced and compared before Ship.
 
 ## 2.9.0 — Local-first autonomous Build
 

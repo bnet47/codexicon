@@ -2897,6 +2897,13 @@ def build_parser() -> argparse.ArgumentParser:
     update_parser.add_argument("--source", type=Path, required=True)
     update_parser.add_argument("--apply", action="store_true")
 
+    scaffold_parser = subparsers.add_parser(
+        "scaffold", help="create a clean starter from the reviewed Codexicon allowlist"
+    )
+    scaffold_parser.add_argument("target", type=Path)
+    scaffold_parser.add_argument("--source", type=Path, default=ROOT)
+    scaffold_parser.add_argument("--dry-run", action="store_true")
+
     doctor_parser = subparsers.add_parser("doctor", help="diagnose installed or source harness state")
     doctor_parser.add_argument("--root", type=Path, default=ROOT)
     doctor_parser.add_argument("--mode", choices=VERIFICATION_MODES, default=BUILD_MODE)
@@ -2972,6 +2979,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             return run_install(args.source, args.target, apply=args.apply, update=False)
         if args.command == "update":
             return run_install(args.source, args.root, apply=args.apply, update=True)
+        if args.command == "scaffold":
+            try:
+                from scaffold import ScaffoldError, scaffold
+            except ImportError:  # pragma: no cover - module import fallback for tests
+                from scripts.scaffold import ScaffoldError, scaffold
+
+            try:
+                scaffold(
+                    args.target,
+                    source=args.source,
+                    dry_run=args.dry_run,
+                    output=sys.stdout,
+                )
+            except ScaffoldError as exc:
+                raise CodexiconError(str(exc)) from exc
+            return 0
         if args.command == "doctor":
             return doctor(args.root, mode=args.mode)
         if args.command == "verify":

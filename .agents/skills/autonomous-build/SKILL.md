@@ -50,7 +50,7 @@ Do not return a suggested next prompt while actionable tasks remain.
 
 ## Local-first rule
 
-Do not use Git, branches, worktrees, staging, commits, pushes, or pull requests during Build. Track scope and evidence in `TASKS.md`; Git inspection belongs to `$ship`.
+Do not use Git, branches, worktrees, staging, commits, pushes, pull requests, releases, deployments, publication, or external writes during Build. Track scope and evidence in `TASKS.md`; these actions belong to `$ship`.
 
 ## Stop criteria
 

@@ -39,4 +39,4 @@ For documentation-only changes, run the applicable documentation or structural c
 
 Use the shared task states `TODO`, `ACTIVE`, `BLOCKED`, and `DONE` and queue outcomes `READY`, `RESUME_ACTIVE`, `BLOCKED`, `COMPLETE`, and `INVALID` when a register is involved. Build has one writer in the shared checkout: the primary agent by default. An explicitly chosen `implementer` may write one bounded task sequentially; the primary agent re-reads the changed paths and owns integration and final verification. Never run concurrent writers.
 
-Do not commit, push, open a PR, deploy, or modify an external system unless the user explicitly requests that action.
+Do not create branches or worktrees, commit, push, open a PR, release, deploy, publish, or modify an external system during Build; those actions belong to the explicitly authorized `$ship` workflow.
