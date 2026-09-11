@@ -133,12 +133,12 @@ def _safe_source_file(source_root: Path, relative: str) -> Path:
     relative = _relative_path(relative)
     if is_protected_path(relative):
         raise ScaffoldError(f"protected path is not eligible for scaffolding: {relative}")
-    source = source_root.joinpath(*PurePosixPath(relative).parts)  # lgtm[py/path-injection]
+    source = source_root.joinpath(*PurePosixPath(relative).parts)
     if source.is_symlink():
         raise ScaffoldError(f"symlink source is not eligible for scaffolding: {relative}")
     try:
-        resolved = source.resolve(strict=True)  # lgtm[py/path-injection]
-        resolved.relative_to(source_root)  # lgtm[py/path-injection]
+        resolved = source.resolve(strict=True)
+        resolved.relative_to(source_root)
     except (OSError, ValueError) as exc:
         raise ScaffoldError(f"source file is outside the template: {relative}") from exc
     if not source.is_file():
@@ -147,10 +147,10 @@ def _safe_source_file(source_root: Path, relative: str) -> Path:
 
 
 def _target_is_protected(target: Path) -> bool:
-    normalized = target.as_posix()  # lgtm[py/path-injection]
+    normalized = target.as_posix()
     return is_protected_path(normalized) or any(
-        part.lower() in {"secrets", ".aws", ".ssh", ".kube", ".docker"}  # lgtm[py/path-injection]
-        for part in target.parts  # lgtm[py/path-injection]
+        part.lower() in {"secrets", ".aws", ".ssh", ".kube", ".docker"}
+        for part in target.parts
     )
 
 
@@ -244,14 +244,14 @@ def scaffold(
     if dry_run:
         return listed
 
-    target.parent.mkdir(parents=True, exist_ok=True)  # lgtm[py/path-injection]
-    staging = Path(tempfile.mkdtemp(prefix=".codexicon-scaffold-", dir=target.parent))  # lgtm[py/path-injection]
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=".codexicon-scaffold-", dir=target.parent))
     try:
         for relative, source_path in sources.items():
-            _copy_file(source_path, staging.joinpath(*PurePosixPath(relative).parts))  # lgtm[py/path-injection]
-        _copy_file(source_root / _SOURCE_MANIFEST_NAME, staging / _SOURCE_MANIFEST_NAME)  # lgtm[py/path-injection]
-        (staging / _SOURCE_MANIFEST_NAME).write_bytes(manifest)  # lgtm[py/path-injection]
-        os.replace(staging, target)  # lgtm[py/path-injection]
+            _copy_file(source_path, staging.joinpath(*PurePosixPath(relative).parts))
+        _copy_file(source_root / _SOURCE_MANIFEST_NAME, staging / _SOURCE_MANIFEST_NAME)
+        (staging / _SOURCE_MANIFEST_NAME).write_bytes(manifest)
+        os.replace(staging, target)
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)
         raise
