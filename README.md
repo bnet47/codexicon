@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/bnet47/codexicon/actions/workflows/ci.yml"><img src="https://github.com/bnet47/codexicon/actions/workflows/ci.yml/badge.svg" alt="Template CI"></a>
-  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.10.0-339cff.svg" alt="Template version 2.10.0"></a>
+  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.10.1-339cff.svg" alt="Template version 2.10.1"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-46a862.svg" alt="MIT License"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-f39a56.svg" alt="Python 3.10 or newer"></a>
 </p>
@@ -348,7 +348,7 @@ Template releases are recorded in [`TEMPLATE_VERSION`](TEMPLATE_VERSION). Projec
 Maintainers can verify a release identity locally before Ship:
 
 ```bash
-python scripts/release.py check --tag v2.10.0
+python scripts/release.py check --tag v2.10.1
 ```
 
 The check requires the supplied tag to match the canonical version and reproduces the clean starter twice, without invoking Git or reading the development contract and task ledger.

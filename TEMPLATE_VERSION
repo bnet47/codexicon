@@ -1,6 +1,10 @@
-2.10.0
+2.10.1
 
 Status: Release candidate 2026-09-11
+
+## 2.10.1 — Published documentation landing page
+
+- Added the missing GitHub Pages landing page so the published documentation URL resolves to a usable Codexicon entry point.
 
 ## 2.10.0 — Reproducible template releases
 
