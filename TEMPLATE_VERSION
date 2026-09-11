@@ -1,6 +1,12 @@
-2.10.1
+2.11.0
 
-Status: Release candidate 2026-09-11
+Status: Release candidate 2026-09-12
+
+## 2.11.0 — Bounded capability policy and evidence
+
+- Added validated strict, balanced, and autonomous capability profiles with bounded refinement, selective review, verification tiers, decision visibility, and explicit authority ceilings.
+- Added reproducible capability-matrix and deterministic scenario evidence with honest unmeasured live-client fields.
+- Synchronized public onboarding, upgrade guidance, agent patterns, and the playbook with the capability layer.
 
 ## 2.10.1 — Published documentation landing page
 

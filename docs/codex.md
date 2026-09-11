@@ -30,6 +30,51 @@ Brainstorming, specification, planning, implementation, and review are internal 
 
 Do not automatically search for or install external skills during ordinary work. Skill discovery is an explicit extension decision; review the complete skill, scripts, dependencies, permissions, provenance, and licence before any project-local pinned installation, and never treat search as installation authority.
 
+### Verification tiers and Stop outcomes
+
+Build uses three distinct evidence tiers. The current Build writer owns focused
+checks during an implementation pass. The primary Build writer owns the Build
+completion decision and must have task-specific acceptance coverage plus fresh
+relevant evidence from the selected profile's Build checks; existing task
+receipts and queue-level lint/test/security requirements remain in force. The
+explicitly authorized human/$ship workflow owns Ship. For a commit-only
+request, Ship requires full lint/test/security plus tracked-file/history
+verification and may be accepted without release or publication evidence. For
+publish, merge, or deploy, Ship adds release/publication checks only when that
+authority was explicitly requested. Never infer or pressure a broader action;
+no lower-tier receipt is a Ship substitute.
+
+Fresh means the receipt is within the selected profile's tier window, follows
+the latest relevant write, and still matches the task, source, contract, and
+check identity. Safe read-only inspection (`spec-check`, `tasks-next`,
+`inspect`, `doctor`, `resume`, and bounded file reading/search) preserves valid
+evidence. It never opens protected credential paths or accepts execution
+substitutions, write options, unsafe composition, or hidden mutation. A source,
+configuration, or task write, mutating manager operation, unknown/unsafe
+command, malformed state, or protected-path violation invalidates the affected
+evidence and requires the relevant checks again.
+
+Tier-aware completion evidence records `verification_tier`,
+`selected_profile`, the task/source/contract identities, each check identity,
+and a `freshness` record with the selected profile's configured
+`window_minutes`, its calculated `expires_at`, and the responsible owner.
+The writer who owns that tier is accountable for expiry and must rerun the
+applicable check after expiry; this is auditable guidance, not a background
+runtime. Existing receipt requirements and accepted legacy receipts remain
+valid and cannot be bypassed by adding metadata.
+
+Stop precedence is deterministic: an open in-scope correctness, safety, or
+evidence issue means the acceptance-plus-fresh-evidence completion gate is not
+met and cannot be ignored. Bounded improvement is allowed only before that
+gate and only when it is meaningful, reversible, in scope, and budgeted. Once
+the gate is met, stop as `ACCEPTED` before optional refinement. Required review
+and final verification are gate checks, not optional refinement; an actionable
+finding reopens the gate. Before then,
+`PLATEAU`, `REPEATED_FAILURE`, `BUDGET_EXHAUSTED`, or `HUMAN_BOUNDARY` records
+why the gate cannot safely be reached; none changes an unresolved issue into
+acceptance. These outcomes are guidance in the existing loop, not a daemon,
+scheduler, second task engine, or second runtime.
+
 Use `$find-skills` for an explicit external capability search. It returns candidates and evidence first; it does not install or update a skill. Approved installations are project-local, pinned to an immutable commit, reviewed after installation, and recorded in `agent_docs/skills.lock.json` with the installed skill path and a digest of its complete local content. Run `python scripts/skill_provenance.py verify --root .` after changing the lock; verification checks both the lock schema and the recorded local content.
 
 ## Project configuration

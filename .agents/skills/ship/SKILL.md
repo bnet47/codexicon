@@ -13,9 +13,43 @@ Determine the authorization ceiling from the request before acting:
 
 None of these requests authorizes deployment or unrelated cleanup.
 
+## Verification tiers and ownership
+
+Focused checks belong to the current Build writer, and Build completion belongs
+to the primary Build writer. Those receipts may be reviewed during Ship, but
+they do not satisfy Ship. Ship is human-owned and begins only after explicit
+authorization; it is the only tier that may perform user-checkout Git,
+tracked/history, release, publication, deployment, or external-write work.
+
+Ship evidence must be fresh within the selected profile's Ship window and must
+follow the latest relevant write. Safe read-only inspection preserves valid
+evidence, but protected credential paths are never opened. A mutation, unsafe
+or unknown command, malformed state, or failed tracked/history enumeration
+invalidates the affected evidence and requires the relevant check again.
+
+## Acceptance by authorization ceiling
+
+The requested Ship ceiling determines the completion gate:
+
+- **Commit-only:** require the full lint, test, filesystem-security, and
+  tracked/history checks plus the change-set audit and review. A commit-only
+  request is accepted after the authorized commit; it does not require release
+  identity, publication evidence, a remote push, merge, or deployment, and the
+  workflow must not pressure the user to perform any of them.
+- **Publish, merge, or deploy:** require explicit authority for that action in
+  addition to the full lint/test/security and tracked/history checks. Release
+  identity and publication evidence are required before the authorized action;
+  merge or deployment must not be inferred from a commit or push request.
+
+Tier-aware Ship evidence records `verification_tier: "ship"`, the selected
+profile, source/contract/check identities, and the configured freshness window,
+`expires_at`, and responsible owner. The human Ship owner reruns the affected
+checks after expiry or invalidation; these fields document responsibility and do
+not create a runtime.
+
 ## 1. Verify
 
-Run the narrowest feature checks plus:
+For commit-only, run the narrowest feature checks plus:
 
 ```bash
 ./scripts/lint.sh
@@ -24,7 +58,29 @@ Run the narrowest feature checks plus:
 python scripts/security_scan.py --mode ship
 ```
 
-If a check fails, diagnose and fix only in-scope problems, rerun it, and stop if safe completion needs a product decision or unrelated change. The final scanner command is the explicit tracked/history Ship gate; it is not a Build substitute. Run the canonical scripts directly so lint/test one-use hook receipts reflect the real result; do not mark verification manually.
+For publish, merge, or deploy, also run:
+
+```bash
+python scripts/release.py check --tag vX.Y.Z
+```
+
+Then verify the intended publication artifact and destination against the
+passed release identity before the authorized action. The release check
+validates the canonical version, optional exact tag, public references, and
+reproducible starter artifact; `security_scan.py --mode ship` is the
+tracked-file/history gate and fails closed when Git enumeration is unavailable.
+Run the canonical scripts directly so lint/test one-use hook receipts reflect
+the real result; do not mark verification manually. If a check fails, diagnose
+and fix only in-scope problems, rerun it, and stop with the exact blocker if
+safe completion needs a product decision or unrelated change.
+
+Ship Stop is outcome-based: commit-only `ACCEPTED` requires its listed local,
+tracked/history, audit, and review checks but not release/publication evidence;
+publish/merge/deploy `ACCEPTED` additionally requires release/publication
+evidence and the explicit action authority. `PLATEAU` or `REPEATED_FAILURE`
+reports why another pass cannot safely improve the requested ceiling, and
+`HUMAN_BOUNDARY` stops before any unauthorized action. Never treat a focused or
+Build pass as Ship completion.
 
 For a first production launch or material production change, run `$production-readiness` before publication. A NOT READY verdict blocks shipping; only the accountable human can accept a named residual risk.
 

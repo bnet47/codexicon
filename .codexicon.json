@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "2.10.1",
+  "version": "2.11.0",
   "files": [
     {
       "path": ".codexicon.json",
@@ -51,6 +51,10 @@
     },
     {
       "path": ".codex/hooks.json",
+      "policy": "merge"
+    },
+    {
+      "path": ".codex/capabilities.toml",
       "policy": "merge"
     },
     {

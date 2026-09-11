@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/bnet47/codexicon/actions/workflows/ci.yml"><img src="https://github.com/bnet47/codexicon/actions/workflows/ci.yml/badge.svg" alt="Template CI"></a>
-  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.10.1-339cff.svg" alt="Template version 2.10.1"></a>
+  <a href="TEMPLATE_VERSION"><img src="https://img.shields.io/badge/template-v2.11.0-339cff.svg" alt="Template version 2.11.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-46a862.svg" alt="MIT License"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-f39a56.svg" alt="Python 3.10 or newer"></a>
 </p>
@@ -219,6 +219,50 @@ third-party memory service is added.
 
 </details>
 
+### Capability policy and evidence
+
+The project-local [capability policy](.codex/capabilities.toml) is validated
+guidance for the existing Build loop, not a runtime. Inspect the selected
+profile and its budgets with `python scripts/codexicon.py capabilities --json`;
+the available profiles are `strict`, `balanced`, and `autonomous`. A profile
+changes reversible workflow guidance only. It never grants Git, deployment,
+credential, external-write, or publication authority.
+
+For each bounded task, start with a task-specific acceptance rubric. Run a
+focused check, critique the weakest important aspect, and refine only when the
+improvement is meaningful, reversible, directly related, and within scope.
+Stop when acceptance has fresh evidence, or at a plateau, repeated failure,
+budget exhaustion, or a human-owned boundary. There is no daemon, scheduler,
+third-party memory service, or second task engine.
+
+Independent review is selective: the configured profile can trigger a
+read-only reviewer for a listed risk level, a changed-file threshold, or an
+enabled public-API, security, architecture, or test-complexity signal. Every
+finding receives a stable ID and exactly one disposition: `accepted`, `fixed`,
+`rejected`, or `not_applicable`.
+
+Evidence has three tiers. Focused iteration checks belong to the current
+writer; Build completion belongs to the primary writer and requires fresh,
+task-relevant evidence; Ship belongs to an explicitly authorized human or
+`$ship`. Commit-only Ship requires full lint, test, filesystem-security, and
+tracked/history checks but no release or publication evidence. Publish, merge,
+or deploy adds release and publication checks only when that exact authority is
+explicitly requested.
+
+Record consequential assumptions in the append-only `agent_docs/decisions/`
+journal using its date, owner, status, evidence, rationale, alternatives,
+impact, and supersession fields. A related scope expansion is allowed only
+when it is small, reversible, directly related, and within the declared system
+boundary; authority, product behavior, schema/data, security, destructive,
+credential, production, migration, legal, external-write, publication, and
+deployment changes require explicit escalation.
+
+The capability matrix (`docs/evals/capability-matrix.md`) separates
+deterministic fixture evidence from live-client claims. It records observed
+versions/dates, denominators, expected and observed outcomes, and explicit
+unmeasured fields; raw command or tool names never establish client
+compatibility.
+
 <details>
 <summary><strong>See a realistic project sequence</strong></summary>
 
@@ -348,7 +392,7 @@ Template releases are recorded in [`TEMPLATE_VERSION`](TEMPLATE_VERSION). Projec
 Maintainers can verify a release identity locally before Ship:
 
 ```bash
-python scripts/release.py check --tag v2.10.1
+python scripts/release.py check --tag v2.11.0
 ```
 
 The check requires the supplied tag to match the canonical version and reproduces the clean starter twice, without invoking Git or reading the development contract and task ledger.

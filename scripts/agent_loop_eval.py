@@ -62,6 +62,7 @@ class RegressionResult:
 class ScenarioResult:
     id: str
     passed: bool
+    acceptance_passed: bool
     expected: str
     metrics: Mapping[str, int]
     checks: Mapping[str, bool]
@@ -315,6 +316,7 @@ def evaluate_scenario(fixture: ScenarioFixture) -> ScenarioResult:
     return ScenarioResult(
         fixture.id,
         all(checks.values()),
+        checks["acceptance"],
         fixture.expected,
         metrics,
         checks,
@@ -367,8 +369,10 @@ def build_report(root: Path = ROOT, *, include_regressions: bool = True) -> dict
         }
     measures = {
         "acceptance_pass_rate": {
-            "passed": sum(result.passed for result in scenarios),
-            "denominator": len(scenarios),
+            "passed": sum(result.acceptance_passed for result in scenarios),
+            "denominator": sum(
+                result.metrics["acceptance_denominator"] for result in scenarios
+            ),
         },
         **scenario_metrics,
     }
@@ -390,6 +394,10 @@ def build_report(root: Path = ROOT, *, include_regressions: bool = True) -> dict
         "scenarios": {
             "passed": sum(result.passed for result in scenarios),
             "denominator": len(scenarios),
+            "acceptance_passed": sum(result.acceptance_passed for result in scenarios),
+            "acceptance_denominator": sum(
+                result.metrics["acceptance_denominator"] for result in scenarios
+            ),
             "results": [asdict(result) for result in scenarios],
         },
         "scenario_metrics": scenario_metrics,

@@ -182,6 +182,40 @@ external-write authority. Build remains local and Git-free; those actions stay
 with an explicitly authorized `$ship` workflow. No daemon, scheduler, or
 third-party memory service is part of the default template.
 
+### Capability policy and evidence
+
+Read the validated project-local policy at `.codex/capabilities.toml` with
+`python scripts/codexicon.py capabilities --json`. It reports the selected
+profile (`strict`, `balanced`, or `autonomous`), its bounded budgets, review
+thresholds, and focused/Build/Ship verification tiers. The policy is guidance
+for the existing loop, not a daemon, scheduler, second task engine, or source
+of Git, deployment, credentials, external-write, or publication authority.
+
+Build work starts with a task-specific acceptance rubric. Run a focused check,
+critique the weakest important aspect, and refine only meaningful, reversible,
+directly related work inside the declared scope. Stop at acceptance with fresh
+evidence, plateau, repeated failure, budget exhaustion, or a human boundary.
+The configured review route is selective: risk, changed-file threshold, and
+enabled public-API, security, architecture, or test-complexity signals can
+require a read-only reviewer. Record a stable finding ID and exactly one
+`accepted`, `fixed`, `rejected`, or `not_applicable` disposition per finding.
+
+Focused checks belong to the current writer; Build completion belongs to the
+primary writer and needs fresh task-relevant evidence. Ship is human-owned:
+commit-only Ship requires full lint, test, filesystem-security, and
+tracked/history checks without release or publication evidence, while
+publish/merge/deploy requires that exact explicit authority plus release and
+publication checks. Use the append-only `agent_docs/decisions/` journal for
+consequential assumptions; related scope must be small, reversible, directly
+related, and within the declared system boundary, with authority, product,
+schema/data, security, destructive, credential, production, migration, legal,
+external-write, publication, or deployment changes escalated explicitly.
+
+Use `docs/evals/capability-matrix.md` for evidence claims. It distinguishes
+deterministic fixtures from live-client behavior with versions/dates,
+denominators, expected/observed outcomes, and explicit unmeasured fields; raw
+tool names are not compatibility evidence.
+
 ### Customer-facing execution
 
 For an app or website, establish real users, tasks, content, brand constraints, and success evidence before asking for visual polish. Use:

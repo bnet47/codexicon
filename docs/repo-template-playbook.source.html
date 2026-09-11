@@ -903,6 +903,7 @@
     <span class="nav-mark" aria-hidden="true">Codexicon</span>
     <a href="#entry-heading">Start</a>
     <a href="#lifecycle-heading">Lifecycle</a>
+    <a href="#capability-heading">Capabilities</a>
     <a href="#routing-heading">Routing</a>
     <a href="#skills-heading">Skills</a>
     <a href="#boundaries-heading">Guardrails</a>
@@ -1034,6 +1035,54 @@
         </div>
       </div>
       <p class="text-small text-muted">Communication compression and model reasoning are separate controls. The repository-native <code>$concise</code> skill changes output style only and loads when relevant.</p>
+    </div>
+  </section>
+
+  <section class="playbook-section" aria-labelledby="capability-heading">
+    <div>
+      <h2 id="capability-heading">Capability policy, evidence, and authority</h2>
+      <p class="text-muted">The policy tunes the existing loop without becoming a runtime or granting a new authority.</p>
+    </div>
+    <div class="card capability-panel">
+      <h3>Inspect the selected profile</h3>
+      <p>Read <code>.codex/capabilities.toml</code> and run <code>python scripts/codexicon.py capabilities --json</code>. The validated <code>strict</code>, <code>balanced</code>, and <code>autonomous</code> profiles provide positive budgets, review triggers, and verification tiers. They guide reversible workflow choices; they do not add a daemon, scheduler, second task engine, or Git/deployment/credential/external-write/publication authority.</p>
+    </div>
+    <div class="route-list" role="table" aria-label="Capability contract">
+      <div class="route-head" role="row">
+        <span role="columnheader">Contract</span>
+        <span role="columnheader">Rule</span>
+        <span role="columnheader">Evidence or boundary</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Refinement · </span>Bounded Build</span>
+        <span role="cell">Write an acceptance rubric, run a focused check, critique the weakest important aspect, and refine only meaningful, reversible, directly related work in scope.</span>
+        <span role="cell"><span class="route-label">Stop · </span>Fresh acceptance evidence, plateau, repeated failure, budget exhaustion, or human-owned boundary</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Review · </span>Selective and read-only</span>
+        <span role="cell">Trigger on a configured risk level, changed-file threshold, or enabled public-API, security, architecture, or test-complexity signal.</span>
+        <span role="cell"><span class="route-label">Receipt · </span>Stable finding ID and exactly one accepted, fixed, rejected, or not_applicable disposition</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Verification · </span>Three tiers</span>
+        <span role="cell">Focused checks support iteration; Build completion needs fresh task-relevant evidence; Ship is an explicitly authorized human/$ship boundary.</span>
+        <span role="cell"><span class="route-label">Ceiling · </span>Commit-only Ship has full lint/test/filesystem-security and tracked/history checks, not release/publication evidence</span>
+      </div>
+      <div class="route-row" role="row">
+        <span role="cell"><span class="route-label">Publication · </span>Explicit only</span>
+        <span role="cell">Publish, merge, or deploy adds release and publication checks only when that exact authority is requested.</span>
+        <span role="cell"><span class="route-label">No inference · </span>A passing Build or commit does not authorize an external effect</span>
+      </div>
+    </div>
+    <div class="stage-content">
+      <div class="card capability-panel">
+        <h3>Make decisions visible</h3>
+        <p>Use the append-only <code>agent_docs/decisions/</code> journal for consequential assumptions with date, owner, status, evidence, rationale, alternatives, impact, and supersession. A related scope change must be small, reversible, directly related, and within the declared system boundary; authority, product, schema/data, security, destructive, credential, production, migration, legal, external-write, publication, and deployment changes require escalation.</p>
+      </div>
+      <div class="card capability-panel">
+        <h3>Keep evidence honest</h3>
+        <p>Use <code>docs/evals/capability-matrix.md</code> to separate deterministic fixture evidence from live-client claims. Record versions/dates, denominators, expected/observed outcomes, and explicit unmeasured fields. Raw command or tool names never establish client compatibility.</p>
+      </div>
     </div>
   </section>
 

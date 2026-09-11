@@ -28,6 +28,13 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **R-018:** Keep the documented writer and delegation policy internally consistent, with an append-only decision superseding the obsolete worktree-writer guidance.
 - **R-019:** Make template version, manifest, documentation, release tag, and published starter artifact agree through one reproducible release check.
 - **R-020:** Measure Codexicon on real Codex runs against a direct baseline with isolated fixtures, independent acceptance checks, repeatable inputs, and explicit cost, latency, and unmeasured fields.
+- **R-021:** Provide a validated, project-local capability policy with strict, balanced, and autonomous profiles that changes reversible workflow behavior without expanding Git, deployment, credential, or external-write authority.
+- **R-022:** Make bounded self-improvement executable as a documented contract with task-specific acceptance rubrics, iteration/review/failure budgets, plateau detection, and human-boundary stops.
+- **R-023:** Apply independent review selectively using declared risk and change-surface thresholds, require read-only reviewers, and preserve finding dispositions as completion evidence.
+- **R-024:** Separate focused iteration checks, Build-completion checks, and Ship checks, with explicit freshness and stop conditions for each tier.
+- **R-025:** Record consequential assumptions and decisions in an append-only journal and permit only small, directly related scope expansion with explicit escalation triggers.
+- **R-026:** Publish a reproducible capability matrix and scenario evidence for supported clients and platforms, distinguishing measured behavior from unmeasured availability.
+- **R-027:** Keep the capability policy, skills, roles, README, onboarding, upgrade guidance, and playbook source/generated pair synchronized and structurally validated.
 
 ## Interfaces
 
@@ -47,6 +54,11 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **I-014:** A dated ADR and validation checks define one sequential shared-checkout writer policy for Build and one explicit publication boundary for Ship.
 - **I-015:** `python scripts/release.py check` validates the canonical template version, manifest, public version references, release tag, and starter artifact identity.
 - **I-016:** `python scripts/live_agent_eval.py` runs isolated direct and Codexicon trials, records machine-readable per-run evidence, and produces an honest aggregate report.
+- **I-017:** `.codex/capabilities.toml` and `python scripts/codexicon.py capabilities [--json]` define and validate the selected capability profile, budgets, review thresholds, verification tiers, and escalation invariants.
+- **I-018:** The autonomous Build and reviewer profiles consume the capability policy as bounded guidance for refinement, selective review, and evidence reporting without becoming a second task engine.
+- **I-019:** The capability documentation defines focused/Build/Ship verification tiers, including the commit-only versus explicitly authorized publish/merge/deploy Ship ceilings, plateau and failure stop rules, decision-journal format, and related-scope boundaries.
+- **I-020:** `docs/evals/capability-matrix.md` records reproducible client/platform capability evidence with version/date, trust, resume/compact, completion, and native-verification fields.
+- **I-021:** The playbook selector, capability content, examples, and generated artifact expose the same profile, review, verification, and escalation behavior.
 
 ## Acceptance
 
@@ -70,6 +82,13 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **A-018:** The current ADR, AGENTS guidance, skills, and tests contain no contradictory writer policy; Build remains local and sequential, while worktree/Git publication is confined to explicit Ship behavior.
 - **A-019:** A release check fails on version drift and passes for the exact tag and starter artifact used by the published release; release notes and README identify the same version.
 - **A-020:** Repeated direct-versus-Codexicon Codex trials report acceptance, interventions, regressions, elapsed time, token/cost fields when available, and explicit unmeasured values without credentials or external writes.
+- **A-021:** Missing, malformed, unknown-profile, unsafe, or contradictory capability policy fails validation with line-aware diagnostics; valid profiles produce stable human and JSON output on Python 3.10+.
+- **A-022:** Each profile has positive bounded budgets and mandatory human-owned escalation flags; the refinement contract stops at acceptance, plateau, repeated failure, budget exhaustion, or a human boundary.
+- **A-023:** Review is required for configured high-risk signals and configured change-surface thresholds, remains read-only, and records accepted, fixed, rejected, or not-applicable findings without blocking trivial low-risk work.
+- **A-024:** Focused checks may run during iteration; Build completion requires fresh relevant evidence; Ship requires full lint/test/security and tracked/history checks; commit-only Ship does not require release/publication evidence; publish/merge/deploy requires release/publication checks only when that exact authority is explicitly requested; safe inspection does not invalidate evidence.
+- **A-025:** Consequential assumptions and decisions have a durable append-only location and related scope expansion is allowed only when small, reversible, directly related, and within the declared system boundary.
+- **A-026:** The capability matrix and deterministic scenarios include denominators, expected outcomes, observed versions/dates, and explicit unmeasured fields; no client compatibility is inferred from raw tool names alone.
+- **A-027:** Static validation proves capability references are synchronized across the policy, skills, roles, onboarding, README, upgrade guidance, playbook source, and generated playbook.
 
 ## Anti-goals
 
@@ -79,6 +98,8 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **AG-004:** Do not open credential-bearing files, print secret values, ingest transcripts/secrets into resume context, or weaken security scanning to accommodate documentation.
 - **AG-005:** Do not create concurrent writers in one checkout, branches/worktrees during Build, or commits, pushes, releases, deployments, and external writes without explicit Ship authority.
 - **AG-006:** Do not introduce unrelated product features, force a model identity in reusable instructions, or infer client compatibility from raw tool names alone.
+- **AG-007:** Do not implement a daemon, scheduler, background persistence service, or generic autonomous runtime to enforce the capability policy.
+- **AG-008:** Do not let a capability profile weaken protected-path, credential, external-write, Git, deployment, or publication boundaries.
 
 ## Assumptions
 
@@ -92,3 +113,5 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 
 - **2026-09-09:** Created from `docs/codexicon-recommendations-2026-09-09.md`; preserves the recommendation package as historical input and authorizes local implementation only.
 - **2026-09-11:** Authorized clean starter generation, writer-policy reconciliation, reproducible release identity, and live Codex comparison work; publication remains confined to the later Ship phase.
+- **2026-09-11:** Authorized implementation of the evolution brief's bounded capability layer: validated profiles, quality/refinement guidance, selective review, verification tiers, decision visibility, and capability evidence. Preserve the no-daemon and explicit Ship boundaries.
+- **2026-09-11:** T-024 amendment clarifies A-024 and I-019: commit-only Ship requires full lint/test/security and tracked/history verification without release/publication evidence; publish, merge, or deploy requires release/publication checks only when that exact authority is explicitly requested. This clarification preserves safe inspection, the explicit Ship boundary, and every AG constraint; it grants no Build or publication authority.

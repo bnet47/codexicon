@@ -7,6 +7,7 @@ import argparse
 import ast
 import contextlib
 import hashlib
+import io
 import json
 import os
 import re
@@ -16,10 +17,11 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tokenize
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, NoReturn, Sequence
 
 try:
     import tomllib
@@ -39,6 +41,54 @@ CANONICAL_CHECKS = ("lint", "test", "security")
 BUILD_MODE = "build"
 SHIP_MODE = "ship"
 VERIFICATION_MODES = (BUILD_MODE, SHIP_MODE)
+CAPABILITIES_RELATIVE = ".codex/capabilities.toml"
+CAPABILITY_SCHEMA_VERSION = 1
+CAPABILITY_PROFILES = ("strict", "balanced", "autonomous")
+CAPABILITY_ROOT_KEYS = {"schema_version", "selected_profile", "authority", "profiles"}
+CAPABILITY_AUTHORITY_KEYS = {
+    "git",
+    "deployment",
+    "credentials",
+    "external_writes",
+    "publication",
+    "runtime",
+}
+CAPABILITY_PROFILE_KEYS = {"autonomy", "budgets", "review", "verification", "escalation"}
+CAPABILITY_AUTONOMY_KEYS = {
+    "allow_reversible_assumptions",
+    "batch_blocking_questions",
+    "allow_related_correctness_fixes",
+}
+CAPABILITY_BUDGET_KEYS = {
+    "max_iterations",
+    "max_review_cycles",
+    "max_failed_attempts",
+    "max_minutes",
+}
+CAPABILITY_REVIEW_KEYS = {
+    "required_risk_levels",
+    "changed_files_threshold",
+    "review_on_public_api",
+    "review_on_security",
+    "review_on_architecture",
+    "review_on_test_complexity",
+}
+CAPABILITY_VERIFICATION_KEYS = {"focused", "build", "ship"}
+CAPABILITY_TIER_KEYS = {"checks", "freshness_minutes"}
+CAPABILITY_ESCALATION_KEYS = {
+    "destructive_actions",
+    "production_actions",
+    "external_writes",
+    "credentials",
+    "major_architecture_change",
+    "material_product_decision",
+    "publication",
+    "git_operations",
+    "deployment",
+    "authority_expansion",
+}
+CAPABILITY_RISK_LEVELS = {"low", "medium", "high", "critical"}
+CAPABILITY_CHECKS = {"focused", "lint", "test", "security", "release", "publication"}
 SUPPORTED_HOOK_EVENTS = {
     "PermissionRequest",
     "PostCompact",
@@ -920,9 +970,27 @@ def parse_toml_scalar(raw_value: str, key: str) -> Any:
     if raw_value == "false":
         return False
     try:
-        return ast.literal_eval(raw_value)
+        tokens = tokenize.generate_tokens(io.StringIO(raw_value).readline)
+        if any(
+            token.type == tokenize.NAME and token.string in {"True", "False", "None"}
+            for token in tokens
+        ):
+            raise ValueError(f"Python-only literal for {key}: {raw_value}")
+    except tokenize.TokenError as exc:
+        raise ValueError(f"invalid TOML value for {key}: {raw_value}") from exc
+    try:
+        value = ast.literal_eval(raw_value)
     except (SyntaxError, ValueError) as exc:
         raise ValueError(f"invalid TOML value for {key}: {raw_value}") from exc
+    if type(value) in {str, bool, int, float}:
+        return value
+    if type(value) is list and all(
+        type(item) in {str, bool, int, float}
+        or (type(item) is list and all(type(nested) in {str, bool, int, float} for nested in item))
+        for item in value
+    ):
+        return value
+    raise ValueError(f"unsupported non-TOML literal for {key}: {raw_value}")
 
 
 def parse_toml_subset(content: str) -> dict[str, Any]:
@@ -949,7 +1017,7 @@ def parse_toml_subset(content: str) -> dict[str, Any]:
                     for part in parts
                 )
             ):
-                raise ValueError(f"unsupported TOML section: {line}")
+                raise ValueError(f"line {index}: unsupported TOML section: {line}")
             seen_sections.add(section)
             current = result
             for part in parts:
@@ -959,10 +1027,19 @@ def parse_toml_subset(content: str) -> dict[str, Any]:
                 current = value
             continue
         if "=" not in line:
-            raise ValueError(f"invalid TOML line: {line}")
+            raise ValueError(f"line {index}: invalid TOML line: {line}")
         key, raw_value = (part.strip() for part in line.split("=", 1))
-        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_-]*", key) or key in current:
-            raise ValueError(f"invalid or duplicate TOML key: {key}")
+        key_parts = key.split(".")
+        if any(not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_-]*", part) for part in key_parts):
+            raise ValueError(f"line {index}: invalid TOML key: {key}")
+        destination = current
+        for part in key_parts[:-1]:
+            value = destination.setdefault(part, {})
+            if not isinstance(value, dict):
+                raise ValueError(f"line {index}: duplicate TOML key/section: {key}")
+            destination = value
+        if key_parts[-1] in destination:
+            raise ValueError(f"line {index}: invalid or duplicate TOML key: {key}")
         delimiter = (
             '"""'
             if raw_value.startswith('"""')
@@ -974,14 +1051,344 @@ def parse_toml_subset(content: str) -> dict[str, Any]:
             chunks = [raw_value[3:]]
             while not chunks[-1].endswith(delimiter):
                 if index >= len(lines):
-                    raise ValueError(f"unterminated multiline string: {key}")
+                    raise ValueError(f"line {index}: unterminated multiline string: {key}")
                 chunks.append(lines[index])
                 index += 1
             chunks[-1] = chunks[-1][:-3]
-            current[key] = "\n".join(chunks)
+            destination[key_parts[-1]] = "\n".join(chunks)
             continue
-        current[key] = parse_toml_scalar(strip_toml_comment(raw_value).strip(), key)
+        try:
+            value = parse_toml_scalar(strip_toml_comment(raw_value).strip(), key)
+        except ValueError as exc:
+            raise ValueError(f"line {index}: {exc}") from exc
+        destination[key_parts[-1]] = value
     return result
+
+
+def _capability_line(content: str, *names: str) -> int:
+    """Return a useful source line for a capability diagnostic."""
+
+    wanted = set(names)
+    current_section = ""
+    for line_number, raw_line in enumerate(content.splitlines(), 1):
+        line = strip_toml_comment(raw_line).strip()
+        if not line:
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            current_section = line[1:-1].strip()
+            if any(
+                current_section == name or current_section.startswith(f"{name}.")
+                for name in wanted
+            ):
+                return line_number
+            continue
+        if "=" not in line:
+            continue
+        key = line.split("=", 1)[0].strip()
+        if key in wanted or any(
+            f"{current_section}.{key}" == name for name in wanted if current_section
+        ):
+            return line_number
+    return 1
+
+
+def _capability_failure(content: str, message: str, *names: str) -> NoReturn:
+    line = _capability_line(content, *names)
+    raise CodexiconError(f"{CAPABILITIES_RELATIVE}:{line}: {message}")
+
+
+def _capability_table(
+    value: Any, content: str, label: str, allowed: set[str]
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        _capability_failure(content, f"{label} must be a table", label)
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        unknown_name = unknown[0] if label == "policy" else f"{label}.{unknown[0]}"
+        _capability_failure(
+            content,
+            f"{label} contains unknown key {unknown[0]!r}",
+            unknown_name,
+            label,
+        )
+    return value
+
+
+def _capability_string(value: Any, content: str, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        _capability_failure(content, f"{label} must be a non-empty string", label)
+    return value
+
+
+def _capability_bool(value: Any, content: str, label: str) -> bool:
+    if type(value) is not bool:
+        _capability_failure(content, f"{label} must be a boolean", label)
+    return value
+
+
+def _capability_bounded_int(
+    value: Any, content: str, label: str, *, maximum: int
+) -> int:
+    if type(value) is not int or not 1 <= value <= maximum:
+        _capability_failure(
+            content,
+            f"{label} must be an integer from 1 through {maximum}",
+            label,
+        )
+    return value
+
+
+def _capability_string_list(
+    value: Any, content: str, label: str, *, allowed: set[str]
+) -> list[str]:
+    if (
+        not isinstance(value, list)
+        or not value
+        or any(not isinstance(item, str) or item not in allowed for item in value)
+        or len(set(value)) != len(value)
+    ):
+        _capability_failure(
+            content,
+            f"{label} must be a non-empty unique list of supported values",
+            label,
+        )
+    return value
+
+
+def _parse_capability_policy(path: Path) -> tuple[dict[str, Any], str]:
+    try:
+        content = path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise CodexiconError(f"{CAPABILITIES_RELATIVE}:1: policy is missing") from exc
+    except (OSError, UnicodeDecodeError) as exc:
+        raise CodexiconError(f"{CAPABILITIES_RELATIVE}:1: policy is unreadable") from exc
+    try:
+        if tomllib is not None:
+            parsed = tomllib.loads(content)
+        else:
+            parsed = parse_toml_subset(content)
+    except (ValueError, TypeError) as exc:
+        line = getattr(exc, "lineno", None)
+        if not isinstance(line, int):
+            match = re.search(r"line\s+(\d+)", str(exc), re.IGNORECASE)
+            line = int(match.group(1)) if match else _capability_line(content)
+        raise CodexiconError(f"{CAPABILITIES_RELATIVE}:{line}: malformed policy: {exc}") from exc
+    if not isinstance(parsed, dict):
+        _capability_failure(content, "policy must be a TOML table")
+    return parsed, content
+
+
+def validate_capability_policy(root: Path) -> dict[str, Any]:
+    """Load and validate the project-local capability policy without executing it."""
+
+    path = checked_path(root, CAPABILITIES_RELATIVE)
+    parsed, content = _parse_capability_policy(path)
+    _capability_table(parsed, content, "policy", CAPABILITY_ROOT_KEYS)
+
+    if (
+        type(parsed.get("schema_version")) is not int
+        or parsed.get("schema_version") != CAPABILITY_SCHEMA_VERSION
+    ):
+        _capability_failure(
+            content,
+            f"schema_version must be {CAPABILITY_SCHEMA_VERSION}",
+            "schema_version",
+        )
+    selected = _capability_string(parsed.get("selected_profile"), content, "selected_profile")
+    if selected not in CAPABILITY_PROFILES:
+        _capability_failure(content, f"unknown selected_profile {selected!r}", "selected_profile")
+
+    authority = _capability_table(
+        parsed.get("authority"), content, "authority", CAPABILITY_AUTHORITY_KEYS
+    )
+    if set(authority) != CAPABILITY_AUTHORITY_KEYS:
+        missing = sorted(CAPABILITY_AUTHORITY_KEYS - set(authority))
+        _capability_failure(content, f"authority is missing {missing[0]!r}", "authority")
+    for key in sorted(CAPABILITY_AUTHORITY_KEYS):
+        if _capability_bool(authority.get(key), content, f"authority.{key}") is not False:
+            _capability_failure(
+                content, f"authority.{key} must remain false", f"authority.{key}"
+            )
+
+    profiles = _capability_table(
+        parsed.get("profiles"), content, "profiles", set(CAPABILITY_PROFILES)
+    )
+    if set(profiles) != set(CAPABILITY_PROFILES):
+        missing = sorted(set(CAPABILITY_PROFILES) - set(profiles))
+        _capability_failure(content, f"profiles is missing {missing[0]!r}", "profiles")
+
+    for profile_name in CAPABILITY_PROFILES:
+        profile = _capability_table(
+            profiles[profile_name],
+            content,
+            f"profiles.{profile_name}",
+            CAPABILITY_PROFILE_KEYS,
+        )
+        autonomy = _capability_table(
+            profile.get("autonomy"),
+            content,
+            f"profiles.{profile_name}.autonomy",
+            CAPABILITY_AUTONOMY_KEYS,
+        )
+        for key in sorted(CAPABILITY_AUTONOMY_KEYS):
+            _capability_bool(
+                autonomy.get(key), content, f"profiles.{profile_name}.autonomy.{key}"
+            )
+
+        budgets = _capability_table(
+            profile.get("budgets"),
+            content,
+            f"profiles.{profile_name}.budgets",
+            CAPABILITY_BUDGET_KEYS,
+        )
+        for key, maximum in (
+            ("max_iterations", 100),
+            ("max_review_cycles", 50),
+            ("max_failed_attempts", 50),
+            ("max_minutes", 1440),
+        ):
+            _capability_bounded_int(
+                budgets.get(key),
+                content,
+                f"profiles.{profile_name}.budgets.{key}",
+                maximum=maximum,
+            )
+
+        review = _capability_table(
+            profile.get("review"),
+            content,
+            f"profiles.{profile_name}.review",
+            CAPABILITY_REVIEW_KEYS,
+        )
+        risk_levels = _capability_string_list(
+            review.get("required_risk_levels"),
+            content,
+            f"profiles.{profile_name}.review.required_risk_levels",
+            allowed=CAPABILITY_RISK_LEVELS,
+        )
+        if not {"high", "critical"}.issubset(risk_levels):
+            _capability_failure(
+                content,
+                f"profiles.{profile_name}.review.required_risk_levels must include high and critical",
+                f"profiles.{profile_name}.review.required_risk_levels",
+            )
+        _capability_bounded_int(
+            review.get("changed_files_threshold"),
+            content,
+            f"profiles.{profile_name}.review.changed_files_threshold",
+            maximum=1000,
+        )
+        for key in sorted(
+            CAPABILITY_REVIEW_KEYS - {"required_risk_levels", "changed_files_threshold"}
+        ):
+            _capability_bool(review.get(key), content, f"profiles.{profile_name}.review.{key}")
+
+        verification = _capability_table(
+            profile.get("verification"),
+            content,
+            f"profiles.{profile_name}.verification",
+            CAPABILITY_VERIFICATION_KEYS,
+        )
+        for tier_name in ("focused", "build", "ship"):
+            tier = _capability_table(
+                verification.get(tier_name),
+                content,
+                f"profiles.{profile_name}.verification.{tier_name}",
+                CAPABILITY_TIER_KEYS,
+            )
+            _capability_string_list(
+                tier.get("checks"),
+                content,
+                f"profiles.{profile_name}.verification.{tier_name}.checks",
+                allowed=CAPABILITY_CHECKS,
+            )
+            _capability_bounded_int(
+                tier.get("freshness_minutes"),
+                content,
+                f"profiles.{profile_name}.verification.{tier_name}.freshness_minutes",
+                maximum=1440,
+            )
+
+        escalation = _capability_table(
+            profile.get("escalation"),
+            content,
+            f"profiles.{profile_name}.escalation",
+            CAPABILITY_ESCALATION_KEYS,
+        )
+        if set(escalation) != CAPABILITY_ESCALATION_KEYS:
+            missing = sorted(CAPABILITY_ESCALATION_KEYS - set(escalation))
+            _capability_failure(
+                content,
+                f"profiles.{profile_name}.escalation is missing {missing[0]!r}",
+                "escalation",
+            )
+        for key in sorted(CAPABILITY_ESCALATION_KEYS):
+            if _capability_bool(
+                escalation.get(key), content, f"profiles.{profile_name}.escalation.{key}"
+            ) is not True:
+                _capability_failure(
+                    content,
+                    f"profiles.{profile_name}.escalation.{key} must remain true",
+                    f"profiles.{profile_name}.escalation.{key}",
+                )
+    return parsed
+
+
+def capabilities(root: Path, *, json_output: bool = False) -> int:
+    try:
+        policy = validate_capability_policy(root)
+    except CodexiconError as exc:
+        if json_output:
+            print(
+                json.dumps(
+                    {
+                        "command": "capabilities",
+                        "policy_path": CAPABILITIES_RELATIVE,
+                        "valid": False,
+                        "errors": [str(exc)],
+                    },
+                    sort_keys=True,
+                )
+            )
+        else:
+            print(f"[codexicon] {exc}", file=sys.stderr)
+        return 2
+    if json_output:
+        print(
+            json.dumps(
+                {
+                    "command": "capabilities",
+                    "policy_path": CAPABILITIES_RELATIVE,
+                    "valid": True,
+                    **policy,
+                },
+                sort_keys=True,
+            )
+        )
+    else:
+        selected = policy["selected_profile"]
+        profile = policy["profiles"][selected]
+        print("Capability policy: valid")
+        print(f"Policy: {CAPABILITIES_RELATIVE}")
+        print(f"Selected profile: {selected}")
+        print(f"Profiles: {', '.join(CAPABILITY_PROFILES)}")
+        budgets = profile["budgets"]
+        print(
+            "Budgets: "
+            f"iterations={budgets['max_iterations']}, "
+            f"review_cycles={budgets['max_review_cycles']}, "
+            f"failed_attempts={budgets['max_failed_attempts']}, "
+            f"minutes={budgets['max_minutes']}"
+        )
+        review = profile["review"]
+        print(
+            "Review thresholds: "
+            f"risk={','.join(review['required_risk_levels'])}, "
+            f"changed_files>={review['changed_files_threshold']}"
+        )
+        print("Verification tiers: focused, build, ship")
+        print(f"Escalation invariants: {len(CAPABILITY_ESCALATION_KEYS)} mandatory human boundaries")
+    return 0
 
 
 def parse_config(root: Path, diagnostics: list[tuple[str, str]]) -> None:
@@ -2913,6 +3320,12 @@ def build_parser() -> argparse.ArgumentParser:
     verify_parser.add_argument("--root", type=Path, default=ROOT)
     verify_parser.add_argument("--mode", choices=VERIFICATION_MODES, default=BUILD_MODE)
 
+    capabilities_parser = subparsers.add_parser(
+        "capabilities", help="validate and report the project-local capability policy"
+    )
+    capabilities_parser.add_argument("--root", type=Path, default=ROOT)
+    capabilities_parser.add_argument("--json", action="store_true", dest="json_output")
+
     hooks_parser = subparsers.add_parser("install-git-hooks", help="install tracked Git hooks safely")
     hooks_parser.add_argument("--root", type=Path, default=ROOT)
 
@@ -2999,6 +3412,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return doctor(args.root, mode=args.mode)
         if args.command == "verify":
             return verify(args.root, args.checks, mode=args.mode)
+        if args.command == "capabilities":
+            return capabilities(args.root, json_output=args.json_output)
         if args.command == "install-git-hooks":
             return install_git_hooks(args.root)
         if args.command == "sync-git-modes":

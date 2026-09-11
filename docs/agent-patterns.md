@@ -65,6 +65,49 @@ Build stays in the current checkout and active branch. Do not create worktrees, 
 
 Keep root `SPEC.md` and `TASKS.md` in the active checkout so continuation does not depend on ignored state. Use `$context-dump` only for longer-lived semantic handoffs. Pure explanations and read-only reviews do not require code ceremonies or task-register writes.
 
+## Capability policy and review evidence
+
+Before a bounded Build task, inspect the validated project-local policy at
+`.codex/capabilities.toml` with `python scripts/codexicon.py capabilities --json`.
+The selected profile (`strict`, `balanced`, or `autonomous`) supplies positive
+budgets, review triggers, and focused/Build/Ship verification tiers. It is
+guidance for the current
+loop, not a daemon, scheduler, second task engine, or authority grant.
+
+The task rubric drives a bounded refinement loop: focused check, critique of the
+weakest important aspect, and only meaningful, reversible, directly related
+changes inside the declared scope. Stop at acceptance with fresh evidence,
+plateau, repeated failure, budget exhaustion, or a human-owned boundary.
+
+Use the canonical `$autonomous-build` route for selective review when any
+configured trigger matches: required risk level, changed-file threshold, or an
+enabled public-API, security, architecture, or test-complexity signal. The
+reviewer is read-only. Preserve a stable finding ID and exactly one
+`accepted`, `fixed`, `rejected`, or `not_applicable` disposition for every
+finding; trivial low-risk work below the threshold with no enabled signal is
+exempt.
+
+Keep evidence tiered. Focused checks support iteration; Build completion needs
+fresh task-relevant evidence; Ship is an explicitly authorized human/$ship
+boundary. Commit-only Ship requires full lint, test, filesystem-security, and
+tracked/history checks without release or publication evidence. Publish, merge,
+or deploy requires the exact explicit authority plus release/publication checks.
+Safe inspection does not grant authority or silently replace fresh evidence.
+
+Record consequential decisions in the append-only `agent_docs/decisions/`
+journal. A related correction can enter the task only when it is small,
+reversible, directly related, and within the declared system boundary. Escalate
+authority, product behavior, schema/data shape, security posture, irreversible
+or destructive work, credentials, production actions, migrations, legal or
+compliance commitments, external writes, publication, and deployment.
+
+Use `docs/evals/capability-matrix.md` to separate deterministic scenario
+evidence from live-client claims. Versions/dates, denominators,
+expected/observed outcomes, and explicit unmeasured fields are required; raw
+command or tool names never establish compatibility. The policy and profiles do
+not add a daemon, scheduler, third-party memory service, Git operation,
+deployment, credential access, external-write, or publication step.
+
 ## Brief template
 
 Every delegated task should state:

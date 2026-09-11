@@ -23,8 +23,43 @@ Use the project’s current behavior and accepted decisions as the source of tru
 - the bounded `$engineering-loop`, read-only `github-researcher`, and explicit `$find-skills` workflow after reviewing local delegation and supply-chain policy;
 - root `SPEC.md`, `TASKS.md`, and `$autonomous-build` after reviewing local task and contract conventions;
 - the unified `$discover`/`$spec`/`$brainstorm` → `SPEC.md`, `$write-plan` → `TASKS.md`, `$execute-plan` adapter, and `$quick` trace gates after reviewing local routing and writer ownership;
+- the validated `.codex/capabilities.toml` profiles and their bounded refinement, selective review, and verification-tier guidance after comparing local authority and evidence policy;
 
 Review each change for local path, runtime, policy, and platform assumptions before applying it.
+
+## Capability-policy migration
+
+Treat `.codex/capabilities.toml`, the autonomous-build and review skills, agent
+roles, public guides, and the playbook source/generated pair as one synchronized
+policy surface. Inspect the selected profile with
+`python scripts/codexicon.py capabilities --json`; profiles change reversible
+workflow guidance only and do not create a daemon, scheduler, second task
+engine, or Git/deployment/credential/external-write/publication authority.
+
+When adopting this guidance, preserve the bounded loop: acceptance rubric,
+focused check, weakest-aspect critique, meaningful reversible in-scope
+refinement, and stops at fresh acceptance evidence, plateau, repeated failure,
+budget exhaustion, or a human boundary. Keep selective review triggers aligned
+with the selected profile's risk levels, changed-file threshold, and enabled
+public-API, security, architecture, and test-complexity signals. Reviewers stay
+read-only and every finding gets one stable-ID disposition: `accepted`, `fixed`,
+`rejected`, or `not_applicable`.
+
+Keep focused iteration, Build completion, and Ship evidence separate. A
+commit-only Ship needs full lint/test/filesystem-security and tracked/history
+checks, without release or publication evidence. Publish, merge, or deploy
+requires that exact explicit authority and release/publication checks. Record
+consequential migration assumptions in the append-only
+`agent_docs/decisions/` journal; related scope must remain small, reversible,
+directly related, and within the declared system boundary, with authority,
+product, schema/data, security, destructive, credential, production, migration,
+legal, external-write, publication, and deployment changes escalated.
+
+Finally, compare `docs/evals/capability-matrix.md` and deterministic scenario
+records as evidence, not claims of live-client support. Require versions/dates,
+denominators, expected/observed outcomes, and explicit unmeasured fields; raw
+tool names are not compatibility evidence. Regenerate the playbook with
+`python scripts/render_playbook.py` and run `--check` after every source edit.
 
 ## Coupled TruffleHog updates
 
