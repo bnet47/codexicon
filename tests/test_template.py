@@ -105,6 +105,55 @@ class TemplateValidationTests(unittest.TestCase):
         codex_docs = (ROOT / "docs" / "codex.md").read_text(encoding="utf-8")
         self.assertIn("runnable", codex_docs.lower())
 
+    def test_current_writer_policy_excludes_historical_worktree_writer_guidance(self) -> None:
+        current_guidance_paths = [
+            ROOT / "AGENTS.md",
+            ROOT / "README.md",
+            ROOT / "START_HERE.md",
+            ROOT / "docs" / "agent-patterns.md",
+            ROOT / "docs" / "build-contracts.md",
+            ROOT / "docs" / "codex.md",
+            *(ROOT / ".agents" / "skills").glob("*/SKILL.md"),
+            ROOT / ".agents" / "skills" / "engineering-loop" / "agents" / "openai.yaml",
+            *(ROOT / ".codex" / "agents").glob("*.toml"),
+        ]
+        current_guidance = "\n".join(
+            path.read_text(encoding="utf-8") for path in current_guidance_paths
+        )
+        adr = (
+            ROOT / "agent_docs" / "decisions" /
+            "ADR-004-sequential-build-writers-and-release-boundary.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("Build uses one sequential writer in the current checkout", adr)
+        self.assertIn("Read-only research and review may run independently", adr)
+        self.assertIn("remain Ship actions", adr)
+        self.assertIn("one sequential writer", current_guidance)
+        self.assertIn("read-only research and review", current_guidance.lower())
+        self.assertIn("parallel read-only research and review", current_guidance.lower())
+        self.assertIn("Never run concurrent writers", current_guidance)
+        self.assertIn("shared checkout", current_guidance)
+        self.assertIn("$ship", current_guidance)
+        for action in (
+            "branches",
+            "worktrees",
+            "commits",
+            "pushes",
+            "pull requests",
+            "releases",
+            "deployments",
+            "external writes",
+        ):
+            with self.subTest(action=action):
+                self.assertIn(action, current_guidance.lower())
+
+        self.assertNotRegex(
+            current_guidance,
+            r"(?is)(?:independent|parallel)\s+(?:implementation\s+)?writers?.{0,120}"
+            r"(?:managed|isolated)\s+worktrees?",
+        )
+        self.assertNotRegex(current_guidance.lower(), r"parallel writers")
+
     def test_optional_goal_mode_preserves_portable_resume_contract(self) -> None:
         codex_docs = (ROOT / "docs" / "codex.md").read_text(encoding="utf-8")
         build_contracts = (ROOT / "docs" / "build-contracts.md").read_text(encoding="utf-8")

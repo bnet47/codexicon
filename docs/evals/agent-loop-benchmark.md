@@ -6,6 +6,25 @@ The fast deterministic suite is separate from live-agent and browser trials. It
 is an executable regression/policy oracle, not an agent ranking or client
 compatibility result.
 
+## Live Codex paired smoke
+
+The live comparison is intentionally narrower than this protocol's broader
+direct-versus-loop journeys. `python scripts/live_agent_eval.py --smoke`
+creates two fresh temporary calculator fixtures and runs exactly one direct and
+one Codexicon-guided local invocation with:
+
+```text
+codex exec --ephemeral --sandbox workspace-write --skip-git-repo-check -C <temp> --json <prompt>
+```
+
+Each arm is independently scored by the canonical unittest oracle. The runner
+keeps raw JSON events in memory only, records sanitized event metadata and a
+short final-message excerpt, enforces a 90-second per-run timeout, and deletes
+each fixture. Use `--runs N` for repeated paired trials. Missing CLI, timeout,
+and failed-run outcomes are nonzero and remain explicit in the sanitized
+report; model, token, cost, and tool-call fields are `unmeasured` unless the
+CLI exposes reliable values.
+
 ## Goal
 
 Determine whether selective delegation improves acceptance quality, review coverage, or elapsed time enough to justify its additional token and coordination cost.

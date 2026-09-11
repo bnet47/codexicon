@@ -123,7 +123,7 @@ Every Build edit must state a trace such as `T-001 -> R-001 -> I-001`. Tasks wit
 
 Build is filesystem-local and must not depend on a Git executable or checkout metadata. The manager and hooks identify the local contract, task register, and declared paths with deterministic SHA-256 evidence; checkpoint callers supply changed paths explicitly. The default `doctor`, `resume`, checkpoint, task-evidence, and `verify --mode build` journeys therefore work in a non-Git directory or when Git is unavailable. A read-only Git probe is not an allowed replacement for this strict rule.
 
-Ship is the separate authority boundary for branch, index, commit, remote, publication, tracked-file, and history checks. Use `verify --mode ship` or `python scripts/security_scan.py --mode ship` only from the explicitly authorized `$ship` workflow. Ship mode fails closed when Git repository or enumeration evidence is unavailable. Git commands in tests are permitted only for isolated temporary fixtures and are not user-checkout operations.
+Ship is the separate authority boundary for branches, worktrees, index, commits, pushes, pull requests, releases, deployments, publication, external writes, tracked-file, and history checks. Use `verify --mode ship` or `python scripts/security_scan.py --mode ship` only from the explicitly authorized `$ship` workflow. Ship mode fails closed when Git repository or enumeration evidence is unavailable. Git commands in tests are permitted only for isolated temporary fixtures and are not user-checkout operations.
 
 ## Optional long-running and resume contract
 

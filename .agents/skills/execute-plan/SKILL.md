@@ -46,4 +46,4 @@ Then inspect the declared changed paths against the contract. Use `$review` for 
 
 ## 5. Report
 
-Summarize completed tasks, changed behavior, exact verification, concerns, and any blocked criteria. Continue to the next runnable task without a suggested-next-prompt ending. Do not commit, push, open a PR, or deploy unless the user explicitly asked to ship. Pure explanations and read-only reviews do not enter this workflow.
+Summarize completed tasks, changed behavior, exact verification, concerns, and any blocked criteria. Continue to the next runnable task without a suggested-next-prompt ending. Do not create branches or worktrees, commit, push, open a PR, release, deploy, publish, or write externally during Build; those actions belong to the explicitly authorized `$ship` workflow. Pure explanations and read-only reviews do not enter this workflow.

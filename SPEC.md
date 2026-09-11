@@ -24,6 +24,10 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **R-014:** Add deterministic regression/scenario evaluations and a client/platform capability matrix with denominators, reproducible inputs, and explicit unmeasured fields.
 - **R-015:** Repair the coupled dependency-update workflow and validator so immutable action pins and scanner/action version checks remain synchronized without privileged execution of untrusted code.
 - **R-016:** Document and test optional supported long-running Goal-mode execution while keeping portable SPEC/TASKS resume authoritative and avoiding a scheduler or third-party persistence service.
+- **R-017:** Generate a clean project starter that carries Codexicon's reusable harness surface without its development contract, task ledger, briefs, checkpoints, or internal evaluation records.
+- **R-018:** Keep the documented writer and delegation policy internally consistent, with an append-only decision superseding the obsolete worktree-writer guidance.
+- **R-019:** Make template version, manifest, documentation, release tag, and published starter artifact agree through one reproducible release check.
+- **R-020:** Measure Codexicon on real Codex runs against a direct baseline with isolated fixtures, independent acceptance checks, repeatable inputs, and explicit cost, latency, and unmeasured fields.
 
 ## Interfaces
 
@@ -39,6 +43,10 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **I-010:** Scenario fixtures and capability records report reproducible behavior across supported clients and operating systems without claiming live-agent evidence that was not measured.
 - **I-011:** Dependency validation keeps action references pinned to immutable SHAs and verifies the coupled TruffleHog action/scanner version pair.
 - **I-012:** Optional long-running guidance distinguishes active-turn chaining, compaction recovery, and restart after termination and preserves cancellation and authority boundaries.
+- **I-013:** `python scripts/codexicon.py scaffold` creates a release-ready starter from an explicit safe allowlist and leaves project discovery as the first product step.
+- **I-014:** A dated ADR and validation checks define one sequential shared-checkout writer policy for Build and one explicit publication boundary for Ship.
+- **I-015:** `python scripts/release.py check` validates the canonical template version, manifest, public version references, release tag, and starter artifact identity.
+- **I-016:** `python scripts/live_agent_eval.py` runs isolated direct and Codexicon trials, records machine-readable per-run evidence, and produces an honest aggregate report.
 
 ## Acceptance
 
@@ -58,6 +66,10 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **A-014:** REC-01 through REC-13 scenario/regression coverage has reproducible inputs, expected outcomes, denominators, and measured results; unsupported client fields are explicitly unmeasured.
 - **A-015:** A simulated dependency bump passes the coupled validator with immutable pins; the local workflow is ready for later authorized CI/CodeQL/security verification without weakening version checks.
 - **A-016:** Optional Goal-mode guidance and plain-session resume are tested/documented, cancellation remains respected, and persistence adds no Git/deployment authority or default scheduler.
+- **A-017:** A fresh scaffold contains no Codexicon development SPEC/TASKS, internal briefs, plans, checkpoints, or evidence receipts; a new project can start with `$discover` and passes the documented starter smoke test.
+- **A-018:** The current ADR, AGENTS guidance, skills, and tests contain no contradictory writer policy; Build remains local and sequential, while worktree/Git publication is confined to explicit Ship behavior.
+- **A-019:** A release check fails on version drift and passes for the exact tag and starter artifact used by the published release; release notes and README identify the same version.
+- **A-020:** Repeated direct-versus-Codexicon Codex trials report acceptance, interventions, regressions, elapsed time, token/cost fields when available, and explicit unmeasured values without credentials or external writes.
 
 ## Anti-goals
 
@@ -79,3 +91,4 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 ## Amendments
 
 - **2026-09-09:** Created from `docs/codexicon-recommendations-2026-09-09.md`; preserves the recommendation package as historical input and authorizes local implementation only.
+- **2026-09-11:** Authorized clean starter generation, writer-policy reconciliation, reproducible release identity, and live Codex comparison work; publication remains confined to the later Ship phase.
