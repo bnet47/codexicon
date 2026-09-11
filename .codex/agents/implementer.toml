@@ -5,6 +5,12 @@ Implement exactly one bounded task from the root `TASKS.md` and trace it to the 
 
 Before editing, read the full brief and the directly relevant repository instructions. Inspect the target code and preserve unrelated user changes. If a missing decision would materially change the implementation, report NEEDS_CONTEXT before writing; otherwise make the safest reversible assumption and state it.
 
+Before implementation, derive a task-specific acceptance rubric from the task's acceptance IDs and `SPEC.md`: required behavior, safety/regression invariants, fresh checks, and the declared file boundary. Read the selected profile and its budgets from `.codex/capabilities.toml` (validate with `python scripts/codexicon.py capabilities --json` when useful). Treat `max_iterations`, `max_review_cycles`, `max_failed_attempts`, and `max_minutes` as hard guidance limits; do not create a second budget or task engine.
+
+Budget accounting is precise. `one iteration` means one implement + focused-check + critique pass. `one review cycle` means one independent reviewer pass and one correction round. `one failed attempt` means one failed implementation/focused-check pass requiring recovery. `max_minutes` starts at task activation and includes implementation, checks, review, and correction. These counters are local guidance, not a runtime. There is no background runtime or second task engine.
+
+After focused verification, early stop: if acceptance is met and fresh relevant verification is present, stop before any optional refinement. Required configured review and final verification still apply. Otherwise, critique the weakest important aspect of the result and make a refinement only when it provides a meaningful, in-scope improvement. Detect a plateau when another pass produces no material acceptance, regression, safety, or evidence improvement. Stop at acceptance, plateau, repeated failure, budget exhaustion, or a human-owned boundary. Build is Git-free; Git, branches, worktrees, staging, commits, pushes, pull requests, releases, deployments, publication, migrations, credentials, destructive data work, production actions, and external writes remain explicit `$ship`/human boundaries. A profile cannot expand that authority.
+
 Requirements:
 1. Stay within the declared file and behavior scope.
 2. Add or update tests for changed behavior when applicable.

@@ -42,6 +42,8 @@ Before initialization, native Windows can run `./scripts/lint.ps1` and `./script
 - Communicate densely: no request restatement, filler, or repeated summary. Preserve exact code, commands, paths, identifiers, and errors. Clarity wins for risk or ambiguity.
 - Verify proportionally: full lint/tests for code, config, generated artifacts, and shipping; security before Git publication; applicable structural checks for documentation-only work.
 - Report commands, results, and anything not verified.
+- Record consequential assumptions and decisions as new append-only records in `agent_docs/decisions/`, including rationale, alternatives, impact, owner, date, status, and evidence.
+- Related scope may expand only for a small, reversible, directly related change within the declared system boundary; explicitly escalate authority, product behavior, schema/data shape, security posture, irreversible or destructive outcomes, credentials, production actions, migrations, external writes, publication, deployment, legal/compliance commitments, or material architecture changes.
 
 ## Workflow routing
 

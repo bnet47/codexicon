@@ -34,12 +34,84 @@ VALIDATOR_SPEC = importlib.util.spec_from_file_location("template_validator_unde
 assert VALIDATOR_SPEC and VALIDATOR_SPEC.loader
 TEMPLATE_VALIDATOR = importlib.util.module_from_spec(VALIDATOR_SPEC)
 VALIDATOR_SPEC.loader.exec_module(TEMPLATE_VALIDATOR)
+AGENT_LOOP_EVAL_PATH = ROOT / "scripts" / "agent_loop_eval.py"
+AGENT_LOOP_SPEC = importlib.util.spec_from_file_location(
+    "agent_loop_eval_under_test", AGENT_LOOP_EVAL_PATH
+)
+assert AGENT_LOOP_SPEC and AGENT_LOOP_SPEC.loader
+AGENT_LOOP_EVAL = importlib.util.module_from_spec(AGENT_LOOP_SPEC)
+sys.modules[AGENT_LOOP_SPEC.name] = AGENT_LOOP_EVAL
+AGENT_LOOP_SPEC.loader.exec_module(AGENT_LOOP_EVAL)
 
 
 def make_test_directory() -> Path:
     path = TEST_TEMP_ROOT / uuid.uuid4().hex
     path.mkdir(parents=True, exist_ok=False)
     return path
+
+
+def policy_completion_gate(
+    *, acceptance_covered: bool, evidence_fresh: bool, open_issue: str | None
+) -> bool:
+    """Pure fixture for the documented acceptance/freshness completion gate."""
+
+    return acceptance_covered and evidence_fresh and open_issue is None
+
+
+def policy_evidence_is_fresh(*, now: int, expires_at: int) -> bool:
+    """Model the documented exclusive expiry boundary without a runtime."""
+
+    return now < expires_at
+
+
+def policy_ship_requirements(ceiling: str) -> set[str]:
+    """Return the policy-level evidence required by an authorized Ship ceiling."""
+
+    if ceiling not in {"commit-only", "publish", "merge", "deploy"}:
+        raise ValueError(f"unsupported Ship ceiling: {ceiling}")
+    requirements = {"commit", "lint", "test", "security", "tracked_history"}
+    if ceiling in {"publish", "merge", "deploy"}:
+        requirements.update({"release", "publication_evidence", "explicit_authority"})
+    return requirements
+
+
+def policy_related_scope_allowed(
+    *,
+    small: bool,
+    reversible: bool,
+    directly_related: bool,
+    within_boundary: bool,
+    escalation_trigger: bool = False,
+) -> bool:
+    """Model the documented related-scope gate without adding a runtime."""
+
+    return (
+        small
+        and reversible
+        and directly_related
+        and within_boundary
+        and not escalation_trigger
+    )
+
+
+REQUIRED_SCOPE_ESCALATION_SIGNALS = (
+    "authority",
+    "product behavior",
+    "schema",
+    "data shape",
+    "security posture",
+    "irreversible",
+    "destructive",
+    "credentials",
+    "production",
+    "migration",
+    "external write",
+    "publication",
+    "deployment",
+    "legal",
+    "compliance",
+    "material architecture",
+)
 
 
 class TemplateValidationTests(unittest.TestCase):
@@ -104,6 +176,719 @@ class TemplateValidationTests(unittest.TestCase):
 
         codex_docs = (ROOT / "docs" / "codex.md").read_text(encoding="utf-8")
         self.assertIn("runnable", codex_docs.lower())
+
+    def test_bounded_self_improvement_uses_validated_profile_guidance(self) -> None:
+        skill = (ROOT / ".agents" / "skills" / "autonomous-build" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        implementer = (ROOT / ".codex" / "agents" / "implementer.toml").read_text(
+            encoding="utf-8"
+        )
+        documentation = (ROOT / "docs" / "capabilities.md").read_text(encoding="utf-8")
+        policy = (ROOT / ".codex" / "capabilities.toml").read_text(encoding="utf-8")
+
+        budget_contract = (
+            "`one iteration` means one implement + focused-check + critique pass.",
+            "`one review cycle` means one independent reviewer pass and one correction round.",
+            "`one failed attempt` means one failed implementation/focused-check pass requiring recovery.",
+            "`max_minutes` starts at task activation and includes implementation, checks, review, and correction.",
+            "These counters are local guidance, not a runtime.",
+        )
+        early_stop = (
+            "if acceptance is met and fresh relevant verification is present, stop before any optional refinement"
+        )
+        ship_boundaries = (
+            "Git",
+            "branches",
+            "worktrees",
+            "staging",
+            "commits",
+            "pushes",
+            "pull requests",
+            "releases",
+            "deployments",
+            "publication",
+            "migrations",
+            "credentials",
+            "destructive data work",
+            "production actions",
+            "external writes",
+        )
+
+        for content in (skill, implementer, documentation):
+            with self.subTest(content=content[:32]):
+                normalized = " ".join(content.split())
+                for phrase in budget_contract:
+                    self.assertIn(phrase, normalized)
+                self.assertIn(early_stop, normalized.lower())
+                self.assertIn("There is no background runtime or second task engine", normalized)
+                self.assertIn("explicit `$ship`/human boundaries", normalized)
+                for boundary in ship_boundaries:
+                    self.assertIn(boundary, normalized)
+                for phrase in (
+                    "task-specific acceptance rubric",
+                    "weakest important aspect",
+                    "plateau",
+                    "repeated failure",
+                    "budget",
+                    "human-owned boundary",
+                    "SPEC.md",
+                    "TASKS.md",
+                ):
+                    self.assertIn(phrase, normalized)
+
+        skill_loop = " ".join(skill.split("## Loop", 1)[1].split("## Local-first rule", 1)[0].split()).lower()
+        self.assertLess(skill_loop.index("run focused verification"), skill_loop.index(early_stop))
+        self.assertLess(skill_loop.index(early_stop), skill_loop.index("otherwise, critique"))
+        self.assertLess(skill_loop.index("otherwise, critique"), skill_loop.index("refine only"))
+        for content in (documentation, implementer):
+            normalized = " ".join(content.split()).lower()
+            self.assertLess(normalized.index(early_stop), normalized.index("otherwise, critique"))
+
+        for budget in ("max_iterations", "max_review_cycles", "max_failed_attempts", "max_minutes"):
+            with self.subTest(budget=budget):
+                self.assertIn(budget, policy)
+                self.assertIn(budget, skill)
+                self.assertIn(budget, implementer)
+                self.assertIn(budget, documentation)
+
+        for boundary in ("Git", "deployment", "credentials", "publication", "external writes"):
+            with self.subTest(boundary=boundary):
+                self.assertIn(boundary, documentation)
+                self.assertIn(boundary, implementer)
+
+        self.assertIn("There is no background runtime", " ".join(documentation.split()))
+        self.assertIn("second task engine", documentation)
+        self.assertIn("Build is Git-free", implementer)
+
+    def test_selective_independent_review_uses_validated_profile_guidance(self) -> None:
+        skill = (ROOT / ".agents" / "skills" / "review" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        reviewer = (ROOT / ".codex" / "agents" / "reviewer.toml").read_text(
+            encoding="utf-8"
+        )
+        autonomous_build = (ROOT / ".agents" / "skills" / "autonomous-build" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        documentation = (ROOT / "docs" / "capabilities.md").read_text(encoding="utf-8")
+        policy = (ROOT / ".codex" / "capabilities.toml").read_text(encoding="utf-8")
+
+        capabilities = json.loads(
+            subprocess.check_output(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "codexicon.py"),
+                    "capabilities",
+                    "--json",
+                ],
+                cwd=ROOT,
+                text=True,
+            )
+        )
+        self.assertEqual(capabilities["selected_profile"], "balanced")
+        balanced_review = capabilities["profiles"]["balanced"]["review"]
+        self.assertEqual(balanced_review["required_risk_levels"], ["medium", "high", "critical"])
+        self.assertEqual(balanced_review["changed_files_threshold"], 4)
+        for signal in ("public_api", "security", "architecture", "test_complexity"):
+            with self.subTest(signal=signal):
+                self.assertIs(balanced_review[f"review_on_{signal}"], True)
+
+        self.assertRegex(reviewer, r'(?m)^sandbox_mode\s*=\s*"read-only"\s*$')
+
+        trigger_phrases = (
+            "required_risk_levels",
+            "changed_files_threshold",
+            "review_on_public_api",
+            "review_on_security",
+            "review_on_architecture",
+            "review_on_test_complexity",
+        )
+        for content in (skill, autonomous_build, reviewer, documentation):
+            normalized = " ".join(content.split()).lower()
+            with self.subTest(trigger_contract=content[:32]):
+                self.assertIn("canonical `$autonomous-build` route", normalized)
+                self.assertIn("any configured trigger matches", normalized)
+                for phrase in trigger_phrases:
+                    self.assertIn(phrase, normalized)
+                self.assertIn("must not narrow", normalized)
+                self.assertRegex(
+                    normalized,
+                    r"required_risk_levels.*changed_files_threshold.*public api.*security.*architecture.*test-complexity.*review_on_test_complexity",
+                )
+                self.assertIn(" or ", normalized)
+                self.assertRegex(normalized, r"exactly one .*reviewer pass and one correction round")
+                self.assertIn("stable finding id", normalized)
+                self.assertIn("exactly one", normalized)
+                self.assertIn("every finding", normalized)
+                self.assertIn("trivial low-risk work", normalized)
+
+        plan = (ROOT / "agent_docs" / "plans" / "2026-09-11-capability-layer-plan.md").read_text(
+            encoding="utf-8"
+        )
+        plan_normalized = " ".join(plan.split()).lower()
+        self.assertIn("when any configured trigger in the selected profile matches", plan_normalized)
+        self.assertIn(
+            "trivial low-risk work below the changed-file threshold with no enabled signal is exempt",
+            plan_normalized,
+        )
+        self.assertNotIn("every bounded implementation task receives an independent", plan_normalized)
+
+        for content in (skill, reviewer, documentation):
+            normalized = " ".join(content.split()).lower()
+            with self.subTest(content=content[:32]):
+                for phrase in (
+                    ".codex/capabilities.toml",
+                    "capabilities --json",
+                    "required_risk_levels",
+                    "changed_files_threshold",
+                    "review_on_public_api",
+                    "review_on_security",
+                    "review_on_architecture",
+                    "review_on_test_complexity",
+                    "trivial low-risk work",
+                    "read-only",
+                    "accepted",
+                    "fixed",
+                    "rejected",
+                    "not_applicable",
+                    "git",
+                    "$ship",
+                ):
+                    self.assertIn(phrase, normalized)
+
+        for policy_key in (
+            "required_risk_levels =",
+            "changed_files_threshold =",
+            "review_on_public_api =",
+            "review_on_security =",
+            "review_on_architecture =",
+            "review_on_test_complexity =",
+        ):
+            with self.subTest(policy_key=policy_key):
+                self.assertIn(policy_key, policy)
+
+        for risk_level in ("medium", "high", "critical"):
+            with self.subTest(risk_level=risk_level):
+                self.assertIn(risk_level, policy)
+
+        combined = "\n".join((skill, reviewer, documentation)).lower()
+        self.assertIn("one sequential build writer", combined)
+        self.assertIn("background runtime", combined)
+        self.assertIn("automatic publication", combined)
+
+    def test_verification_tiers_preserve_freshness_and_ship_authority(self) -> None:
+        build_contracts = (ROOT / "docs" / "build-contracts.md").read_text(encoding="utf-8")
+        codex_docs = (ROOT / "docs" / "codex.md").read_text(encoding="utf-8")
+        autonomous_build = (
+            ROOT / ".agents" / "skills" / "autonomous-build" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        ship = (ROOT / ".agents" / "skills" / "ship" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+        tier_section = re.search(
+            r"## Verification tiers and Stop outcomes\n\n(?P<body>.*?)(?=\n## Project-local capability policy)",
+            build_contracts,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(tier_section)
+        assert tier_section is not None
+        tier_rows = re.findall(
+            r"^\| (Focused iteration|Build completion|Ship) \| ([^|]+) \|",
+            tier_section.group("body"),
+            flags=re.MULTILINE,
+        )
+        self.assertEqual(
+            [name for name, _owner in tier_rows],
+            ["Focused iteration", "Build completion", "Ship"],
+        )
+        self.assertIn("current Build writer", tier_rows[0][1])
+        self.assertIn("primary Build writer", tier_rows[1][1])
+        self.assertIn("explicitly authorized human/$ship workflow", tier_rows[2][1])
+
+        evidence_start = build_contracts.index("Completion evidence is a JSON receipt")
+        evidence_end = build_contracts.index("`tasks-done` refuses", evidence_start)
+        evidence_contract = build_contracts[evidence_start:evidence_end]
+        normalized_evidence_contract = " ".join(evidence_contract.split())
+        for field in (
+            "verification_tier",
+            "selected_profile",
+            "window_minutes",
+            "expires_at",
+            "responsible_owner",
+            "source_digest",
+            "contract_digest",
+        ):
+            with self.subTest(field=field):
+                self.assertIn(f"`{field}`", evidence_contract)
+        self.assertLess(
+            evidence_contract.index("window_minutes"),
+            evidence_contract.index("expires_at"),
+        )
+        self.assertIn("must be copied from the selected profile", normalized_evidence_contract)
+        self.assertIn("responsible for rerunning", normalized_evidence_contract)
+        self.assertIn("metadata never bypasses", normalized_evidence_contract)
+
+        for content in (build_contracts, autonomous_build):
+            stop_start = content.index("Stop precedence is deterministic")
+            stop_section = " ".join(content[stop_start:].split()).lower()
+            self.assertLess(
+                stop_section.index("completion gate"),
+                stop_section.index("bounded improvement"),
+            )
+            self.assertLess(
+                stop_section.index("bounded improvement"),
+                stop_section.index("stop as `accepted`"),
+            )
+            self.assertIn("open in-scope correctness, safety, or evidence issue", stop_section)
+            self.assertTrue(
+                "no open issue can be ignored" in stop_section
+                or "cannot be ignored" in stop_section
+            )
+            self.assertIn("actionable finding reopens the gate", stop_section)
+
+        ship_start = ship.index("## Acceptance by authorization ceiling")
+        ship_end = ship.index("## 1. Verify", ship_start)
+        acceptance = " ".join(ship[ship_start:ship_end].split())
+        commit_only = acceptance[: acceptance.index("- **Publish, merge, or deploy:**")]
+        publish_actions = acceptance[acceptance.index("- **Publish, merge, or deploy:**") :]
+        self.assertIn("does not require release", commit_only)
+        self.assertIn("publication evidence", commit_only)
+        self.assertIn("must not pressure", commit_only)
+        self.assertNotIn("release identity and publication evidence are required", commit_only)
+        self.assertIn("Release identity and publication evidence are required", publish_actions)
+        self.assertIn("explicit authority", publish_actions)
+
+        verify_start = ship.index("For commit-only, run the narrowest feature checks")
+        publish_verify_start = ship.index("For publish, merge, or deploy, also run:", verify_start)
+        commit_verify = ship[verify_start:publish_verify_start]
+        publish_verify = ship[publish_verify_start:]
+        self.assertIn("python scripts/security_scan.py --mode ship", commit_verify)
+        self.assertNotIn("python scripts/release.py check", commit_verify)
+        self.assertIn("python scripts/release.py check --tag vX.Y.Z", publish_verify)
+        self.assertIn("fails closed", publish_verify)
+
+        for content in (codex_docs, autonomous_build, ship):
+            normalized = " ".join(content.split()).lower()
+            with self.subTest(content=content[:32]):
+                for phrase in (
+                    "selected profile",
+                    "source",
+                    "contract",
+                    "freshness",
+                    "expires_at",
+                    "responsible owner",
+                    "protected credential paths",
+                ):
+                    self.assertIn(phrase, normalized)
+
+        for content in (codex_docs, autonomous_build):
+            self.assertIn("second task engine", " ".join(content.split()).lower())
+
+    def test_policy_decisions_enforce_completion_freshness_and_ship_ceiling(self) -> None:
+        build_contracts = (ROOT / "docs" / "build-contracts.md").read_text(encoding="utf-8")
+        codex_docs = (ROOT / "docs" / "codex.md").read_text(encoding="utf-8")
+        autonomous_build = (ROOT / ".agents" / "skills" / "autonomous-build" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertTrue(
+            policy_completion_gate(
+                acceptance_covered=True,
+                evidence_fresh=True,
+                open_issue=None,
+            )
+        )
+        for acceptance_covered, evidence_fresh in ((False, True), (True, False)):
+            with self.subTest(acceptance_covered=acceptance_covered, evidence_fresh=evidence_fresh):
+                self.assertFalse(
+                    policy_completion_gate(
+                        acceptance_covered=acceptance_covered,
+                        evidence_fresh=evidence_fresh,
+                        open_issue=None,
+                    )
+                )
+        for issue in ("correctness", "safety", "evidence"):
+            with self.subTest(issue=issue):
+                self.assertFalse(
+                    policy_completion_gate(
+                        acceptance_covered=True,
+                        evidence_fresh=True,
+                        open_issue=issue,
+                    )
+                )
+
+        self.assertTrue(policy_evidence_is_fresh(now=99, expires_at=100))
+        self.assertFalse(policy_evidence_is_fresh(now=100, expires_at=100))
+        self.assertFalse(policy_evidence_is_fresh(now=101, expires_at=100))
+
+        commit_only = policy_ship_requirements("commit-only")
+        self.assertIn("commit", commit_only)
+        self.assertIn("tracked_history", commit_only)
+        self.assertNotIn("release", commit_only)
+        self.assertNotIn("publication_evidence", commit_only)
+        for ceiling in ("publish", "merge", "deploy"):
+            with self.subTest(ceiling=ceiling):
+                requirements = policy_ship_requirements(ceiling)
+                self.assertIn("explicit_authority", requirements)
+                self.assertIn("publication_evidence", requirements)
+                self.assertIn("release", requirements)
+        with self.assertRaises(ValueError):
+            policy_ship_requirements("publish-without-authority")
+
+        ship = (ROOT / ".agents" / "skills" / "ship" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        normalized_ship = " ".join(ship.split()).lower()
+        self.assertIn("commit-only request is accepted", normalized_ship)
+        self.assertIn("does not require release identity, publication evidence", normalized_ship)
+        self.assertIn("release identity and publication evidence are required", normalized_ship)
+        self.assertIn("require explicit authority", normalized_ship)
+        self.assertIn("must not be inferred", normalized_ship)
+        commit_only_section = ship[
+            ship.index("- **Commit-only:**") : ship.index("- **Publish, merge, or deploy:**")
+        ]
+        normalized_commit_only = " ".join(commit_only_section.split()).lower()
+        for requirement in (
+            "full lint",
+            "test",
+            "filesystem-security",
+            "tracked/history checks",
+        ):
+            with self.subTest(commit_only_requirement=requirement):
+                self.assertIn(requirement, normalized_commit_only)
+        self.assertIn("does not require release identity, publication evidence", normalized_commit_only)
+        self.assertNotIn("release identity and publication evidence are required", normalized_commit_only)
+
+        autonomous_tiers = autonomous_build[
+            autonomous_build.index("## Verification tiers and Stop outcomes") : autonomous_build.index(
+                "## Local-first rule"
+            )
+        ]
+        normalized_autonomous = " ".join(autonomous_tiers.split()).lower()
+        self.assertIn("for commit-only ship", normalized_autonomous)
+        self.assertIn("without release or publication evidence", normalized_autonomous)
+        self.assertIn("for publish, merge, or deploy", normalized_autonomous)
+        self.assertIn("only when that exact authority was explicitly requested", normalized_autonomous)
+        self.assertNotIn(
+            "the explicitly authorized human/$ship workflow owns ship; it adds full lint/test/security, release/publication",
+            normalized_autonomous,
+        )
+
+        for content in (build_contracts, codex_docs):
+            normalized = " ".join(content.split()).lower()
+            self.assertIn("commit-only", normalized)
+            self.assertIn("explicitly requested", normalized)
+            self.assertIn("never infer or pressure", normalized)
+
+    def test_decision_journal_is_append_only_and_scope_is_bounded(self) -> None:
+        journal = (ROOT / "agent_docs" / "decisions" / "README.md").read_text(
+            encoding="utf-8"
+        )
+        documentation = (ROOT / "docs" / "capabilities.md").read_text(encoding="utf-8")
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        autonomous_build = (
+            ROOT / ".agents" / "skills" / "autonomous-build" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("agent_docs/decisions/", journal)
+        self.assertIn("append-only", journal.lower())
+        self.assertRegex(journal, r"ADR-NNN-short-title\.md")
+        for section in ("## Context", "## Decision or assumption"):
+            with self.subTest(section=section):
+                self.assertIn(section, journal)
+        for field in (
+            "Rationale",
+            "Alternatives considered",
+            "Impact",
+            "Owner",
+            "Date",
+            "Status",
+            "Evidence",
+        ):
+            with self.subTest(field=field):
+                self.assertIn(field, journal)
+        self.assertIn("never rewrite or delete an accepted record", journal.lower())
+        self.assertIn("new record", journal.lower())
+
+        for content in (documentation, agents, autonomous_build):
+            normalized = " ".join(content.split()).lower()
+            with self.subTest(content=content[:24]):
+                self.assertIn("agent_docs/decisions/", normalized)
+                self.assertIn("rationale", normalized)
+                self.assertIn("alternatives", normalized)
+                self.assertIn("impact", normalized)
+                self.assertIn("owner", normalized)
+                self.assertIn("date", normalized)
+                self.assertIn("status", normalized)
+                self.assertIn("evidence", normalized)
+                self.assertIn("small", normalized)
+                self.assertIn("reversible", normalized)
+                self.assertIn("directly related", normalized)
+                self.assertIn("declared system boundary", normalized)
+                for trigger in REQUIRED_SCOPE_ESCALATION_SIGNALS:
+                    self.assertIn(trigger, normalized)
+                self.assertIn("explicitly escalate", normalized)
+
+        self.assertTrue(
+            policy_related_scope_allowed(
+                small=True,
+                reversible=True,
+                directly_related=True,
+                within_boundary=True,
+            )
+        )
+        for condition in (
+            "small",
+            "reversible",
+            "directly_related",
+            "within_boundary",
+        ):
+            kwargs = {
+                "small": True,
+                "reversible": True,
+                "directly_related": True,
+                "within_boundary": True,
+            }
+            kwargs[condition] = False
+            with self.subTest(condition=condition):
+                self.assertFalse(policy_related_scope_allowed(**kwargs))
+        for trigger in REQUIRED_SCOPE_ESCALATION_SIGNALS:
+            with self.subTest(escalation_trigger=trigger):
+                self.assertFalse(
+                    policy_related_scope_allowed(
+                        small=True,
+                        reversible=True,
+                        directly_related=True,
+                        within_boundary=True,
+                        escalation_trigger=True,
+                    )
+                )
+
+    def test_capability_matrix_has_reproducible_evidence_fields_and_boundaries(self) -> None:
+        matrix = (ROOT / "docs" / "evals" / "capability-matrix.md").read_text(
+            encoding="utf-8"
+        )
+        required_fields = (
+            "Observed version/date",
+            "Client / platform",
+            "Trust / source",
+            "Denominator",
+            "Expected outcome",
+            "Observed outcome",
+            "Hook trust",
+            "Resume/compact",
+            "Completion",
+            "Native verification",
+            "Status",
+        )
+        for field in required_fields:
+            with self.subTest(field=field):
+                self.assertIn(f"| {field} |", matrix)
+
+        self.assertIn("T-026/R-026/I-020/A-026", matrix)
+        self.assertIn("Raw command or tool names", matrix)
+        self.assertIn("never establish client compatibility", matrix)
+        self.assertIn("Explicitly unmeasured or unsupported", matrix)
+
+        capability_section = matrix.split("## Capability matrix", 1)[1].split(
+            "The only measured support statement", 1
+        )[0]
+        table_lines = [
+            line for line in capability_section.splitlines() if line.startswith("|")
+        ]
+        self.assertEqual(len(table_lines), 7)  # header, separator, and five surfaces
+        header = [cell.strip() for cell in table_lines[0].strip("|").split("|")]
+        expected_header = [
+            "Surface",
+            "Observed version/date",
+            "Client / platform",
+            "Trust / source",
+            "Denominator",
+            "Expected outcome",
+            "Observed outcome",
+            "Hook trust",
+            "Resume/compact",
+            "Completion",
+            "Native verification",
+            "Status",
+        ]
+        self.assertEqual(header, expected_header)
+        for line in table_lines[2:]:
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            with self.subTest(surface=cells[0]):
+                self.assertEqual(len(cells), len(expected_header))
+                self.assertTrue(all(cells), line)
+                self.assertRegex(cells[1], r"\d{4}-\d{2}-\d{2}|no trial|no run")
+                self.assertRegex(cells[4], r"\b(?:0|1|10|13)\b")
+                self.assertIn(cells[11], {
+                    "measured local evidence only",
+                    "unmeasured live-client behavior",
+                    "unsupported/not run",
+                })
+
+        local_row = next(line for line in table_lines if "Deterministic template harness" in line)
+        self.assertIn("Python 3.13.13 / 2026-09-11", local_row)
+        self.assertIn("REC 13/13", local_row)
+        self.assertIn("journeys 10/10", local_row)
+        self.assertIn("unified client completion unmeasured", local_row)
+        self.assertIn("Windows-host checks measured", local_row)
+
+        live_rows = [
+            line for line in table_lines
+            if any(surface in line for surface in ("Codex CLI live attempt", "Codex desktop/local client", "Browser/live client"))
+        ]
+        self.assertEqual(len(live_rows), 3)
+        for row in live_rows:
+            with self.subTest(row=row[:40]):
+                self.assertIn("Unmeasured", row)
+                self.assertNotIn("measured live-client compatibility", row.lower())
+
+        scenario_section = matrix.split("## Deterministic scenario evidence", 1)[1].split(
+            "Reproduce the scenario evidence", 1
+        )[0]
+        shared_context = scenario_section.split("Shared scenario observation context:", 1)[1].split(
+            "| Scenario |", 1
+        )[0]
+        for field in (
+            "Observed version/date",
+            "Client / platform",
+            "Trust / source",
+            "Hook trust",
+            "Resume/compact",
+            "Completion",
+            "Native verification",
+            "Explicit unmeasured fields",
+        ):
+            with self.subTest(shared_field=field):
+                self.assertIn(f"| {field} |", shared_context)
+        self.assertIn("Value for all ten fixed traces", shared_context)
+        scenario_rows = [
+            line for line in scenario_section[scenario_section.index("| Scenario |"):].splitlines()
+            if line.startswith("|") and not line.startswith("|---")
+        ]
+        self.assertEqual(len(scenario_rows), 11)  # header plus ten fixed traces
+        scenario_ids = [
+            re.match(r"\| `([^`]+)` \|", line).group(1)
+            for line in scenario_rows[1:]
+            if re.match(r"\| `([^`]+)` \|", line)
+        ]
+        self.assertEqual(tuple(scenario_ids), tuple(AGENT_LOOP_EVAL.SCENARIO_IDS))
+        for line in scenario_rows[1:]:
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            self.assertEqual(cells[1], "1")
+            self.assertTrue(cells[2] and cells[3] and cells[4])
+
+    def test_eval_documents_repeat_provenance_and_unmeasured_client_semantics(self) -> None:
+        matrix = (ROOT / "docs" / "evals" / "capability-matrix.md").read_text(
+            encoding="utf-8"
+        )
+        benchmark = (ROOT / "docs" / "evals" / "agent-loop-benchmark.md").read_text(
+            encoding="utf-8"
+        )
+        live = (ROOT / "docs" / "evals" / "live-agent-results-2026-09-11.md").read_text(
+            encoding="utf-8"
+        )
+        report = AGENT_LOOP_EVAL.build_report(ROOT)
+        scenario_results = {
+            result["id"]: result for result in report["scenarios"]["results"]
+        }
+
+        scenario_block = benchmark.split("The ten journeys are the executable scenario IDs below.", 1)[1].split(
+            "### Deterministic results", 1
+        )[0]
+        benchmark_rows = [
+            [cell.strip() for cell in line.strip("|").split("|")]
+            for line in scenario_block.splitlines()
+            if line.startswith("| `")
+        ]
+        self.assertEqual(
+            tuple(row[0].strip("`") for row in benchmark_rows),
+            tuple(AGENT_LOOP_EVAL.SCENARIO_IDS),
+        )
+        self.assertEqual(len(benchmark_rows), report["scenarios"]["denominator"])
+        for row in benchmark_rows:
+            result = scenario_results[row[0].strip("`")]
+            self.assertEqual(int(row[1]), result["metrics"]["acceptance_denominator"])
+            self.assertEqual(row[3].lower(), "pass" if result["acceptance_passed"] else "fail")
+            self.assertEqual(row[4].lower(), "pass" if result["passed"] else "fail")
+
+        matrix_scenario_block = matrix.split("| Scenario |", 1)[1].split(
+            "Reproduce the scenario evidence", 1
+        )[0]
+        matrix_rows = [
+            [cell.strip() for cell in line.strip("|").split("|")]
+            for line in matrix_scenario_block.splitlines()
+            if line.startswith("| `")
+        ]
+        self.assertEqual(
+            tuple(row[0].strip("`") for row in matrix_rows),
+            tuple(AGENT_LOOP_EVAL.SCENARIO_IDS),
+        )
+        for row in matrix_rows:
+            result = scenario_results[row[0].strip("`")]
+            self.assertEqual(int(row[1]), result["metrics"]["acceptance_denominator"])
+            self.assertEqual(row[3].lower().startswith("passed"), result["passed"])
+
+        measures_block = benchmark.split("| Measure |", 1)[1].split(
+            "These are fixture outcomes", 1
+        )[0]
+        measure_rows = {
+            row[0]: (int(row[1]), int(row[2].split()[0]))
+            for row in (
+                [cell.strip() for cell in line.strip("|").split("|")]
+                for line in measures_block.splitlines()
+                if line.startswith("| ") and not line.startswith("|---")
+            )
+            if len(row) >= 3 and row[0] not in {"Measure", "---"}
+        }
+        expected_measures = {
+            "REC acceptance pass rate": report["regressions"],
+            "Journey acceptance pass rate": report["measures"]["acceptance_pass_rate"],
+            "Journey overall fixture pass rate": {
+                "passed": report["scenarios"]["passed"],
+                "denominator": report["scenarios"]["denominator"],
+            },
+        }
+        for name, expected in expected_measures.items():
+            with self.subTest(measure=name):
+                self.assertEqual(
+                    measure_rows[name], (expected["passed"], expected["denominator"])
+                )
+
+        for document in (benchmark, live):
+            normalized = " ".join(document.split()).lower()
+            with self.subTest(document=document[:32]):
+                for phrase in (
+                    "observed version/date",
+                    "client/platform",
+                    "trust/source",
+                    "denominator",
+                    "expected outcome",
+                    "observed outcome",
+                    "hook trust",
+                    "resume/compact",
+                    "completion",
+                    "native verification",
+                    "unmeasured",
+                ):
+                    self.assertIn(phrase, normalized)
+                self.assertIn("raw command/tool names", normalized)
+                self.assertIn("not compatibility evidence", normalized)
+
+        benchmark_results = benchmark.split("### Deterministic results", 1)[1]
+        self.assertIn("Python 3.13.13", benchmark_results)
+        self.assertIn("REC 13/13", benchmark_results)
+        self.assertIn("journey acceptance 10/10", benchmark_results)
+        self.assertIn("Build-time Git 0/10", benchmark_results)
+        self.assertIn("POSIX/native-platform run unmeasured", benchmark_results)
+
+        self.assertIn("1 paired trial planned", live)
+        self.assertIn("guided arm 0 started", live)
+        self.assertIn("Direct default-provider arm timed out", live)
+        self.assertIn("guided arm was not started", live)
+        self.assertIn("no client-facing completion was observed", live)
+        self.assertIn("does not establish codex cli, desktop, browser", " ".join(live.split()).lower())
 
     def test_current_writer_policy_excludes_historical_worktree_writer_guidance(self) -> None:
         current_guidance_paths = [
@@ -258,6 +1043,121 @@ class TemplateValidationTests(unittest.TestCase):
         self.assertIsNotNone(engineering_block)
         assert engineering_block is not None
         self.assertNotIn("$autonomous-build Implement", engineering_block.group("block"))
+
+    def test_capability_policy_is_synchronized_across_public_surfaces(self) -> None:
+        policy = (ROOT / ".codex" / "capabilities.toml").read_text(encoding="utf-8")
+        implementer = (ROOT / ".codex" / "agents" / "implementer.toml").read_text(
+            encoding="utf-8"
+        )
+        reviewer = (ROOT / ".codex" / "agents" / "reviewer.toml").read_text(
+            encoding="utf-8"
+        )
+        public_paths = (
+            ROOT / "README.md",
+            ROOT / "START_HERE.md",
+            ROOT / "docs" / "index.md",
+            ROOT / "docs" / "agent-patterns.md",
+            ROOT / "docs" / "upgrading.md",
+            ROOT / "docs" / "repo-template-playbook.source.html",
+            ROOT / "docs" / "repo-template-playbook.html",
+        )
+        public_documents = {
+            path.name: " ".join(path.read_text(encoding="utf-8").split()).lower()
+            for path in public_paths
+        }
+        required_public_terms = (
+            ".codex/capabilities.toml",
+            "capabilities --json",
+            "selected profile",
+            "focused",
+            "build",
+            "ship",
+            "read-only",
+            "changed-file",
+            "public-api",
+            "security",
+            "architecture",
+            "test-complexity",
+            "accepted",
+            "fixed",
+            "rejected",
+            "not_applicable",
+            "agent_docs/decisions/",
+            "small",
+            "reversible",
+            "directly related",
+            "declared system boundary",
+            "capability-matrix.md",
+            "unmeasured",
+            "daemon",
+            "scheduler",
+            "external-write",
+            "publication",
+        )
+        for name, content in public_documents.items():
+            with self.subTest(document=name):
+                for term in required_public_terms:
+                    self.assertIn(term, content)
+
+        normalized_policy = " ".join(policy.split()).lower()
+        for budget in (
+            "max_iterations",
+            "max_review_cycles",
+            "max_failed_attempts",
+            "max_minutes",
+        ):
+            self.assertIn(budget, normalized_policy)
+        for content in (implementer, reviewer):
+            normalized = " ".join(content.split()).lower()
+            with self.subTest(role_or_policy=content[:32]):
+                self.assertIn("capabilities.toml", normalized)
+                self.assertIn("capabilities --json", normalized)
+        normalized_implementer = " ".join(implementer.split()).lower()
+        for budget in (
+            "max_iterations",
+            "max_review_cycles",
+            "max_failed_attempts",
+            "max_minutes",
+        ):
+            self.assertIn(budget, normalized_implementer)
+        normalized_reviewer = " ".join(reviewer.split()).lower()
+        self.assertIn("capabilities.toml", normalized_reviewer)
+        self.assertIn("capabilities --json", normalized_reviewer)
+        self.assertIn("read-only", normalized_reviewer)
+
+        source = (ROOT / "docs" / "repo-template-playbook.source.html").read_text(
+            encoding="utf-8"
+        )
+        standalone = (ROOT / "docs" / "repo-template-playbook.html").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('href="#capability-heading"', source)
+        self.assertIn('id="capability-heading"', source)
+        self.assertIn("capability-heading", standalone)
+        render_check = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "render_playbook.py"), "--check"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(render_check.returncode, 0, render_check.stdout + render_check.stderr)
+
+    def test_docs_index_security_model_link_targets_existing_heading(self) -> None:
+        index = (ROOT / "docs" / "index.md").read_text(encoding="utf-8")
+        codex_docs_path = ROOT / "docs" / "codex.md"
+        codex_docs = codex_docs_path.read_text(encoding="utf-8")
+
+        match = re.search(r"\[security model\]\(([^)]+)\)", index)
+        self.assertIsNotNone(match)
+        assert match is not None
+        raw_target = match.group(1)
+        target, fragment = raw_target.split("#", 1)
+        target_path = (ROOT / "docs" / target).resolve()
+        self.assertEqual(target_path, codex_docs_path.resolve())
+        self.assertTrue(target_path.is_file())
+        self.assertIn("### Credential and Git gates", codex_docs)
+        self.assertEqual(fragment, "credential-and-git-gates")
 
     def test_durable_guidance_policy_detects_brittle_external_assumptions(self) -> None:
         samples = {

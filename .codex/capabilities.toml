@@ -1,0 +1,139 @@
+schema_version = 1
+selected_profile = "balanced"
+
+[authority]
+git = false
+deployment = false
+credentials = false
+external_writes = false
+publication = false
+runtime = false
+
+[profiles.strict.autonomy]
+allow_reversible_assumptions = true
+batch_blocking_questions = true
+allow_related_correctness_fixes = false
+
+[profiles.strict.budgets]
+max_iterations = 3
+max_review_cycles = 2
+max_failed_attempts = 2
+max_minutes = 30
+
+[profiles.strict.review]
+required_risk_levels = ["medium", "high", "critical"]
+changed_files_threshold = 1
+review_on_public_api = true
+review_on_security = true
+review_on_architecture = true
+review_on_test_complexity = true
+
+[profiles.strict.verification.focused]
+checks = ["focused"]
+freshness_minutes = 30
+
+[profiles.strict.verification.build]
+checks = ["lint", "test"]
+freshness_minutes = 30
+
+[profiles.strict.verification.ship]
+checks = ["lint", "test", "security", "release", "publication"]
+freshness_minutes = 15
+
+[profiles.strict.escalation]
+destructive_actions = true
+production_actions = true
+external_writes = true
+credentials = true
+major_architecture_change = true
+material_product_decision = true
+publication = true
+git_operations = true
+deployment = true
+authority_expansion = true
+
+[profiles.balanced.autonomy]
+allow_reversible_assumptions = true
+batch_blocking_questions = true
+allow_related_correctness_fixes = true
+
+[profiles.balanced.budgets]
+max_iterations = 6
+max_review_cycles = 2
+max_failed_attempts = 3
+max_minutes = 60
+
+[profiles.balanced.review]
+required_risk_levels = ["medium", "high", "critical"]
+changed_files_threshold = 4
+review_on_public_api = true
+review_on_security = true
+review_on_architecture = true
+review_on_test_complexity = true
+
+[profiles.balanced.verification.focused]
+checks = ["focused"]
+freshness_minutes = 30
+
+[profiles.balanced.verification.build]
+checks = ["lint", "test"]
+freshness_minutes = 30
+
+[profiles.balanced.verification.ship]
+checks = ["lint", "test", "security", "release", "publication"]
+freshness_minutes = 15
+
+[profiles.balanced.escalation]
+destructive_actions = true
+production_actions = true
+external_writes = true
+credentials = true
+major_architecture_change = true
+material_product_decision = true
+publication = true
+git_operations = true
+deployment = true
+authority_expansion = true
+
+[profiles.autonomous.autonomy]
+allow_reversible_assumptions = true
+batch_blocking_questions = true
+allow_related_correctness_fixes = true
+
+[profiles.autonomous.budgets]
+max_iterations = 8
+max_review_cycles = 3
+max_failed_attempts = 4
+max_minutes = 90
+
+[profiles.autonomous.review]
+required_risk_levels = ["high", "critical"]
+changed_files_threshold = 8
+review_on_public_api = true
+review_on_security = true
+review_on_architecture = true
+review_on_test_complexity = true
+
+[profiles.autonomous.verification.focused]
+checks = ["focused"]
+freshness_minutes = 30
+
+[profiles.autonomous.verification.build]
+checks = ["lint", "test"]
+freshness_minutes = 30
+
+[profiles.autonomous.verification.ship]
+checks = ["lint", "test", "security", "release", "publication"]
+freshness_minutes = 15
+
+[profiles.autonomous.escalation]
+destructive_actions = true
+production_actions = true
+external_writes = true
+credentials = true
+major_architecture_change = true
+material_product_decision = true
+publication = true
+git_operations = true
+deployment = true
+authority_expansion = true

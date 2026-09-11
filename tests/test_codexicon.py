@@ -18,6 +18,8 @@ import uuid
 from pathlib import Path
 from unittest import mock
 
+from scripts import scaffold as scaffold_module
+
 
 ROOT = Path(__file__).resolve().parents[1]
 MANAGER_PATH = ROOT / "scripts" / "codexicon.py"
@@ -1603,6 +1605,201 @@ class CodexiconManagerTests(unittest.TestCase):
             and "executable path is not tracked yet; stage it, then run sync-git-modes" not in line
         ]
         self.assertEqual(unexpected_warnings, [], output.getvalue())
+
+    def test_capability_policy_has_profiles_and_stable_json_output(self) -> None:
+        policy = CODEXICON.validate_capability_policy(ROOT)
+        self.assertEqual(policy["selected_profile"], "balanced")
+        self.assertEqual(
+            set(policy["profiles"]), {"strict", "balanced", "autonomous"}
+        )
+        for profile in policy["profiles"].values():
+            self.assertEqual(
+                set(profile["verification"]), {"focused", "build", "ship"}
+            )
+            self.assertTrue(all(profile["escalation"].values()))
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(CODEXICON.capabilities(ROOT, json_output=True), 0)
+        rendered = json.loads(output.getvalue())
+        self.assertTrue(rendered["valid"])
+        self.assertEqual(rendered["selected_profile"], "balanced")
+        self.assertEqual(rendered["policy_path"], ".codex/capabilities.toml")
+
+        human = io.StringIO()
+        with contextlib.redirect_stdout(human):
+            self.assertEqual(CODEXICON.capabilities(ROOT), 0)
+        self.assertEqual(
+            human.getvalue(),
+            "Capability policy: valid\n"
+            "Policy: .codex/capabilities.toml\n"
+            "Selected profile: balanced\n"
+            "Profiles: strict, balanced, autonomous\n"
+            "Budgets: iterations=6, review_cycles=2, failed_attempts=3, minutes=60\n"
+            "Review thresholds: risk=medium,high,critical, changed_files>=4\n"
+            "Verification tiers: focused, build, ship\n"
+            "Escalation invariants: 10 mandatory human boundaries\n",
+        )
+
+    def test_capability_policy_rejects_unknown_and_authority_expanding_values(self) -> None:
+        root = self.temp_dir / "project"
+        (root / ".codex").mkdir(parents=True)
+        source = (ROOT / ".codex" / "capabilities.toml").read_text(encoding="utf-8")
+
+        unknown = source.replace(
+            'selected_profile = "balanced"\n',
+            'selected_profile = "balanced"\nallow_shell = true\n',
+            1,
+        )
+        (root / ".codex" / "capabilities.toml").write_text(unknown, encoding="utf-8")
+        with self.assertRaisesRegex(
+            CODEXICON.CodexiconError,
+            r"\.codex/capabilities\.toml:3: policy contains unknown key 'allow_shell'",
+        ):
+            CODEXICON.validate_capability_policy(root)
+
+        unsafe = source.replace("git = false", "git = true", 1)
+        (root / ".codex" / "capabilities.toml").write_text(unsafe, encoding="utf-8")
+        with self.assertRaisesRegex(
+            CODEXICON.CodexiconError,
+            r"\.codex/capabilities\.toml:5: authority\.git must remain false",
+        ):
+            CODEXICON.validate_capability_policy(root)
+
+        unknown_profile = source.replace(
+            'selected_profile = "balanced"', 'selected_profile = "unrecognized"', 1
+        )
+        (root / ".codex" / "capabilities.toml").write_text(
+            unknown_profile, encoding="utf-8"
+        )
+        with self.assertRaisesRegex(
+            CODEXICON.CodexiconError,
+            r"\.codex/capabilities\.toml:2: unknown selected_profile",
+        ):
+            CODEXICON.validate_capability_policy(root)
+
+        invalid_nested = source.replace("max_iterations = 6", "max_iterations = 0", 1)
+        (root / ".codex" / "capabilities.toml").write_text(
+            invalid_nested, encoding="utf-8"
+        )
+        nested_line = invalid_nested.splitlines().index("max_iterations = 0") + 1
+        with self.assertRaisesRegex(
+            CODEXICON.CodexiconError,
+            rf"\.codex/capabilities\.toml:{nested_line}: profiles\.balanced\.budgets\.max_iterations",
+        ):
+            CODEXICON.validate_capability_policy(root)
+
+        risk_lines = source.splitlines()
+        balanced_review_start = risk_lines.index("[profiles.balanced.review]")
+        risk_line_index = next(
+            index
+            for index in range(balanced_review_start + 1, len(risk_lines))
+            if risk_lines[index].startswith("required_risk_levels = ")
+        )
+        risk_lines[risk_line_index] = 'required_risk_levels = ["critical"]'
+        invalid_risk = "\n".join(risk_lines) + "\n"
+        (root / ".codex" / "capabilities.toml").write_text(
+            invalid_risk, encoding="utf-8"
+        )
+        with self.assertRaisesRegex(
+            CODEXICON.CodexiconError,
+            rf"\.codex/capabilities\.toml:{risk_line_index + 1}: profiles\.balanced\.review\.required_risk_levels",
+        ):
+            CODEXICON.validate_capability_policy(root)
+
+        contradictory = source.replace(
+            "[profiles.balanced.escalation]\n"
+            "destructive_actions = true\n"
+            "production_actions = true\n"
+            "external_writes = true",
+            "[profiles.balanced.escalation]\n"
+            "destructive_actions = true\n"
+            "production_actions = true\n"
+            "external_writes = false",
+            1,
+        )
+        (root / ".codex" / "capabilities.toml").write_text(
+            contradictory, encoding="utf-8"
+        )
+        contradictory_lines = contradictory.splitlines()
+        balanced_escalation_start = contradictory_lines.index(
+            "[profiles.balanced.escalation]"
+        )
+        contradictory_line = next(
+            index + 1
+            for index in range(balanced_escalation_start + 1, len(contradictory_lines))
+            if contradictory_lines[index] == "external_writes = false"
+        )
+        with self.assertRaisesRegex(
+            CODEXICON.CodexiconError,
+            rf"\.codex/capabilities\.toml:{contradictory_line}: profiles\.balanced\.escalation\.external_writes",
+        ):
+            CODEXICON.validate_capability_policy(root)
+
+    def test_capability_policy_reports_missing_and_uses_python310_fallback(self) -> None:
+        root = self.temp_dir / "project"
+        root.mkdir()
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(CODEXICON.capabilities(root, json_output=True), 2)
+        missing = json.loads(output.getvalue())
+        self.assertFalse(missing["valid"])
+        self.assertIn(".codex/capabilities.toml:1", missing["errors"][0])
+
+        (root / ".codex").mkdir()
+        (root / ".codex" / "capabilities.toml").write_text(
+            (ROOT / ".codex" / "capabilities.toml").read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        with mock.patch.object(CODEXICON, "tomllib", None):
+            self.assertEqual(CODEXICON.validate_capability_policy(root)["schema_version"], 1)
+
+        malformed = 'schema_version = 1\nselected_profile = "balanced\n'
+        (root / ".codex" / "capabilities.toml").write_text(malformed, encoding="utf-8")
+        with mock.patch.object(CODEXICON, "tomllib", None):
+            with self.assertRaisesRegex(
+                CODEXICON.CodexiconError,
+                r"\.codex/capabilities\.toml:2: malformed policy: line 2:",
+            ):
+                CODEXICON.validate_capability_policy(root)
+
+        python_literal = "schema_version = True\n"
+        (root / ".codex" / "capabilities.toml").write_text(
+            python_literal, encoding="utf-8"
+        )
+        with mock.patch.object(CODEXICON, "tomllib", None):
+            with self.assertRaisesRegex(
+                CODEXICON.CodexiconError,
+                r"\.codex/capabilities\.toml:1: malformed policy: line 1: Python-only literal",
+            ):
+                CODEXICON.validate_capability_policy(root)
+
+        for literal in ("False", "None", "{1, 2}", "(1, 2)"):
+            with self.subTest(literal=literal):
+                with self.assertRaises(ValueError):
+                    CODEXICON.parse_toml_subset(f"value = {literal}\n")
+
+    def test_capability_policy_text_is_never_executed(self) -> None:
+        with mock.patch.object(
+            CODEXICON.subprocess,
+            "run",
+            side_effect=AssertionError("capability policy must not execute commands"),
+        ) as run:
+            self.assertEqual(CODEXICON.capabilities(ROOT), 0)
+        run.assert_not_called()
+
+    def test_clean_scaffold_carries_the_validated_capability_policy(self) -> None:
+        target_root = Path(tempfile.mkdtemp(prefix="codexicon-policy-scaffold-"))
+        self.addCleanup(remove_test_directory, target_root)
+        target = target_root / "starter"
+        scaffold_module.scaffold(target, source=ROOT)
+        policy_path = target / ".codex" / "capabilities.toml"
+        self.assertTrue(policy_path.is_file())
+        self.assertEqual(CODEXICON.validate_capability_policy(target)["selected_profile"], "balanced")
+        manifest = json.loads((target / ".codexicon.json").read_text(encoding="utf-8"))
+        capability_entry = next(
+            item for item in manifest["files"] if item["path"] == ".codex/capabilities.toml"
+        )
+        self.assertEqual(capability_entry["policy"], "merge")
 
     def test_ship_doctor_reports_missing_git_mode_metadata(self) -> None:
         output = io.StringIO()

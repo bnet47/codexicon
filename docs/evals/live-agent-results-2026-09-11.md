@@ -18,6 +18,25 @@ paired-trial attempts, not a ranking or superiority claim.
 - Timeout: 90 seconds per Codex invocation
 - Additional local-provider probe: `codex exec --oss --local-provider ollama --model qwen3.8:27b ...`
 
+## Evidence classification
+
+| Evidence field | Observed value |
+|---|---|
+| Observed version/date | CLI version not exposed / 2026-09-11 |
+| Client/platform | Default Codex CLI invocation on the current Windows host; local-provider probe was also attempted |
+| Trust/source | Sanitized runner metadata plus an independent calculator unittest oracle; raw transcripts and temporary paths were discarded |
+| Denominator | 1 paired trial planned; direct arm 1 started; guided arm 0 started; local-provider probe 1 |
+| Expected outcome | Each arm completes and the independent oracle passes without unrelated fixture changes |
+| Observed outcome | Direct default-provider arm timed out with no result; guided arm was not started; local-provider probe timed out; acceptance and regression outcomes are unmeasured |
+| Hook trust | Unmeasured; no client hook-delivery observation was produced |
+| Resume/compact | Unmeasured; this trial did not exercise client resume/compact delivery |
+| Completion | Unmeasured; no client-facing completion was observed |
+| Native verification | The Windows command path was attempted; native client verification and POSIX results are unmeasured |
+| Status | unmeasured live-client behavior / timeout evidence only |
+
+Raw command/tool names describe the attempted invocation and are not
+compatibility evidence.
+
 ## Results
 
 The default-provider smoke command did not emit a result during the bounded
@@ -39,3 +58,8 @@ either arm is better. Model, token, cost, tool-call, and intervention metrics
 are **unmeasured**. The fixture covers one tiny calculator behavior and cannot
 establish general agent reliability; repeated paired trials and a completed CLI
 run are required for any comparison.
+
+The command spelling identifies how the evaluator attempted the run; it does
+not establish Codex CLI, desktop, browser, hook, resume/compact, or platform
+compatibility. Those claims remain unmeasured until the corresponding client
+and platform are directly observed.

@@ -6,6 +6,27 @@ Review the supplied diff against its acceptance criteria and relevant repository
 
 For Build work, review the changed paths recorded for the current `TASKS.md` task against its `SPEC.md` trace and shared task states. The primary agent remains the sole default writer and owns final verification.
 
+Independent review is selective. The canonical `$autonomous-build` route
+delegates this reviewer when any configured trigger matches; it must not narrow
+the route to risk alone. Read the validated selected profile from
+`.codex/capabilities.toml` (using `python scripts/codexicon.py capabilities
+--json`) and review only when at least one configured trigger matches: the
+assessed risk is in `required_risk_levels`; the changed-file count is greater
+than or equal to `changed_files_threshold`; or an actual public API, security,
+architecture, or test-complexity signal is present while its corresponding
+`review_on_public_api`, `review_on_security`, `review_on_architecture`, or
+`review_on_test_complexity` flag is true. Trivial low-risk work below the file
+threshold with no enabled signal is exempt. Do not hard-code profile values or
+invent a reviewer panel, background runtime, or automatic publication step.
+
+One review cycle is exactly one independent reviewer pass and one correction
+round. Remain read-only: inspect files and evidence, but do not edit, stage, commit,
+publish, deploy, use Git, or write to external systems. The Build boundary is
+Git-free and `$ship` remains the human-owned publication boundary. Return a
+stable finding ID and exactly one completion-evidence disposition for every
+finding: `accepted`, `fixed`, `rejected`, or `not_applicable`. A clean pass has
+no actionable findings and does not replace required verification.
+
 Prioritize findings that can cause incorrect behavior, security exposure, data loss, regressions, unmet requirements, or insufficient verification. Ignore pure style preferences and speculative future improvements.
 
 For every finding provide:

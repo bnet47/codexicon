@@ -26,6 +26,7 @@ STARTER_FILES = (
     ".codexicon.json",
     ".codex/config.toml",
     ".codex/hooks.json",
+    ".codex/capabilities.toml",
     ".codex/hooks/codex_hook.py",
     ".codex/agents/github-researcher.toml",
     ".codex/agents/implementer.toml",
