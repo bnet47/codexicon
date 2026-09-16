@@ -15,20 +15,34 @@
 # Codexicon
 
 <p>
-  <strong>A production-minded Codex agent harness for new and established repositories.</strong>
+  <strong>Turn Codex work into a repeatable, reviewable path to delivery.</strong>
   <br>
-  Turn agent-driven development into an inspectable path from project context to verified, explicitly authorized delivery.
+  Codexicon gives new and established repositories durable context, routed workflows, fresh verification, and explicit boundaries for Git and external effects.
 </p>
 
 <p>
-  <a href="https://github.com/new?template_name=codexicon&template_owner=bnet47"><strong>Use this template</strong></a>
+  <a href="https://github.com/new?template_name=codexicon&amp;template_owner=bnet47"><strong>Use this template →</strong></a>
   ·
-  <a href="#adopt-into-an-existing-repository"><strong>Adopt into an existing repo</strong></a>
-  ·
-  <a href="https://bnet47.github.io/codexicon/repo-template-playbook.html"><strong>Explore the visual playbook</strong></a>
-  ·
-  <a href="#06--security-and-authority"><strong>Review the security model</strong></a>
+  <a href="#adopt-into-an-existing-repository"><strong>Adopt into an existing repo →</strong></a>
 </p>
+
+<p>
+  <a href="https://bnet47.github.io/codexicon/repo-template-playbook.html">Explore the visual playbook</a>
+  ·
+  <a href="#06--security-and-authority">Review the security model</a>
+</p>
+
+## At a glance
+
+| Start clean or adopt safely | Route work by intent | Verify before external effect |
+|---|---|---|
+| Use the GitHub template for a new project, or inspect compatibility before integrating into an established repository. | Match the workflow to uncertainty and risk, from discovery through implementation, review, and release readiness. | Require fresh evidence before commits, pushes, deployments, messages, spend, or production changes. |
+
+<p align="center">
+  <a href="https://github.com/bnet47/codexicon/releases/latest"><img src="https://img.shields.io/github/v/release/bnet47/codexicon?display_name=tag&amp;label=latest%20release" alt="Latest Codexicon release"></a>
+</p>
+
+> **See the whole system at a glance →** [Open the interactive visual playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html). Follow the lifecycle, skill routing, capability tiers, and authority boundaries in one guided page.
 
 > [!IMPORTANT]
 > Codexicon improves the development process; it does not make an unfinished application production-ready by itself. Every project must still supply and verify its own architecture, security, data, operations, and release evidence.
@@ -219,6 +233,9 @@ third-party memory service is added.
 
 </details>
 
+<details>
+<summary><strong>Open capability policy and evidence details</strong></summary>
+
 ### Capability policy and evidence
 
 The project-local [capability policy](.codex/capabilities.toml) is validated
@@ -303,7 +320,7 @@ ownership. Do not deploy or accept risk on my behalf.
 
 </details>
 
-> **Want the whole system at a glance?** The [interactive visual playbook](https://bnet47.github.io/codexicon/repo-template-playbook.html) maps every lifecycle stage, repository skill, safety boundary, example prompt, and capability tier. Its standalone source remains in [`docs/repo-template-playbook.html`](docs/repo-template-playbook.html) for local and offline use.
+</details>
 
 ## 06 — Security and authority
 
@@ -315,7 +332,7 @@ Codexicon treats safety as a chain of independent controls, not a single prompt.
 | **Trusted lifecycle hooks** | Block common credential stores, track repository writes, and require fresh verification |
 | **Canonical security scan** | Checks tracked and non-ignored safe text without printing suspected secret values |
 | **Git and CI checks** | Offer opt-in local gates and repeat verification with a history-aware TruffleHog scan |
-| **Repository SAST** | Uses [CodeQL code scanning](https://github.com/bnet47/codexicon/security/code-scanning) for Python and GitHub Actions without adding a local dependency; derived projects make their own stack- and eligibility-aware SAST decision during initialization |
+| **Repository SAST** | Uses [CodeQL and security workflows](https://github.com/bnet47/codexicon/actions) for Python and GitHub Actions without adding a local dependency; derived projects make their own stack- and eligibility-aware SAST decision during initialization |
 | **Release review** | Treats missing authorization, recovery, rollback, or operational ownership as a release gap |
 
 Project hooks run only after the user reviews and trusts them. Repository code cannot grant that trust on the user's behalf. Optional MCP servers and other integrations remain disabled until their instructions, data boundaries, tool scope, and approval mode have been reviewed.
@@ -331,6 +348,9 @@ Codexicon reduces recurring context without weakening engineering work:
 - `$concise` shortens communication without reducing implementation, review, tests, or security evidence.
 
 The validator enforces budgets for always-loaded repository guidance and the initial skill catalog.
+
+<details>
+<summary><strong>Open repository anatomy and governance details</strong></summary>
 
 ## 08 — Repository anatomy
 
@@ -405,6 +425,8 @@ python scripts/codexicon.py update --root /path/to/project --source /path/to/new
 ```
 
 The first command is a read-only plan. Apply uses atomic writes and rollback, leaves locally modified files as conflicts, and never commits or publishes the result. Project-owned commands, guidance, architecture, and decisions still require deliberate integration. The [upgrade guide](docs/upgrading.md) explains the same preservation boundaries for manual migrations.
+
+</details>
 
 ## Community
 

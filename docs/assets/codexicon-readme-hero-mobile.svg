@@ -44,7 +44,7 @@
       <path d="M14 15L22 23L14 31M27 31H34" fill="none" stroke="#7cf0b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
 
-    <text x="46" y="304" fill="#a9bac8" font-size="26" font-weight="520">The #1 Codex Agent Harness</text>
+    <text x="46" y="304" fill="#a9bac8" font-size="26" font-weight="520">A repeatable Codex workflow</text>
     <text x="46" y="340" fill="#a9bac8" font-size="26" font-weight="520">for Production Software</text>
 
     <g transform="translate(46 390)" font-size="19" font-weight="650">
