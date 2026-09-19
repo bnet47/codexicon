@@ -11,6 +11,14 @@ Create a coherent customer experience, not a decorated wireframe. Make every vis
 
 Read the approved charter or feature brief, existing interface, design system, brand assets, content, and relevant conventions. Read `agent_docs/design.md` when it exists. Do not create durable design context unless the user requests it or the approved workflow requires it.
 
+Resolve the target surface before applying visual guidance. In a monorepo:
+
+- Identify the app or package that owns the route or component, then inspect its nearest applicable instructions, design brief, design-system files, and incumbent interface.
+- Treat root-level `agent_docs/design.md` and shared tokens as repository-wide constraints or fallback context. Do not import another app's surface direction, assets, or conventions.
+- Prefer the closest applicable owner guidance when scopes differ, unless a higher-level constraint explicitly governs the choice.
+- If ownership or scope is unclear, state the uncertainty and use the target's existing implementation as evidence rather than inventing a shared design system.
+- Keep resulting design context app- or surface-scoped. Create durable files only when requested or required by the approved workflow.
+
 Define before implementation:
 
 - user, primary task, setting, and observable success;
