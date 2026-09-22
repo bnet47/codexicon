@@ -1331,10 +1331,17 @@ class TemplateValidationTests(unittest.TestCase):
 
     def test_simulated_trufflehog_bump_keeps_action_pin_and_versions_coupled(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        current = re.search(
+            r"trufflesecurity/trufflehog@([a-f0-9]{40}) # v(\d+\.\d+\.\d+)",
+            workflow,
+        )
+        if current is None:
+            self.fail("CI workflow does not contain a pinned TruffleHog action")
+        current_pin, current_version = current.groups()
         bumped = workflow.replace(
-            "bcfcf73aaf4759d4dadc2783177c245a02792318 # v3.97.0",
+            f"{current_pin} # v{current_version}",
             "0123456789abcdef0123456789abcdef01234567 # v3.98.0",
-        ).replace("version: 3.97.0", "version: 3.98.0")
+        ).replace(f"version: {current_version}", "version: 3.98.0")
 
         self.assertNotEqual(bumped, workflow)
         self.assertEqual(TEMPLATE_VALIDATOR.mutable_action_references(bumped), [])
