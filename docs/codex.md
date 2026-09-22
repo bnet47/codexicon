@@ -18,6 +18,8 @@ Use `/skills` in Codex CLI or IDE surfaces to browse skills. Keep each descripti
 
 Official reference: [Agent skills](https://developers.openai.com/codex/skills)
 
+For design work in a monorepo, identify the app or package that owns the target surface first. Apply its nearest scoped instructions and visual references; use root design guidance as shared constraints or fallback, and do not carry direction across from sibling apps. Keep new context scoped to the owning app or surface.
+
 ## Operating model
 
 Use the smallest mode that matches the request:
