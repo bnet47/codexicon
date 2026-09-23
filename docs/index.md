@@ -81,6 +81,12 @@ contracts](build-contracts.md), [agent patterns](agent-patterns.md),
 [upgrade guidance](upgrading.md), and [visual playbook](repo-template-playbook.html)
 for the synchronized workflow.
 
+The optional routing block is disabled by default. It supports semantic role and
+risk classification only through a complete dispatch envelope, one worker depth,
+primary-owned review/integration, and honest requested-versus-observed evidence.
+Ineligible or runtime-unverified work stays on the primary path; no reusable
+guidance pins a model or provider identity.
+
 > Codexicon improves the development process; it does not make an unfinished application production-ready by itself. Each project still supplies and verifies its own architecture, security, data, operations, and release evidence.
 
 Current template version: **2.11.0**

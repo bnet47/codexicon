@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a bounded direct-versus-Codexicon live Codex paired evaluation.
+"""Run a bounded direct-versus-guided-versus-routed live Codex evaluation.
 
 The evaluator intentionally keeps raw Codex output in memory only.  It records
 event types, a short sanitized final-message excerpt, independent fixture-test
@@ -37,6 +37,12 @@ PROMPTS = {
         "Act as a Codexicon implementation agent. Inspect the task and existing files, "
         "run the unittest oracle to reproduce the deliberate failure, fix the behavior, "
         "verify by rerunning the oracle, and do not create or modify unrelated files."
+    ),
+    "routed": (
+        "Act as a Codexicon routed implementation worker only when this task is eligible. "
+        "Use the supplied minimum-sufficient task envelope, do not broaden files or authority, "
+        "do not spawn another worker, fix calculator.py, run the unittest oracle before and "
+        "after the fix, and leave integration and acceptance to the primary."
     ),
 }
 UNMEASURED_FIELDS = ("model", "tokens", "cost", "tool_calls", "interventions")
@@ -392,12 +398,14 @@ def _base_report(command: str, runs: int) -> dict[str, Any]:
             "paired_trials": runs,
             "direct_runs": runs,
             "guided_runs": runs,
+            "routed_runs": runs,
         },
         "settings": {
             "fixture": "temporary calculator.py with canonical unittest oracle",
             "codex_commands": {
                 "direct": _display_command("direct"),
                 "guided": _display_command("guided"),
+                "routed": _display_command("routed"),
             },
             "timeout_seconds": RUN_TIMEOUT_SECONDS,
             "permissions": "local fixture only; no external writes",
@@ -405,7 +413,7 @@ def _base_report(command: str, runs: int) -> dict[str, Any]:
         "trials": [],
         "unmeasured_fields": list(UNMEASURED_FIELDS),
         "limitations": [
-            "One paired trial is not evidence of direct-versus-guided superiority.",
+            "One paired trial is not evidence of direct-versus-guided-or-routed superiority.",
             "The local CLI may not expose reliable model, token, cost, or tool-call telemetry.",
             "The fixture measures one calculator acceptance path, not general agent reliability.",
         ],
@@ -432,16 +440,20 @@ def run_evaluation(
 
     direct_arms: list[dict[str, Any]] = []
     guided_arms: list[dict[str, Any]] = []
+    routed_arms: list[dict[str, Any]] = []
     for trial_number in range(1, runs + 1):
         direct = run_arm("direct", codex, runner=runner)
         guided = run_arm("guided", codex, runner=runner)
+        routed = run_arm("routed", codex, runner=runner)
         direct_arms.append(direct)
         guided_arms.append(guided)
+        routed_arms.append(routed)
         report["trials"].append(
             {
                 "trial": trial_number,
                 "direct": direct,
                 "guided": guided,
+                "routed": routed,
                 "paired": True,
             }
         )
@@ -449,10 +461,11 @@ def run_evaluation(
     report["aggregate"] = {
         "direct": _aggregate(direct_arms),
         "guided": _aggregate(guided_arms),
+        "routed": _aggregate(routed_arms),
     }
     failed = any(
         arm["exit_status"] != 0 or arm["test_status"] != "passed"
-        for arm in direct_arms + guided_arms
+        for arm in direct_arms + guided_arms + routed_arms
     )
     report["status"] = "failed" if failed else "passed"
     return report, 1 if failed else 0
@@ -465,7 +478,7 @@ def _print_report(report: Mapping[str, Any], as_json: bool) -> None:
     print(f"live paired evaluation: {report.get('status', 'unknown')}")
     print(f"paired trials: {report['denominator']['paired_trials']}")
     if "aggregate" in report:
-        for label in ("direct", "guided"):
+        for label in ("direct", "guided", "routed"):
             aggregate = report["aggregate"][label]
             print(
                 f"{label}: acceptance {aggregate['acceptance']}; "

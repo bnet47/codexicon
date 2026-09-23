@@ -1801,6 +1801,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;div class=&quot;card capability-panel&quot;&gt;
       &lt;h3&gt;Inspect the selected profile&lt;/h3&gt;
       &lt;p&gt;Read &lt;code&gt;.codex/capabilities.toml&lt;/code&gt; and run &lt;code&gt;python scripts/codexicon.py capabilities --json&lt;/code&gt;. The validated &lt;code&gt;strict&lt;/code&gt;, &lt;code&gt;balanced&lt;/code&gt;, and &lt;code&gt;autonomous&lt;/code&gt; profiles provide positive budgets, review triggers, and verification tiers. They guide reversible workflow choices; they do not add a daemon, scheduler, second task engine, or Git/deployment/credential/external-write/publication authority.&lt;/p&gt;
+      &lt;p&gt;&lt;strong&gt;Opt-in routing:&lt;/strong&gt; the optional routing block is disabled by default. Eligible delegation requires a complete task envelope, &lt;code&gt;max_depth = 1&lt;/code&gt;, and primary-owned review/integration. Ineligible or runtime-unverified work stays on the primary path; routing receipts distinguish requested/configured values from observed runtime evidence, and reusable guidance never pins a model/provider identity.&lt;/p&gt;
     &lt;/div&gt;
     &lt;div class=&quot;route-list&quot; role=&quot;table&quot; aria-label=&quot;Capability contract&quot;&gt;
       &lt;div class=&quot;route-head&quot; role=&quot;row&quot;&gt;

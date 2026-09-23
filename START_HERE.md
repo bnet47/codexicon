@@ -216,6 +216,13 @@ deterministic fixtures from live-client behavior with versions/dates,
 denominators, expected/observed outcomes, and explicit unmeasured fields; raw
 tool names are not compatibility evidence.
 
+Adaptive routing is optional and disabled by default. Delegate only eligible
+non-trivial work with the complete task envelope, `max_depth = 1`, and
+primary-owned review/integration. Keep ineligible work on the primary path and
+label routing as configured-but-unverified or unavailable when the client does
+not expose reliable effective values. Do not pin a model/provider identity or
+change defaults without paired direct-versus-routed evidence.
+
 ### Customer-facing execution
 
 For an app or website, establish real users, tasks, content, brand constraints, and success evidence before asking for visual polish. Use:

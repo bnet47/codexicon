@@ -10,14 +10,17 @@ compatibility result.
 
 The live comparison is intentionally narrower than this protocol's broader
 direct-versus-loop journeys. `python scripts/live_agent_eval.py --smoke`
-creates two fresh temporary calculator fixtures and runs exactly one direct and
-one Codexicon-guided local invocation with:
+creates fresh temporary calculator fixtures and runs one direct, one legacy
+Codexicon-guided, and one explicitly routed local invocation per trial with:
 
 ```text
 codex exec --ephemeral --sandbox workspace-write --skip-git-repo-check -C <temp> --json <prompt>
 ```
 
-Each arm is independently scored by the canonical unittest oracle. The runner
+Each arm is independently scored by the canonical unittest oracle. The routed
+prompt is advisory: it carries the minimum-sufficient envelope, forbids scope
+or authority broadening and recursive spawning, and leaves integration and
+acceptance with the primary. The runner
 keeps raw JSON events in memory only, records sanitized event metadata and a
 short final-message excerpt, enforces a 90-second per-run timeout, and deletes
 each fixture. Use `--runs N` for repeated paired trials. Missing CLI, timeout,
@@ -63,6 +66,12 @@ Keep model, permissions, starting revision, task brief, and canonical checks con
 The ten deterministic policy journeys measured below are the executable
 scenario set for this task. The six journey shapes above are planning examples;
 they are not additional live-agent trials.
+
+The deterministic evaluator also exposes a separate routed arm with three
+one-denominator policy fixtures: an eligible observed route, an ineligible
+primary fallback, and an unavailable-runtime primary fallback. These fixtures
+prove status handling and boundaries only; their different denominator means
+they are not a superiority comparison with the ten baseline journeys.
 
 ## Record per run
 
@@ -157,6 +166,24 @@ telemetry, model settings, client hook trust, resume/compact delivery,
 unified-exec completion as seen by a client, browser selection/copy behavior,
 and cross-platform compatibility remain **unmeasured**. No direct-versus-loop
 ranking is inferred from this suite.
+
+### Deterministic routed arm
+
+The evaluator also exposes a separate routed arm with three one-denominator
+policy fixtures: an eligible observed route, an ineligible primary fallback,
+and an unavailable-runtime primary fallback. These fixtures prove status
+handling and boundaries only; their different denominator means they are not a
+superiority comparison with the ten baseline journeys.
+
+| Scenario ID | Denominator | Expected outcome | Observed overall |
+|---|---:|---|---|
+| `routed-eligible` | 1 | Complete an eligible dispatch with a minimum-sufficient envelope, one worker depth, and primary-owned review | pass |
+| `routed-ineligible-fallback` | 1 | Keep ineligible work on the primary path without creating a dispatch | pass |
+| `routed-runtime-unavailable` | 1 | Record unavailable runtime evidence and fall back to the primary owner | pass |
+
+Reproduce the routed arm with `python scripts/agent_loop_eval.py --json`; the
+report stores the results under `routed_arm` and labels the paired comparison
+as non-superiority evidence when the denominators differ.
 
 ## Decision rule
 

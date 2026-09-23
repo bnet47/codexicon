@@ -134,6 +134,18 @@ number, so unfinished work cannot be mistaken for an empty successful queue.
 
 Every Build edit must state a trace such as `T-001 -> R-001 -> I-001`. Tasks without a trace are blocked rather than expanded by assumption. Build stays in the current checkout and active branch; Git operations are reserved for `$ship`.
 
+## Minimum-sufficient routing dispatch
+
+Adaptive routing is an opt-in policy extension, not a second task engine. Before
+delegating implementation, the primary records one dispatch envelope with the
+task ID/text, SPEC requirement and interface trace, acceptance rubric, exact
+allowed paths, dependency state, verification command, risk and review signals,
+side-effect authority, escalation rule, and `max_depth = 1`. The worker is a
+single bounded implementation writer for that task; it cannot broaden scope,
+spawn another worker, integrate or publish, and cannot convert configured
+routing into observed runtime evidence. Unsupported, trivial, ineligible, or
+unverified routing stays on the primary path.
+
 ## Build and Ship authority
 
 Build is filesystem-local and must not depend on a Git executable or checkout metadata. The manager and hooks identify the local contract, task register, and declared paths with deterministic SHA-256 evidence; checkpoint callers supply changed paths explicitly. The default `doctor`, `resume`, checkpoint, task-evidence, and `verify --mode build` journeys therefore work in a non-Git directory or when Git is unavailable. A read-only Git probe is not an allowed replacement for this strict rule.

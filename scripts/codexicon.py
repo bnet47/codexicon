@@ -44,7 +44,7 @@ VERIFICATION_MODES = (BUILD_MODE, SHIP_MODE)
 CAPABILITIES_RELATIVE = ".codex/capabilities.toml"
 CAPABILITY_SCHEMA_VERSION = 1
 CAPABILITY_PROFILES = ("strict", "balanced", "autonomous")
-CAPABILITY_ROOT_KEYS = {"schema_version", "selected_profile", "authority", "profiles"}
+CAPABILITY_ROOT_KEYS = {"schema_version", "selected_profile", "authority", "profiles", "routing"}
 CAPABILITY_AUTHORITY_KEYS = {
     "git",
     "deployment",
@@ -54,6 +54,17 @@ CAPABILITY_AUTHORITY_KEYS = {
     "runtime",
 }
 CAPABILITY_PROFILE_KEYS = {"autonomy", "budgets", "review", "verification", "escalation"}
+CAPABILITY_ROUTING_KEYS = {
+    "enabled",
+    "strategy",
+    "worker_eligibility",
+    "review_on_delegated_implementation",
+    "trivial_deterministic_exemption",
+    "max_depth",
+    "worker_correction_attempts",
+    "escalate_on_review_failure",
+}
+CAPABILITY_ROUTING_STRATEGIES = {"advisory", "experimental"}
 CAPABILITY_AUTONOMY_KEYS = {
     "allow_reversible_assumptions",
     "batch_blocking_questions",
@@ -1210,6 +1221,51 @@ def validate_capability_policy(root: Path) -> dict[str, Any]:
                 content, f"authority.{key} must remain false", f"authority.{key}"
             )
 
+    routing = parsed.get("routing")
+    if routing is not None:
+        routing = _capability_table(routing, content, "routing", CAPABILITY_ROUTING_KEYS)
+        if set(routing) != CAPABILITY_ROUTING_KEYS:
+            missing = sorted(CAPABILITY_ROUTING_KEYS - set(routing))
+            _capability_failure(content, f"routing is missing {missing[0]!r}", "routing")
+        _capability_bool(routing.get("enabled"), content, "routing.enabled")
+        strategy = _capability_string(routing.get("strategy"), content, "routing.strategy")
+        if strategy not in CAPABILITY_ROUTING_STRATEGIES:
+            _capability_failure(
+                content,
+                f"routing.strategy must be one of {sorted(CAPABILITY_ROUTING_STRATEGIES)}",
+                "routing.strategy",
+            )
+        eligibility = _capability_string(
+            routing.get("worker_eligibility"), content, "routing.worker_eligibility"
+        )
+        if eligibility != "explicit":
+            _capability_failure(
+                content,
+                "routing.worker_eligibility must be 'explicit'",
+                "routing.worker_eligibility",
+            )
+        for key in (
+            "review_on_delegated_implementation",
+            "trivial_deterministic_exemption",
+            "escalate_on_review_failure",
+        ):
+            _capability_bool(routing.get(key), content, f"routing.{key}")
+        if _capability_bounded_int(
+            routing.get("max_depth"), content, "routing.max_depth", maximum=1
+        ) != 1:
+            _capability_failure(content, "routing.max_depth must be 1", "routing.max_depth")
+        if _capability_bounded_int(
+            routing.get("worker_correction_attempts"),
+            content,
+            "routing.worker_correction_attempts",
+            maximum=1,
+        ) != 1:
+            _capability_failure(
+                content,
+                "routing.worker_correction_attempts must be 1",
+                "routing.worker_correction_attempts",
+            )
+
     profiles = _capability_table(
         parsed.get("profiles"), content, "profiles", set(CAPABILITY_PROFILES)
     )
@@ -1752,6 +1808,27 @@ class ContractDetails:
 EVIDENCE_SCHEMA_VERSION = 1
 EVIDENCE_PASS = "passed"
 REVIEW_DISPOSITIONS = {"accepted", "fixed", "rejected", "not_applicable"}
+ROUTING_EVIDENCE_SCHEMA_VERSION = 1
+ROUTING_EVIDENCE_STATUSES = {
+    "observed",
+    "configured_unverified",
+    "unavailable",
+    "mismatched",
+}
+ROUTING_EVIDENCE_KEYS = {
+    "schema_version",
+    "requested_role",
+    "requested_tier",
+    "requested_model",
+    "requested_effort",
+    "observed_role",
+    "observed_tier",
+    "observed_model",
+    "observed_effort",
+    "status",
+    "evidence_source",
+    "max_depth",
+}
 
 
 def _digest_identity(raw: Any, label: str) -> str:
@@ -1761,6 +1838,73 @@ def _digest_identity(raw: Any, label: str) -> str:
     if not re.fullmatch(r"[a-f0-9]{64}", value):
         raise CodexiconError(f"task evidence has an invalid {label}")
     return f"sha256:{value}"
+
+
+def _validate_routing_evidence(raw: Any, task_id: str) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise CodexiconError(f"task evidence for {task_id} routing must be an object")
+    unknown = sorted(set(raw) - ROUTING_EVIDENCE_KEYS)
+    if unknown:
+        raise CodexiconError(
+            f"task evidence for {task_id} routing contains unknown key {unknown[0]!r}"
+        )
+    if raw.get("schema_version") != ROUTING_EVIDENCE_SCHEMA_VERSION:
+        raise CodexiconError(
+            f"task evidence for {task_id} routing has an unsupported schema version"
+        )
+    missing = sorted(ROUTING_EVIDENCE_KEYS - set(raw))
+    if missing:
+        raise CodexiconError(
+            f"task evidence for {task_id} routing is missing {missing[0]!r}"
+        )
+
+    def required_text(key: str) -> str:
+        value = raw.get(key)
+        if not isinstance(value, str) or not value.strip():
+            raise CodexiconError(
+                f"task evidence for {task_id} routing.{key} must be a non-empty string"
+            )
+        return value.strip()
+
+    def optional_text(key: str) -> str | None:
+        value = raw.get(key)
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip():
+            raise CodexiconError(
+                f"task evidence for {task_id} routing.{key} must be a string or null"
+            )
+        return value.strip()
+
+    status = required_text("status")
+    if status not in ROUTING_EVIDENCE_STATUSES:
+        raise CodexiconError(
+            f"task evidence for {task_id} routing.status is unsupported: {status!r}"
+        )
+    max_depth = raw.get("max_depth")
+    if type(max_depth) is not int or max_depth != 1:
+        raise CodexiconError(
+            f"task evidence for {task_id} routing.max_depth must be 1"
+        )
+    observed = {
+        key: optional_text(key)
+        for key in ("observed_role", "observed_tier", "observed_model", "observed_effort")
+    }
+    if status == "observed" and any(value is None for value in observed.values()):
+        raise CodexiconError(
+            f"task evidence for {task_id} observed routing requires all observed values"
+        )
+    return {
+        "schema_version": ROUTING_EVIDENCE_SCHEMA_VERSION,
+        "requested_role": required_text("requested_role"),
+        "requested_tier": required_text("requested_tier"),
+        "requested_model": optional_text("requested_model"),
+        "requested_effort": optional_text("requested_effort"),
+        **observed,
+        "status": status,
+        "evidence_source": required_text("evidence_source"),
+        "max_depth": 1,
+    }
 
 
 def _scope_paths(scope: str) -> list[str]:
@@ -1980,6 +2124,10 @@ def validate_task_evidence(
             )
         normalized_reviews.append({"id": finding_id.strip(), "disposition": disposition})
 
+    routing = None
+    if "routing" in value:
+        routing = _validate_routing_evidence(value["routing"], row["id"])
+
     normalized: dict[str, Any] = {
         "schema_version": EVIDENCE_SCHEMA_VERSION,
         "task_id": row["id"],
@@ -1992,6 +2140,8 @@ def validate_task_evidence(
     }
     if normalized_reviews:
         normalized["review_findings"] = normalized_reviews
+    if routing is not None:
+        normalized["routing"] = routing
     return normalized
 
 

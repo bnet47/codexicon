@@ -1,6 +1,16 @@
 schema_version = 1
 selected_profile = "balanced"
 
+[routing]
+enabled = false
+strategy = "advisory"
+worker_eligibility = "explicit"
+review_on_delegated_implementation = true
+trivial_deterministic_exemption = true
+max_depth = 1
+worker_correction_attempts = 1
+escalate_on_review_failure = true
+
 [authority]
 git = false
 deployment = false

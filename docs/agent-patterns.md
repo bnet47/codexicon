@@ -67,6 +67,17 @@ Keep root `SPEC.md` and `TASKS.md` in the active checkout so continuation does n
 
 ## Capability policy and review evidence
 
+## Bounded routed review
+
+When the opt-in routing policy delegates an eligible implementation task, the
+reviewer checks the dispatch envelope as part of the diff review: task/spec
+trace, acceptance rubric, exact paths, dependencies, verification, authority,
+escalation, and `max_depth = 1`. A missing or broadened envelope is a boundary
+finding. The worker cannot spawn another worker or self-accept, and requested or
+configured routing remains unobserved until the client supplies reliable
+runtime evidence. The primary performs any correction, integration, and final
+acceptance.
+
 Before a bounded Build task, inspect the validated project-local policy at
 `.codex/capabilities.toml` with `python scripts/codexicon.py capabilities --json`.
 The selected profile (`strict`, `balanced`, or `autonomous`) supplies positive

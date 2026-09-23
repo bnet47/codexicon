@@ -61,7 +61,16 @@ class AgentLoopEvaluationTests(unittest.TestCase):
         self.assertEqual(report["scenario_metrics"]["verification_reruns"], {"measured": 1, "denominator": 10})
         self.assertEqual(report["measures"]["acceptance_pass_rate"], {"passed": 10, "denominator": 10})
         self.assertEqual(report["measures"]["attempted_git_during_build"], {"measured": 0, "denominator": 10})
+        self.assertEqual(report["routed_arm"]["passed"], 3)
+        self.assertEqual(report["routed_arm"]["denominator"], 3)
+        self.assertEqual(report["routed_arm"]["acceptance_denominator"], 3)
+        self.assertIn("different denominators", report["paired_evaluation"]["comparison"])
         self.assertTrue(report["unmeasured_live_fields"])
+
+    def test_routed_scenarios_cover_observed_fallback_and_unavailable_statuses(self) -> None:
+        results = EVAL.run_routed_scenarios()
+        self.assertEqual(tuple(result.id for result in results), EVAL.ROUTED_SCENARIO_IDS)
+        self.assertTrue(all(result.passed for result in results), results)
 
 
 if __name__ == "__main__":
