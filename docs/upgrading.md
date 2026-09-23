@@ -61,6 +61,12 @@ denominators, expected/observed outcomes, and explicit unmeasured fields; raw
 tool names are not compatibility evidence. Regenerate the playbook with
 `python scripts/render_playbook.py` and run `--check` after every source edit.
 
+For the adaptive-routing extension, keep `[routing].enabled = false` unless a
+maintainer has paired direct-versus-routed evidence. Preserve the one-writer
+Build boundary, exact dispatch envelope, `max_depth = 1`, primary-owned review,
+and requested/configured/observed evidence statuses. Existing policies and
+receipts without routing remain valid.
+
 ## Coupled TruffleHog updates
 
 When updating the TruffleHog dependency in `.github/workflows/ci.yml`, use a verified release and update all three fields in one patch:

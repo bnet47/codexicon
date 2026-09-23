@@ -22,6 +22,19 @@ counter. Budget accounting is precise.
 These counters are local guidance, not a runtime. There is no background
 runtime or second task engine. The policy remains deny-by-default for authority.
 
+## Opt-in semantic routing
+
+The optional `[routing]` block is disabled by default and is advisory rather
+than a runtime. It may classify an eligible task by semantic role and risk tier,
+but delegation requires a minimum-sufficient envelope with exact paths,
+dependencies, verification, review signals, escalation, and `max_depth = 1`.
+Ineligible or trivial work stays with the primary. Workers cannot broaden
+authority, spawn another worker, integrate, or publish. Routing evidence must
+distinguish requested/configured values from observed runtime values; use
+`configured_unverified`, `unavailable`, or `mismatched` when observation is not
+reliable. Defaults remain unchanged until paired direct-versus-routed evidence
+supports a decision.
+
 ## Selective independent review
 
 The selected profile's `[profiles.<name>.review]` table is the only source for

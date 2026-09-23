@@ -35,6 +35,11 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **R-025:** Record consequential assumptions and decisions in an append-only journal and permit only small, directly related scope expansion with explicit escalation triggers.
 - **R-026:** Publish a reproducible capability matrix and scenario evidence for supported clients and platforms, distinguishing measured behavior from unmeasured availability.
 - **R-027:** Keep the capability policy, skills, roles, README, onboarding, upgrade guidance, and playbook source/generated pair synchronized and structurally validated.
+- **R-028:** Provide an opt-in semantic routing policy that assigns work by task role and risk tier without pinning a model identity, changing default authority, or adding a second runtime.
+- **R-029:** Require an explicit minimum-sufficient dispatch contract before delegated implementation, including eligibility, allowed paths, verification, dependencies, escalation, and side-effect boundaries.
+- **R-030:** Bound delegated review and escalation to one worker depth, the existing iteration/review/failure budgets, and a primary-owned correction/integration path with no recursive spawning.
+- **R-031:** Preserve routing provenance as structured evidence that distinguishes requested, configured-but-unverified, observed, unavailable, and mismatched runtime values without raw prompts or secrets.
+- **R-032:** Evaluate direct and routed workflow arms with paired acceptance, intervention, regression, latency, and available cost/token measures before considering any default change.
 
 ## Interfaces
 
@@ -59,6 +64,10 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **I-019:** The capability documentation defines focused/Build/Ship verification tiers, including the commit-only versus explicitly authorized publish/merge/deploy Ship ceilings, plateau and failure stop rules, decision-journal format, and related-scope boundaries.
 - **I-020:** `docs/evals/capability-matrix.md` records reproducible client/platform capability evidence with version/date, trust, resume/compact, completion, and native-verification fields.
 - **I-021:** The playbook selector, capability content, examples, and generated artifact expose the same profile, review, verification, and escalation behavior.
+- **I-022:** The capability policy and validator expose an optional routing block with semantic roles, eligibility, shallow-depth, review, and bounded-escalation settings while preserving old files.
+- **I-023:** The Build and execution contracts expose a minimum-sufficient dispatch envelope that a primary can inspect before delegating and that a worker cannot broaden.
+- **I-024:** Task evidence accepts and validates an additive routing envelope with requested/configured/observed values, status, evidence source, and depth.
+- **I-025:** The deterministic/live evaluation surfaces expose a paired direct-versus-routed arm and report unavailable routing/cost/client fields honestly.
 
 ## Acceptance
 
@@ -89,6 +98,12 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **A-025:** Consequential assumptions and decisions have a durable append-only location and related scope expansion is allowed only when small, reversible, directly related, and within the declared system boundary.
 - **A-026:** The capability matrix and deterministic scenarios include denominators, expected outcomes, observed versions/dates, and explicit unmeasured fields; no client compatibility is inferred from raw tool names alone.
 - **A-027:** Static validation proves capability references are synchronized across the policy, skills, roles, onboarding, README, upgrade guidance, playbook source, and generated playbook.
+- **A-028:** Existing routing-absent or routing-disabled policies remain valid and preserve the current primary-owned behavior; malformed routing fails closed with line-aware diagnostics.
+- **A-029:** Ineligible, trivial, or unsupported tasks remain on the primary path; eligible delegation requires the complete dispatch envelope and does not grant new authority.
+- **A-030:** No routed execution can create a child of a child or a concurrent writer; the primary retains integration, acceptance, and publication ownership.
+- **A-031:** Routing evidence round-trips all supported statuses and never treats requested or configured values as proof of observed runtime behavior.
+- **A-032:** Review failure, worker correction, and escalation consume existing bounded budgets and stop at the declared human boundary without a new scheduler or runtime.
+- **A-033:** The routed evaluation arm has the same acceptance rubric and isolated fixture as its direct baseline, records denominators and available measures, and cannot authorize a default change by itself.
 
 ## Anti-goals
 
@@ -115,3 +130,4 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **2026-09-11:** Authorized clean starter generation, writer-policy reconciliation, reproducible release identity, and live Codex comparison work; publication remains confined to the later Ship phase.
 - **2026-09-11:** Authorized implementation of the evolution brief's bounded capability layer: validated profiles, quality/refinement guidance, selective review, verification tiers, decision visibility, and capability evidence. Preserve the no-daemon and explicit Ship boundaries.
 - **2026-09-11:** T-024 amendment clarifies A-024 and I-019: commit-only Ship requires full lint/test/security and tracked/history verification without release/publication evidence; publish, merge, or deploy requires release/publication checks only when that exact authority is explicitly requested. This clarification preserves safe inspection, the explicit Ship boundary, and every AG constraint; it grants no Build or publication authority.
+- **2026-09-23:** Authorized implementation of the adaptive-intelligence routing recommendations as an opt-in, evidence-first extension of the existing capability/task/evaluation layers. Preserve primary ownership, one-writer Build, existing budgets, no recursive delegation, no model pinning, and the explicit Ship boundary.

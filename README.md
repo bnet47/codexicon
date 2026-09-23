@@ -280,6 +280,13 @@ versions/dates, denominators, expected and observed outcomes, and explicit
 unmeasured fields; raw command or tool names never establish client
 compatibility.
 
+Adaptive routing is an opt-in semantic policy, disabled by default. Eligible
+delegation requires a minimum-sufficient task envelope, one worker depth, and
+primary-owned review/integration; ineligible work stays on the primary path.
+Receipts distinguish requested or configured routing from observed runtime
+values, and paired direct-versus-routed evaluation is required before any
+default change. No model/provider identity is pinned in reusable guidance.
+
 <details>
 <summary><strong>See a realistic project sequence</strong></summary>
 

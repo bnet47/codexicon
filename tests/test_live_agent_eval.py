@@ -94,7 +94,12 @@ class LiveAgentEvaluationTests(unittest.TestCase):
         self.assertEqual(report["denominator"]["paired_trials"], 1)
         self.assertEqual(report["aggregate"]["direct"]["acceptance"], "1/1")
         self.assertEqual(report["aggregate"]["guided"]["acceptance"], "1/1")
-        for arm in (report["trials"][0]["direct"], report["trials"][0]["guided"]):
+        self.assertEqual(report["aggregate"]["routed"]["acceptance"], "1/1")
+        for arm in (
+            report["trials"][0]["direct"],
+            report["trials"][0]["guided"],
+            report["trials"][0]["routed"],
+        ):
             self.assertEqual(arm["metrics"]["model"], "unmeasured")
             self.assertEqual(arm["event_metadata"]["last_message_excerpt"], "verified")
         self.assertTrue(report["limitations"])
@@ -102,6 +107,11 @@ class LiveAgentEvaluationTests(unittest.TestCase):
     def test_guided_prompt_contains_required_workflow_and_scope(self) -> None:
         prompt = EVAL.PROMPTS["guided"].lower()
         for word in ("inspect", "run", "fix", "verify", "unrelated files"):
+            self.assertIn(word, prompt)
+
+    def test_routed_prompt_contains_bounded_dispatch_and_primary_ownership(self) -> None:
+        prompt = EVAL.PROMPTS["routed"].lower()
+        for word in ("eligible", "envelope", "authority", "spawn", "primary"):
             self.assertIn(word, prompt)
 
 

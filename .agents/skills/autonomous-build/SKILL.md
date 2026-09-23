@@ -57,6 +57,18 @@ the selected profile from `.codex/capabilities.toml` (or validate it with
 as hard guidance limits. Do not invent a second budget or a task-local
 orchestrator.
 
+## Routing eligibility and dispatch contract
+
+Routing is opt-in and advisory. The primary may delegate only an eligible,
+non-trivial task after writing a minimum-sufficient dispatch envelope containing
+the exact task ID and text, requirement/interface trace, acceptance rubric,
+allowed paths, dependency state, verification command, risk/review signals,
+side-effect authority (normally none), escalation rule, and `max_depth = 1`.
+The worker may not add paths, spawn another worker, change authority, or publish
+results. Ineligible, trivial, unsupported, or runtime-unverified work stays on
+the primary path; the primary owns integration, acceptance, and the evidence
+status for requested versus observed routing.
+
 Budget accounting is precise.
 `one iteration` means one implement + focused-check + critique pass.
 `one review cycle` means one independent reviewer pass and one correction round.

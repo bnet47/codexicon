@@ -712,6 +712,37 @@ class CodexiconManagerTests(unittest.TestCase):
         with self.assertRaisesRegex(CODEXICON.CodexiconError, "source digest"):
             CODEXICON.tasks_set_state(root, "T-001", "DONE", evidence=json.dumps(stale))
 
+    def test_done_preserves_and_validates_routing_evidence(self) -> None:
+        root = self.temp_dir / "project"
+        root.mkdir()
+        self.write_contract(root)
+        self.write_extended_tasks(
+            root,
+            "| T-001 | ACTIVE | R-001 | I-001 | src | `python -m unittest tests.test_codexicon` | None | None | None |\n",
+        )
+        routing = {
+            "schema_version": 1,
+            "requested_role": "implementer",
+            "requested_tier": "low-risk",
+            "requested_model": None,
+            "requested_effort": "low",
+            "observed_role": None,
+            "observed_tier": None,
+            "observed_model": None,
+            "observed_effort": None,
+            "status": "configured_unverified",
+            "evidence_source": "client metadata unavailable",
+            "max_depth": 1,
+        }
+        evidence = json.loads(self.task_evidence(root, routing=routing))
+        CODEXICON.tasks_set_state(root, "T-001", "DONE", evidence=json.dumps(evidence))
+        stored = json.loads(CODEXICON.task_rows(root)[1][0]["evidence"])
+        self.assertEqual(stored["routing"]["status"], "configured_unverified")
+
+        invalid = json.loads(self.task_evidence(root, routing={**routing, "status": "observed"}))
+        with self.assertRaisesRegex(CODEXICON.CodexiconError, "observed routing requires"):
+            CODEXICON.validate_task_evidence(root, CODEXICON.task_rows(root)[1][0], invalid)
+
     def test_complete_requires_acceptance_coverage_and_final_checks(self) -> None:
         root = self.temp_dir / "project"
         root.mkdir()
@@ -1659,9 +1690,10 @@ class CodexiconManagerTests(unittest.TestCase):
 
         unsafe = source.replace("git = false", "git = true", 1)
         (root / ".codex" / "capabilities.toml").write_text(unsafe, encoding="utf-8")
+        authority_line = unsafe.splitlines().index("git = true") + 1
         with self.assertRaisesRegex(
             CODEXICON.CodexiconError,
-            r"\.codex/capabilities\.toml:5: authority\.git must remain false",
+            rf"\.codex/capabilities\.toml:{authority_line}: authority\.git must remain false",
         ):
             CODEXICON.validate_capability_policy(root)
 
@@ -1732,6 +1764,24 @@ class CodexiconManagerTests(unittest.TestCase):
         with self.assertRaisesRegex(
             CODEXICON.CodexiconError,
             rf"\.codex/capabilities\.toml:{contradictory_line}: profiles\.balanced\.escalation\.external_writes",
+        ):
+            CODEXICON.validate_capability_policy(root)
+
+    def test_capability_policy_accepts_optional_routing_and_rejects_depth_expansion(self) -> None:
+        root = self.temp_dir / "project"
+        (root / ".codex").mkdir(parents=True)
+        source = (ROOT / ".codex" / "capabilities.toml").read_text(encoding="utf-8")
+        (root / ".codex" / "capabilities.toml").write_text(source, encoding="utf-8")
+        policy = CODEXICON.validate_capability_policy(root)
+        self.assertFalse(policy["routing"]["enabled"])
+        self.assertEqual(policy["routing"]["worker_eligibility"], "explicit")
+        self.assertEqual(policy["routing"]["max_depth"], 1)
+
+        invalid = source.replace("max_depth = 1", "max_depth = 2", 1)
+        (root / ".codex" / "capabilities.toml").write_text(invalid, encoding="utf-8")
+        with self.assertRaisesRegex(
+            CODEXICON.CodexiconError,
+            r"routing\.max_depth must be an integer from 1 through 1",
         ):
             CODEXICON.validate_capability_policy(root)
 

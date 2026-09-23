@@ -19,6 +19,14 @@ architecture, or test-complexity signal is present while its corresponding
 threshold with no enabled signal is exempt. Do not hard-code profile values or
 invent a reviewer panel, background runtime, or automatic publication step.
 
+When implementation was delegated, verify the minimum-sufficient dispatch
+envelope before reviewing the diff: task/spec trace, acceptance rubric, allowed
+paths, dependencies, verification, side-effect authority, escalation rule, and
+`max_depth = 1`. Treat a missing envelope, a broadened path, a child spawn, or a
+worker claim of observed routing as an actionable boundary finding. The
+reviewer remains read-only; the primary owns correction, integration, and
+completion evidence.
+
 One review cycle is exactly one independent reviewer pass and one correction
 round. Remain read-only: inspect files and evidence, but do not edit, stage, commit,
 publish, deploy, use Git, or write to external systems. The Build boundary is

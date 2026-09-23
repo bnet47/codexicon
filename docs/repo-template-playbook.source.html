@@ -1046,6 +1046,7 @@
     <div class="card capability-panel">
       <h3>Inspect the selected profile</h3>
       <p>Read <code>.codex/capabilities.toml</code> and run <code>python scripts/codexicon.py capabilities --json</code>. The validated <code>strict</code>, <code>balanced</code>, and <code>autonomous</code> profiles provide positive budgets, review triggers, and verification tiers. They guide reversible workflow choices; they do not add a daemon, scheduler, second task engine, or Git/deployment/credential/external-write/publication authority.</p>
+      <p><strong>Opt-in routing:</strong> the optional routing block is disabled by default. Eligible delegation requires a complete task envelope, <code>max_depth = 1</code>, and primary-owned review/integration. Ineligible or runtime-unverified work stays on the primary path; routing receipts distinguish requested/configured values from observed runtime evidence, and reusable guidance never pins a model/provider identity.</p>
     </div>
     <div class="route-list" role="table" aria-label="Capability contract">
       <div class="route-head" role="row">

@@ -50,6 +50,13 @@ For a triggered diff, delegate the independent read-only pass to the
 
 When the result came from an engineering loop, review the combined changed paths after integration. Do not treat a passing subagent report as final evidence; inspect the files and canonical checks.
 
+For delegated implementation, first check the minimum-sufficient dispatch
+envelope: task/spec trace, acceptance rubric, exact paths, dependencies,
+verification, side-effect authority, escalation, and `max_depth = 1`. A worker
+must not broaden paths or authority, spawn a child, self-accept, or claim that
+requested/configured routing proves observed runtime behavior. The primary owns
+any correction and integration.
+
 ## Findings threshold
 
 Report only issues that can cause:

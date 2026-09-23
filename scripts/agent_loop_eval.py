@@ -32,6 +32,11 @@ SCENARIO_IDS = (
     "protected-path-attempt",
     "playbook-routing",
 )
+ROUTED_SCENARIO_IDS = (
+    "routed-eligible",
+    "routed-ineligible-fallback",
+    "routed-runtime-unavailable",
+)
 
 
 @dataclass(frozen=True)
@@ -269,6 +274,40 @@ SCENARIO_FIXTURES = (
     ),
 )
 
+ROUTED_SCENARIO_FIXTURES = (
+    ScenarioFixture(
+        "routed-eligible",
+        _events(
+            {"kind": "routing", "status": "observed", "value": "observed", "role": "implementer", "depth": 1},
+            {"kind": "dispatch", "value": "minimum-sufficient-envelope"},
+            {"kind": "review", "value": "primary-owned"},
+            {"kind": "acceptance", "passed": True},
+        ),
+        "Delegate one eligible task with a complete envelope, one worker depth, and primary-owned review.",
+        (("routing", "observed"), ("dispatch", "minimum-sufficient-envelope"), ("review", "primary-owned")),
+    ),
+    ScenarioFixture(
+        "routed-ineligible-fallback",
+        _events(
+            {"kind": "routing", "status": "primary", "value": "primary", "reason": "ineligible"},
+            {"kind": "dispatch", "value": "not-created"},
+            {"kind": "acceptance", "passed": True},
+        ),
+        "Keep ineligible work on the primary path without creating a delegated dispatch.",
+        (("routing", "primary"), ("dispatch", "not-created")),
+    ),
+    ScenarioFixture(
+        "routed-runtime-unavailable",
+        _events(
+            {"kind": "routing", "status": "unavailable", "value": "unavailable"},
+            {"kind": "dispatch", "value": "primary-fallback"},
+            {"kind": "acceptance", "passed": True},
+        ),
+        "Record unavailable runtime routing evidence and fall back to the primary owner.",
+        (("routing", "unavailable"), ("dispatch", "primary-fallback")),
+    ),
+)
+
 
 def _validate_fixture_ids(fixtures: Iterable[Any], expected: tuple[str, ...], label: str) -> None:
     actual = tuple(fixture.id for fixture in fixtures)
@@ -328,6 +367,11 @@ def run_scenarios() -> tuple[ScenarioResult, ...]:
     return tuple(evaluate_scenario(fixture) for fixture in SCENARIO_FIXTURES)
 
 
+def run_routed_scenarios() -> tuple[ScenarioResult, ...]:
+    _validate_fixture_ids(ROUTED_SCENARIO_FIXTURES, ROUTED_SCENARIO_IDS, "routed scenario")
+    return tuple(evaluate_scenario(fixture) for fixture in ROUTED_SCENARIO_FIXTURES)
+
+
 def run_regressions(root: Path = ROOT) -> tuple[RegressionResult, ...]:
     _validate_fixture_ids(REGRESSION_FIXTURES, REC_IDS, "regression")
     results: list[RegressionResult] = []
@@ -353,6 +397,7 @@ def run_regressions(root: Path = ROOT) -> tuple[RegressionResult, ...]:
 
 def build_report(root: Path = ROOT, *, include_regressions: bool = True) -> dict[str, Any]:
     scenarios = run_scenarios()
+    routed_scenarios = run_routed_scenarios()
     regressions = run_regressions(root) if include_regressions else ()
     scenario_metrics: dict[str, dict[str, int]] = {}
     for name in (
@@ -399,6 +444,27 @@ def build_report(root: Path = ROOT, *, include_regressions: bool = True) -> dict
                 result.metrics["acceptance_denominator"] for result in scenarios
             ),
             "results": [asdict(result) for result in scenarios],
+        },
+        "routed_arm": {
+            "passed": sum(result.passed for result in routed_scenarios),
+            "denominator": len(routed_scenarios),
+            "acceptance_passed": sum(result.acceptance_passed for result in routed_scenarios),
+            "acceptance_denominator": sum(
+                result.metrics["acceptance_denominator"] for result in routed_scenarios
+            ),
+            "results": [asdict(result) for result in routed_scenarios],
+            "status": "measured deterministic policy fixtures; live routing unavailable unless observed",
+        },
+        "paired_evaluation": {
+            "direct_baseline": {
+                "scenario_count": len(scenarios),
+                "acceptance_passed": sum(result.acceptance_passed for result in scenarios),
+            },
+            "routed": {
+                "scenario_count": len(routed_scenarios),
+                "acceptance_passed": sum(result.acceptance_passed for result in routed_scenarios),
+            },
+            "comparison": "not a superiority claim; fixture sets have different denominators",
         },
         "scenario_metrics": scenario_metrics,
         "measures": measures,

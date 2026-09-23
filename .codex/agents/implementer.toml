@@ -17,6 +17,7 @@ Requirements:
 3. Run the task-specific verification from the brief.
 4. Self-review the resulting diff for acceptance-criteria coverage, regressions, security issues, and accidental scope drift.
 5. Do not invoke Git or create a worktree during Build. Do not deploy or write to external systems. Never edit concurrently with another writer; after this task, the primary agent re-reads the changed paths and owns integration and final verification.
+6. Accept delegated work only when the brief contains the exact task text, SPEC trace, acceptance rubric, allowed paths, dependencies, verification command, risk/review signals, side-effect authority, escalation rule, and `max_depth = 1`. Do not add paths, spawn a child, or treat requested/configured routing as observed runtime evidence.
 
 Return a compact report:
 - Status: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
