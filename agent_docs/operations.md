@@ -22,6 +22,24 @@
 - **Health signals:** [startup, readiness, liveness, dependency health]
 - **Synthetic or smoke checks:** [scope, frequency, owner]
 
+## Local behavior-verification paths
+
+For each relevant product surface, record the project-owned launch path, safe
+seed/reset procedure, observable behavior, and a reproducible check. Use only
+synthetic or otherwise approved data. Mark missing launch, render, desktop, or
+readback infrastructure as unmeasured; do not substitute source inspection for
+an outcome that requires a live interaction.
+
+| Surface | Project launch / entry point | Safe fixture / seed and reset | Observable state or artifact | Reproducible outcome check | Missing infrastructure / partial coverage |
+|---|---|---|---|---|---|
+| Web | [command, URL, readiness signal] | [synthetic input and reset] | [rendered DOM/accessibility state and persisted result] | [browser interaction and expected readback] | [browser, server, or storage observer gaps] |
+| CLI | [command and required arguments] | [safe input fixture] | [exit status, stdout/stderr, output artifact] | [expected values and comparison command] | [missing runtime or unsupported platform] |
+| Native desktop | [app launch path] | [safe local sample and reset] | [visible control, accessibility state, or saved artifact] | [fresh snapshot/action/fresh snapshot or artifact check] | [app, accessibility, or artifact observer gaps] |
+
+Keep these checks separate from the canonical lint and test commands: a unit
+test can prove a code path while the running UI or desktop outcome remains
+unmeasured.
+
 ## Dependency and failure behavior
 
 | Dependency | Timeout | Retry / idempotency | Degraded behavior | Alert / owner |

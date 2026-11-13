@@ -31,6 +31,7 @@ When the user has no preference, recommend the smallest stack that fits the char
 - Replace the template reporting guidance in `SECURITY.md` with the project's real private vulnerability route and accountable response owner before public or production use.
 - Complete the applicable boundaries and owners in `agent_docs/security.md` and `agent_docs/operations.md`; remove irrelevant template prompts rather than claiming they pass.
 - Create the actual stack skeleton and package metadata; remove template-only code that conflicts with it.
+- Record each relevant project-owned behavior-verification path in `agent_docs/operations.md`: launch or entry-point command, safe seeded input and reset, the state or artifact to observe, reproducible outcome check, and any missing infrastructure or partial coverage. Keep source/unit checks distinct from live behavior evidence.
 - Replace `scripts/setup.sh`, `dev.sh`, `lint.sh`, and `test.sh` with real commands. Replace `deploy.sh` only when deployment is in scope.
 - Preserve `scripts/security.sh` and `scripts/security.ps1` as equivalent gates. Add ecosystem dependency, image, or infrastructure audits when applicable; do not remove the built-in credential scan without an equal or stronger local replacement.
 - Make an explicit static-analysis decision for the configured source languages and platform. Prefer repository-level GitHub CodeQL default setup when the repository is eligible and the stack is supported; otherwise select an appropriate SAST alternative or document why static analysis is not applicable. Record the scanner, language scope, triggers, alert owner, and query/rule policy in `agent_docs/security.md`. Do not enable an external service or commit a reusable provider workflow without explicit authority and confirmed repository eligibility.
@@ -58,6 +59,23 @@ Run the configured commands, in order, through the platform path used by the pro
 Use the equivalent `.ps1` commands on native Windows when those are the configured platform path.
 
 Start the development command long enough to confirm it launches when practical, then stop it cleanly.
+
+For each supported behavior surface, follow the recorded check path where its
+prerequisites exist:
+
+- **Web:** launch the project, use a safe fixture and reset path, interact with
+  the rendered page, then read back the visible/accessibility state and any
+  persisted result. Source inspection and unit tests are supporting evidence.
+- **CLI:** run the project entry point with documented synthetic or otherwise
+  safe input; check exit status, output, and any declared artifact against the
+  expected result.
+- **Native desktop:** open the documented app, take a fresh accessibility
+  snapshot, perform the required action, and verify with a new snapshot or a
+  saved artifact.
+
+When a browser, desktop app, fixture, or readback path is unavailable, record
+the exact gap and mark that surface unmeasured or partially covered. Do not
+infer a live outcome from source inspection alone.
 
 After the project is trusted in Codex, use `/hooks` and the live smoke checklist in `docs/codex.md`. Report hook enforcement as unverified until that surface-specific check succeeds.
 

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review queue</title>
+  <main>
+    <h1>Review queue</h1>
+    <p id="status" role="status" aria-live="polite">Pending</p>
+    <button id="approve" type="button">Approve</button>
+  </main>
+  <script>
+    const status = document.querySelector("#status");
+    document.querySelector("#approve").addEventListener("click", () => {
+      status.textContent = "Approved";
+      document.body.dataset.reviewState = "approved";
+      localStorage.setItem("reviewState", "approved");
+    });
+  </script>
+</html>

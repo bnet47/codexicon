@@ -119,6 +119,27 @@ command or tool names never establish compatibility. The policy and profiles do
 not add a daemon, scheduler, third-party memory service, Git operation,
 deployment, credential access, external-write, or publication step.
 
+## Method selection for substantial work
+
+Before a substantial or uncertain task, write a short method note from the task
+rubric: intended outcome, first useful observation, preferred available method,
+safe fallback, and outcome verifier. Keep a known, low-risk fix on the direct
+path. For an ambiguous defect, start with the smallest probe that separates
+plausible causes. For conflicting sources, record source precedence and
+reconcile the selected values independently. When acceptance includes a web UI
+result, use a rendered interaction and read back the resulting DOM or saved
+state. When acceptance includes a native desktop action, use a fresh app
+snapshot, act through its current controls, and verify with a new snapshot or
+saved artifact.
+
+Prefer an approved API or connector when it provides the same outcome and
+verification. Use an interaction surface when the interaction itself is part
+of acceptance. If the preferred tool is unavailable, use only an authorized
+fallback with the same acceptance evidence; otherwise record the missing
+capability and stop at the existing blocker or escalation gate. This note does
+not create extra retries, change authority, or promote the staged candidate in
+[`agent_docs/experiments/method-selection.md`](../agent_docs/experiments/method-selection.md).
+
 ## Brief template
 
 Every delegated task should state:

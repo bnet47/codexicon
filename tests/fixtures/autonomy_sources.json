@@ -1,0 +1,9 @@
+{
+  "precedence": "For each account, use the latest dated record. A later record replaces an earlier record for that same account. Sum one selected value per account and report the selected evidence IDs.",
+  "records": [
+    {"id": "S-101", "account": "north", "amount": 100, "as_of": "2026-11-10"},
+    {"id": "S-102", "account": "north", "amount": 120, "as_of": "2026-11-12", "corrects": "S-101"},
+    {"id": "S-201", "account": "south", "amount": 80, "as_of": "2026-11-11"},
+    {"id": "S-202", "account": "south", "amount": 25, "as_of": "2026-11-13"}
+  ]
+}

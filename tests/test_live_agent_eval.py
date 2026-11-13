@@ -7,6 +7,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -70,6 +72,7 @@ class LiveAgentEvaluationTests(unittest.TestCase):
             result = EVAL.invoke_codex("codex", Path(name), "prompt", runner=timeout_runner)
         self.assertEqual(result["exit_status"], "timeout")
         self.assertTrue(result["interrupted"])
+        self.assertTrue(result["invocation_started"])
         self.assertNotIn("secret", json.dumps(result))
 
     def test_report_schema_has_smoke_denominator_and_unmeasured_metrics(self) -> None:
@@ -113,6 +116,120 @@ class LiveAgentEvaluationTests(unittest.TestCase):
         prompt = EVAL.PROMPTS["routed"].lower()
         for word in ("eligible", "envelope", "authority", "spawn", "primary"):
             self.assertIn(word, prompt)
+
+
+class PairedRunnerTests(unittest.TestCase):
+    def test_paired_runner_uses_same_prompt_and_records_unobserved_pickup(self) -> None:
+        prompts = []
+        inputs = []
+
+        def fake_codex(command, **kwargs):
+            workspace = Path(kwargs["cwd"])
+            prompts.append(command[-1])
+            inputs.append(
+                tuple(
+                    (workspace / relative).read_bytes()
+                    for relative in ("SPEC.md", "TASKS.md", "calculator.py", "test_calculator.py")
+                )
+            )
+            (workspace / "calculator.py").write_text(
+                "def add(left, right):\n    return left + right\n",
+                encoding="utf-8",
+            )
+            return SimpleNamespace(
+                returncode=0,
+                stdout='{"type":"item.completed"}\n',
+                stderr="",
+            )
+
+        report, status = EVAL.run_paired(
+            fixture_id="calculator",
+            runs=1,
+            baseline_source=ROOT,
+            codex_executable="codex",
+            runner=fake_codex,
+            version_probe=lambda _: {"status": "measured", "value": "codex-test 1.0"},
+        )
+        self.assertEqual(status, 0)
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(
+            report["denominator"],
+            {
+                "paired_trials": 1,
+                "plain_runs": 1,
+                "starter_runs": 1,
+                "planned_arm_trials": 2,
+                "attempted_arm_trials": 2,
+            },
+        )
+        self.assertEqual(prompts[0], prompts[1])
+        self.assertEqual(inputs[0], inputs[1])
+        plain = report["trials"][0]["arms"]["plain"]
+        starter = report["trials"][0]["arms"]["starter"]
+        self.assertTrue(plain["accepted"])
+        self.assertTrue(starter["accepted"])
+        self.assertFalse(plain["starter_staged"])
+        self.assertTrue(starter["starter_staged"])
+        self.assertEqual(starter["client_pickup_status"], "unmeasured")
+        self.assertEqual(starter["method_observation_status"], "unmeasured")
+        self.assertEqual(starter["unauthorized_attempt_status"], "unmeasured")
+        self.assertEqual(report["settings"]["client_version"], {"status": "measured", "value": "codex-test 1.0"})
+
+    def test_unavailable_codex_does_not_start_trials(self) -> None:
+        report, status = EVAL.run_paired(
+            fixture_id="calculator",
+            baseline_source=ROOT,
+            codex_executable=None,
+            which=lambda _: None,
+        )
+        self.assertEqual(status, 2)
+        self.assertEqual(report["status"], "unavailable")
+        self.assertEqual(report["trials"], [])
+
+    def test_codex_launch_failure_is_unavailable_and_not_an_attempted_trial(self) -> None:
+        def missing_executable(*args, **kwargs):
+            raise FileNotFoundError("codex executable disappeared")
+
+        report, status = EVAL.run_paired(
+            fixture_id="calculator",
+            baseline_source=ROOT,
+            codex_executable="codex",
+            runner=missing_executable,
+            version_probe=lambda _: {"status": "unmeasured", "value": None},
+        )
+
+        self.assertEqual(status, 2)
+        self.assertEqual(report["status"], "unavailable")
+        self.assertEqual(report["denominator"]["planned_arm_trials"], 2)
+        self.assertEqual(report["denominator"]["attempted_arm_trials"], 0)
+        self.assertEqual(len(report["trials"]), 1)
+        for label in ("plain", "starter"):
+            arm = report["trials"][0]["arms"][label]
+            self.assertEqual(arm["trial_status"], "unavailable")
+            self.assertFalse(arm["invocation_started"])
+            self.assertEqual(arm["verification_status"], "unmeasured")
+            self.assertEqual(report["aggregate"][label]["attempted"], 0)
+            self.assertEqual(report["aggregate"][label]["unavailable"], 1)
+
+    def test_legacy_smoke_text_keeps_the_original_acceptance_format(self) -> None:
+        report = {
+            "status": "passed",
+            "denominator": {"paired_trials": 1},
+            "aggregate": {
+                label: {
+                    "acceptance": "1/1",
+                    "denominator": 1,
+                    "regressions": 0,
+                    "elapsed_seconds": 0.1,
+                }
+                for label in ("direct", "guided", "routed")
+            },
+        }
+        output = StringIO()
+        with redirect_stdout(output):
+            EVAL._print_report(report, as_json=False)
+        self.assertIn("direct: accepted 1/1;", output.getvalue())
+        self.assertNotIn("1/1/1", output.getvalue())
 
 
 if __name__ == "__main__":

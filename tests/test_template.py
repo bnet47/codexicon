@@ -697,7 +697,7 @@ class TemplateValidationTests(unittest.TestCase):
         table_lines = [
             line for line in capability_section.splitlines() if line.startswith("|")
         ]
-        self.assertEqual(len(table_lines), 7)  # header, separator, and five surfaces
+        self.assertEqual(len(table_lines), 8)  # header, separator, and six capability surfaces
         header = [cell.strip() for cell in table_lines[0].strip("|").split("|")]
         expected_header = [
             "Surface",
@@ -778,6 +778,26 @@ class TemplateValidationTests(unittest.TestCase):
             cells = [cell.strip() for cell in line.strip("|").split("|")]
             self.assertEqual(cells[1], "1")
             self.assertTrue(cells[2] and cells[3] and cells[4])
+
+    def test_init_workflow_records_surface_specific_behavior_checks(self) -> None:
+        init_skill = (ROOT / ".agents" / "skills" / "init" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        operations = (ROOT / "agent_docs" / "operations.md").read_text(encoding="utf-8")
+        contracts = (ROOT / "docs" / "build-contracts.md").read_text(encoding="utf-8")
+        combined = " ".join((init_skill + operations + contracts).split()).lower()
+        for phrase in (
+            "project-owned behavior-verification path",
+            "safe seeded input and reset",
+            "reproducible outcome check",
+            "missing infrastructure or partial coverage",
+            "rendered page",
+            "native desktop",
+            "fresh snapshot",
+            "surface unmeasured",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, combined)
 
     def test_eval_documents_repeat_provenance_and_unmeasured_client_semantics(self) -> None:
         matrix = (ROOT / "docs" / "evals" / "capability-matrix.md").read_text(

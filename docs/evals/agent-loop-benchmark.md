@@ -28,6 +28,113 @@ and failed-run outcomes are nonzero and remain explicit in the sanitized
 report; model, token, cost, and tool-call fields are `unmeasured` unless the
 CLI exposes reliable values.
 
+## Paired starter pilot
+
+`--paired` compares a plain client workspace with a real Codexicon scaffold and
+an optional reviewed candidate scaffold. Each arm gets the same versioned
+synthetic project contract, fixture files, task text, invocation timeout, and
+independent verifier. The runner creates a fresh workspace and ephemeral
+client session per arm, rotates arm order, records the scaffold source digest,
+and checks cleanup before counting acceptance. The synthetic `SPEC.md` and
+`TASKS.md` are generated for each fixture; this repository's development
+contract, task ledger, `.codex-state`, sessions, and transcripts are excluded.
+
+The fixture catalog is versioned in `scripts/autonomy_eval.py` and has three
+pilot tasks:
+
+| Fixture | Independent outcome check | Required capability |
+|---|---|---|
+| `debug` | Non-executing AST evaluator checks content dimensions across several inputs and a neighboring asset-bound behavior | Python source repair |
+| `browser-flow` | A real click followed by visible DOM and saved-state readback; source inspection alone stays unmeasured | Rendered browser interaction |
+| `source-report` | JSON parser checks the total and selected evidence IDs against dated source precedence | Structured source reconciliation |
+
+The verifier never executes agent-written Python from the workspace. It uses a
+small AST arithmetic subset for the Python fixtures and parses JSON outputs for
+the source-report fixture. `browser-flow` remains unmeasured unless a trusted
+browser observation is supplied; its local observation comparator tests only
+the expected shape, not runtime provenance. Changed files and unauthorized
+action attempts are separate fields. An action-attempt signal stays
+`unmeasured` unless the client exposes it.
+
+Run two paired trials per fixture against the reviewed starter source:
+
+```text
+python scripts/live_agent_eval.py --paired --fixture debug --runs 2 --baseline-source . --json
+python scripts/live_agent_eval.py --paired --fixture browser-flow --runs 2 --baseline-source . --json
+python scripts/live_agent_eval.py --paired --fixture source-report --runs 2 --baseline-source . --json
+```
+
+Add `--candidate-source PATH` to compare a separately reviewed candidate.
+`--timeout-seconds N` is the hard limit for each model invocation. The CLI
+version is read with a bounded `--version` call; model, tokens, cost, tool
+calls, activation, and unavailable runtime capabilities remain unmeasured
+unless the invoking client exposes reliable evidence. The runner discards raw
+event payloads and stores sanitized event metadata only. Reports distinguish
+`passed`, `failed`, `unavailable`, and `unmeasured`; a missing rendered-browser
+observation cannot count as acceptance.
+
+### T-038 live pilot observation · 2026-11-14
+
+The invoking CLI exposed version `codex-cli 0.167.0-alpha.4.1`. The pilot used
+two paired repeats per attempted fixture. Debug used the default 90-second
+per-invocation ceiling. Source-report used a 45-second ceiling after the
+debug batch timed out. Each report recorded plain and starter arms separately,
+with pickup, model, token, cost, and tool-call telemetry unmeasured.
+
+| Fixture | Plain | Codexicon starter | Scope / cleanup | Observation |
+|---|---:|---:|---|---|
+| `debug` | 0/2 accepted; 1 timeout, 1 completed run failed oracle; 175.139s total | 0/2 accepted; 2 timeouts; 184.734s total | All four passed scope and cleanup checks | No live advantage measured; 3/4 invocations timed out |
+| `source-report` | 0/2 accepted; 2 timeouts; 90.850s total | 0/2 accepted; 2 timeouts; 91.557s total | All four passed scope and cleanup checks | No live advantage measured; 4/4 invocations timed out |
+| `browser-flow` | 0 arms | 0 arms | Not run | Unmeasured because the runner has no trusted rendered-browser and saved-state observer |
+
+These outcomes do not show that either workflow is superior. The offline
+fixture oracles discriminate known-good and plausible wrong results, but the
+Codex client did not complete enough trials to compare success rates. Browser
+source inspection and the deterministic DOM-shape comparator are not live
+rendered interaction evidence. Retain current recovery defaults and collect
+held-out live evidence only when the client can complete within the declared
+budget. The runner reported no reliable cost, token, tool-call, pickup, or
+intervention telemetry. Baseline starter source identity was
+`sha256:0f5db1e6c0ae8e5aec408c5633d71b53f50b2354f693e827e367e12c3ed34c2a`.
+Reconstruct a clean staged project with `python scripts/scaffold.py <empty-temp-target> --source .`;
+the paired command emits the reviewed source identity again so a later run can
+check it before comparison.
+
+## Adaptive-autonomy update · 2026-11-14
+
+The T-040 recovery protocol compares plain, frozen-starter, and recovery
+candidate arms for a missing preferred tool and an interruption after partial
+progress, with a normal `debug` control. The live failure-case denominator was
+two repeats × three arms for each case; both cases had zero attempted arms.
+Tool availability was not independently observable, and the interrupted case
+had neither a trusted rendered-state observer nor a client continuation signal.
+The exact reasons and the retained-default decision are in
+[`adaptive-autonomy-pilot.md`](adaptive-autonomy-pilot.md).
+
+T-041 adds a method-selection decision table for direct changes, diagnosis,
+source reconciliation, rendered web interaction, native desktop readback, and
+same-verifier fallback. The staged method candidate has starter identity
+`sha256:c86d9a351e523dbc8bdfeaf14500ae3054389fd2c5ba1fa283eee05c766ae4fa` and
+remains inactive. T-042 makes `$init` record a project's actual launch, safe
+seed/reset, observable result, and reproducible outcome check per relevant
+surface. Missing browser or desktop infrastructure remains an explicit
+unmeasured boundary.
+
+T-043 adds a maintainer-only comparison of current `$autonomous-build`, the
+method-selection candidate, and a no-skill control on positive, near-miss, and
+held-out cases. Its local integration test checks 9 mock arm outcomes; it is
+not live-client evidence. The runner records skill presence separately from
+invocation and reports `unmeasured` until a trusted invocation signal exists.
+No live skill comparison was run because previous CLI trials timed out and no
+such signal is exposed. See
+[`skill-comparison.md`](skill-comparison.md).
+
+The current decision is to keep the recovery and method candidates inactive.
+The results do not support model selection, increased delegation, automatic
+skill promotion, or automatic installation of specialist desktop/security
+integrations. These require separate capability evidence and an explicit
+maintainer decision.
+
 ## Goal
 
 Determine whether selective delegation improves acceptance quality, review coverage, or elapsed time enough to justify its additional token and coordination cost.

@@ -24,6 +24,9 @@ Use the project’s current behavior and accepted decisions as the source of tru
 - root `SPEC.md`, `TASKS.md`, and `$autonomous-build` after reviewing local task and contract conventions;
 - the unified `$discover`/`$spec`/`$brainstorm` → `SPEC.md`, `$write-plan` → `TASKS.md`, `$execute-plan` adapter, and `$quick` trace gates after reviewing local routing and writer ownership;
 - the validated `.codex/capabilities.toml` profiles and their bounded refinement, selective review, and verification-tier guidance after comparing local authority and evidence policy;
+- the method-selection protocol after checking project tools and verifiers; keep known, low-risk changes direct and use a fallback only when it is authorized and provides the same acceptance evidence;
+- the initialized-project verification table after filling in real launch, safe seed/reset, observable state, outcome check, and missing infrastructure for each relevant web, CLI, or desktop surface;
+- skill-comparison tooling only after pinning current and candidate sources and reviewing positive, near-miss, and held-out cases; skill presence does not establish invocation and candidates are never auto-promoted.
 
 Review each change for local path, runtime, policy, and platform assumptions before applying it.
 
@@ -66,6 +69,21 @@ maintainer has paired direct-versus-routed evidence. Preserve the one-writer
 Build boundary, exact dispatch envelope, `max_depth = 1`, primary-owned review,
 and requested/configured/observed evidence statuses. Existing policies and
 receipts without routing remain valid.
+
+## Adaptive-autonomy migration
+
+Adopt method-selection guidance and initialized-project verification paths as
+reviewable documentation. Preserve direct routing for trivial known changes,
+existing budgets, and the current authority boundary. Keep the recovery and
+method-selection skill candidates inactive until repeated, held-out outcomes
+and trusted activation evidence support a separate maintainer decision.
+
+The first-party skill comparison reports artifact quality separately from
+skill invocation. If the client does not expose a trustworthy invocation event,
+false triggers and missed triggers remain unmeasured; do not infer them from a
+skill file being present. Do not install or enable desktop or security skills
+automatically. Review external skill provenance, permissions, licensing, and
+local compatibility before considering installation.
 
 ## Coupled TruffleHog updates
 

@@ -205,6 +205,28 @@ Stop precedence is deterministic and does not override an open issue:
 No Stop outcome creates a daemon, scheduler, second task engine, or Ship
 authority.
 
+## Behavior verification on initialized projects
+
+Initialization records project-owned behavior checks in `agent_docs/operations.md`.
+For each relevant surface, specify its actual launch/entry point, safe fixture
+and reset, observable state or artifact, reproducible expected-result check,
+and missing infrastructure. Use synthetic or approved data and preserve the
+project's canonical lint/test commands.
+
+- **Web:** launch the app, seed/reset a safe case, perform the interaction in a
+  rendered browser, and read back visible/accessibility state plus persisted
+  state when applicable. Static source inspection and unit tests do not prove
+  the rendered outcome.
+- **CLI:** run the documented entry point with safe input and verify exit
+  status, output, and generated artifacts against expected values.
+- **Native desktop:** launch the app, take a fresh accessibility snapshot,
+  perform the action through current controls, then verify with a new snapshot
+  or saved artifact.
+
+If the required server, fixture, browser, desktop app, or observer is missing,
+record the exact gap and mark the surface unmeasured or partially covered. A
+passing source check cannot stand in for an unavailable live outcome check.
+
 ## Project-local capability policy
 
 `.codex/capabilities.toml` is a validated, descriptive policy for reversible

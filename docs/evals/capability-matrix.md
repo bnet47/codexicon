@@ -39,6 +39,24 @@ Every matrix row and published scenario record carries these fields:
 | Codex desktop/local client | Version/date not exposed; no trial | Client and platform not run | No direct observation; raw tool names or product labels are not evidence | 0 | A direct client trial would be required | No observation | Unmeasured | Unmeasured | Unmeasured | Unmeasured | unsupported/not run |
 | Browser/live client | Version/date not exposed; no trial | Browser client and platform not run | No direct observation; browser capability is not inferred from repository or tool names | 0 | A browser trial would be required | No observation | Unmeasured | Unmeasured | Unmeasured | Unmeasured | unsupported/not run |
 | POSIX host | Version/date not exposed; no run | POSIX host not run | No cross-platform inference from the Windows run | 0 | The deterministic suite would need to run natively on POSIX | No observation | N/A | Unmeasured | Unmeasured | Unmeasured | unsupported/not run |
+| Adaptive-autonomy paired pilot | codex-cli 0.167.0-alpha.4.1 / 2026-11-14 | Codex CLI on Windows host | Versioned synthetic fixtures, isolated plain/scaffold arms, independent non-executing AST and JSON oracles; no client pickup signal | Debug: 2 pairs / 4 arms; source-report: 2 pairs / 4 arms; browser-flow: 0 pairs / 0 arms | Complete two matched repeats for each fixture whose outcome verifier is available | Debug: 0/2 accepted in both arms; 3/4 invocations timed out, remaining plain arm completed but failed oracle. Source-report: 0/2 accepted in both arms; 4/4 invocations timed out. Browser-flow not run because no trusted rendered-state observer is wired into the runner. All attempted arms had passing scope and cleanup checks. | Unmeasured | Unmeasured | One debug client run completed but failed its oracle; seven other attempted runs timed out; browser unmeasured | Windows CLI exercised; no POSIX or rendered-browser verification | measured local evidence only |
+
+The T-038 baseline starter source identity is
+`sha256:0f5db1e6c0ae8e5aec408c5633d71b53f50b2354f693e827e367e12c3ed34c2a`.
+`python scripts/scaffold.py <empty-temp-target> --source .` reconstructs the
+starter files. The paired runner reports the source identity for each
+comparison so a reconstructed baseline can be checked before use.
+
+The recovery candidate identity, changed paths, and file hashes are recorded
+in [`agent_docs/experiments/adaptive-recovery.md`](../../agent_docs/experiments/adaptive-recovery.md).
+The T-040 scenario denominator and decision record are in
+[`adaptive-autonomy-pilot.md`](adaptive-autonomy-pilot.md). That report records
+two planned repeats across three arms for each recovery case, with zero live
+attempts for the tool-availability and interruption scenarios and the precise
+observation gaps that prevented them. The T-043 skill comparison and its
+separate invocation/outcome evidence are in
+[`skill-comparison.md`](skill-comparison.md); skill presence is not evidence
+that a client invoked the skill.
 
 The only measured support statement here is that the repository's deterministic
 checks ran on the recorded Windows/Python host. The matrix does not rank

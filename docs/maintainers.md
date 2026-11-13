@@ -44,6 +44,29 @@ The shell file supplies the standalone wrapper. Do not edit the generated standa
 
 Keep the `SKILL.md` body procedural and concise. Put detailed variant guidance in a directly linked reference only when the main workflow does not need it. Validate new or changed skills with the current official skill-creator validator, but never commit a machine-specific validator path. Implementation entry points must route to the root contract/register and shared Build states; pure explanations and read-only reviews remain exempt from code ceremonies.
 
+Before promoting a skill edit, stage a pinned current source, a candidate, and
+a no-skill control. Compare positive triggers, near misses, and held-out tasks
+with the same inputs, permissions, verifier, and bounded run count. Record skill
+presence separately from observed invocation; a skill file in the checkout or
+a model-written claim does not establish that it ran. Report outcome quality,
+false/missed triggers only from trustworthy activation evidence, and time/cost
+only when available. Keep a candidate inactive when the evidence is
+unmeasured, incomplete, tied, or regressive. Promotion requires a new
+maintainer decision record; a benchmark never promotes behavior by itself.
+
+The current first-party comparison protocol is
+[`evals/skill-comparison.md`](evals/skill-comparison.md). The adaptive autonomy
+pilot preserves the current defaults and records its missing live signals in
+the linked evaluation reports.
+
+## Updating initialized-project verification guidance
+
+Keep `$init`, `agent_docs/operations.md`, and `docs/build-contracts.md`
+synchronized. Require the initialized project to record its actual launch or
+entry point, safe seed/reset, observable result, reproducible outcome check,
+and missing infrastructure for relevant web, CLI, or native desktop surfaces.
+Do not present a source/unit check as proof of a rendered or native interaction.
+
 ## Supporting generated projects
 
 Projects created from Codexicon have independent histories and do not receive automatic updates. Keep `.codexicon.json` limited to real harness integration points and assign project-owned commands/guidance conservatively. Test adoption and update from the prior release: unchanged managed files update, retired unchanged files recoverably remove, local modifications conflict, malformed state fails safely, and no plan mode writes.

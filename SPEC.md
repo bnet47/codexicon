@@ -40,6 +40,15 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **R-030:** Bound delegated review and escalation to one worker depth, the existing iteration/review/failure budgets, and a primary-owned correction/integration path with no recursive spawning.
 - **R-031:** Preserve routing provenance as structured evidence that distinguishes requested, configured-but-unverified, observed, unavailable, and mismatched runtime values without raw prompts or secrets.
 - **R-032:** Evaluate direct and routed workflow arms with paired acceptance, intervention, regression, latency, and available cost/token measures before considering any default change.
+- **R-033:** Distinguish completed accepted live outcomes from partial checks and invalid comparisons.
+- **R-034:** Compare a plain client run with an actual Codexicon starter and track activation evidence.
+- **R-035:** Exercise multiple task types with independently verifiable outcomes and report bounded pilot denominators.
+- **R-036:** Change approach within the existing Build budget when a failure reveals a better route, using safe state re-observation on resume.
+- **R-037:** Evaluate recovery against a frozen baseline before changing default behavior.
+- **R-038:** Select a method from the task outcome, available tools, and quality of the evidence.
+- **R-039:** Give initialized projects a usable route to verify actual behavior.
+- **R-040:** Evaluate proposed skill changes against measured behavior and activation.
+- **R-041:** Integrate only behavior that meets the evaluation bar and report unsupported capabilities.
 
 ## Interfaces
 
@@ -68,6 +77,15 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **I-023:** The Build and execution contracts expose a minimum-sufficient dispatch envelope that a primary can inspect before delegating and that a worker cannot broaden.
 - **I-024:** Task evidence accepts and validates an additive routing envelope with requested/configured/observed values, status, evidence source, and depth.
 - **I-025:** The deterministic/live evaluation surfaces expose a paired direct-versus-routed arm and report unavailable routing/cost/client fields honestly.
+- **I-026:** Versioned task fixture and trial-result records include an independent verifier and explicit outcome, scope, and cleanup fields.
+- **I-027:** `scripts/live_agent_eval.py` offers paired isolated runs of the same fixture through a plain client and a Codexicon starter or reviewed candidate source.
+- **I-028:** A versioned fixture catalog and bounded pilot report record scope, denominator, verified outcomes, interventions, and available timing/cost.
+- **I-029:** Recovery guidance provides bounded evidence-seeking next steps and a compact section for existing project checkpoints.
+- **I-030:** A controlled recovery pilot records a promote, revise, or retain decision against matched baselines without changing defaults by itself.
+- **I-031:** Existing Build guidance provides a short method-selection step for substantial or uncertain tasks.
+- **I-032:** `$init` and `agent_docs/operations.md` describe project launch, fixture, observation, and outcome-check paths.
+- **I-033:** A maintainer-only skill comparison shares the benchmark runner and report format.
+- **I-034:** Maintainer guidance and a decision record link evaluated versions, outcomes, and retained defaults.
 
 ## Acceptance
 
@@ -104,6 +122,15 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **A-031:** Routing evidence round-trips all supported statuses and never treats requested or configured values as proof of observed runtime behavior.
 - **A-032:** Review failure, worker correction, and escalation consume existing bounded budgets and stop at the declared human boundary without a new scheduler or runtime.
 - **A-033:** The routed evaluation arm has the same acceptance rubric and isolated fixture as its direct baseline, records denominators and available measures, and cannot authorize a default change by itself.
+- **A-034:** A verifier pass cannot make an interrupted run, scope violation, cleanup failure, or invalid trial acceptable; positive and negative controls prove the acceptance gate.
+- **A-035:** Paired arms share task text, fixture data, model settings, permissions, budget, and grader; starter identity and observed or unmeasured activation are recorded.
+- **A-036:** Debugging, rendered workflow, and source reconciliation fixtures each reject a plausible wrong result; reports distinguish complete, failed, unavailable, and unmeasured arms.
+- **A-037:** Disproved approaches, unavailable tools, and uncertain prior actions lead to bounded evidence-seeking steps; resume rechecks relevant state and avoids repeating a possible mutation.
+- **A-038:** A frozen starter and recovery candidate receive matched failure and normal-control cases; defaults remain unchanged when evidence is unavailable, inconclusive, tied, or regressive.
+- **A-039:** Known fixes take the direct path; ambiguous defects select a diagnostic; UI claims select rendered interaction and meaningful readback; unavailable preferred tools yield an authorized fallback or precise blocker.
+- **A-040:** Web, CLI, and desktop examples identify applicable outcome checks and handle unavailable prerequisites; starter generation and native verification remain valid.
+- **A-041:** Current and candidate skills are compared on intended triggers, near misses, and held-out tasks; no trial promotes a skill automatically.
+- **A-042:** Maintainers can repeat comparisons, identify active behavior, and understand unmeasured areas; canonical verification succeeds and distinct queue blockers remain visible.
 
 ## Anti-goals
 
@@ -131,3 +158,5 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **2026-09-11:** Authorized implementation of the evolution brief's bounded capability layer: validated profiles, quality/refinement guidance, selective review, verification tiers, decision visibility, and capability evidence. Preserve the no-daemon and explicit Ship boundaries.
 - **2026-09-11:** T-024 amendment clarifies A-024 and I-019: commit-only Ship requires full lint/test/security and tracked/history verification without release/publication evidence; publish, merge, or deploy requires release/publication checks only when that exact authority is explicitly requested. This clarification preserves safe inspection, the explicit Ship boundary, and every AG constraint; it grants no Build or publication authority.
 - **2026-09-23:** Authorized implementation of the adaptive-intelligence routing recommendations as an opt-in, evidence-first extension of the existing capability/task/evaluation layers. Preserve primary ownership, one-writer Build, existing budgets, no recursive delegation, no model pinning, and the explicit Ship boundary.
+- **2026-11-14:** Authorized implementation of the adaptive-autonomy evaluation and recovery milestone. Require independent outcome verification, matched starter comparisons, bounded synthetic recovery cases, and an evidence-based decision before changing default behavior.
+- **2026-11-14:** Following the T-040 decision to retain current recovery defaults, authorized the adaptive method-selection, project verification, and skill-comparison milestone. Candidates remain inactive until their evidence supports an explicit maintainer decision; no automatic promotion or new authority is granted.
