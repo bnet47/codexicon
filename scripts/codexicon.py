@@ -1982,10 +1982,10 @@ def _command_identity(command: Any) -> tuple[str, bool]:
     raise CodexiconError("task evidence requires a check command")
 
 
-def _declared_command_identity(value: str) -> str:
+def _declared_command_identities(value: str) -> tuple[str, ...]:
     spans = re.findall(r"`([^`]+)`", value)
-    command = spans[0] if spans else value
-    return " ".join(command.split())
+    commands = spans if spans else [value]
+    return tuple(" ".join(command.split()) for command in commands if command.strip())
 
 
 def _command_tokens(value: str) -> tuple[str, ...]:
@@ -2081,8 +2081,10 @@ def validate_task_evidence(
     if not isinstance(checks, list) or not checks:
         raise CodexiconError(f"task evidence for {row['id']} requires checks")
     normalized_checks: list[dict[str, Any]] = []
-    declared_command = _declared_command_identity(str(row["verification"]))
-    declared_tokens = _command_tokens(declared_command)
+    declared_tokens = {
+        _command_tokens(command)
+        for command in _declared_command_identities(str(row["verification"]))
+    }
     for check in checks:
         if not isinstance(check, dict):
             raise CodexiconError(f"task evidence for {row['id']} contains a malformed check")
@@ -2097,7 +2099,7 @@ def validate_task_evidence(
         check_result = check.get("result", result)
         if check_result != EVIDENCE_PASS:
             raise CodexiconError(f"task evidence check {identity} is not successful")
-        if identity not in CANONICAL_CHECKS and _command_tokens(command) != declared_tokens:
+        if identity not in CANONICAL_CHECKS and _command_tokens(command) not in declared_tokens:
             raise CodexiconError(
                 f"task evidence check {identity} does not match the task verification command"
             )
@@ -2156,14 +2158,18 @@ def _completion_evidence_issues(
             continue
         try:
             evidence = validate_task_evidence(root, row, row["evidence"], contract=contract)
-            declared_tokens = _command_tokens(_declared_command_identity(str(row["verification"])))
-            if not any(
-                check["identity"] not in CANONICAL_CHECKS
-                and _command_tokens(_command_identity(check["command"])[0]) == declared_tokens
+            declared_tokens = {
+                _command_tokens(command)
+                for command in _declared_command_identities(str(row["verification"]))
+            }
+            verified_tokens = {
+                _command_tokens(_command_identity(check["command"])[0])
                 for check in evidence["checks"]
-            ):
+                if check["identity"] not in CANONICAL_CHECKS
+            }
+            if not declared_tokens.issubset(verified_tokens):
                 raise CodexiconError(
-                    f"task evidence for {row['id']} requires a successful check matching its declared verification"
+                    f"task evidence for {row['id']} requires a successful check for every declared verification command"
                 )
         except CodexiconError as exc:
             issues.append(str(exc))
@@ -2190,14 +2196,18 @@ def _task_evidence_for_done(
     """Validate a DONE receipt and return its stable JSON representation."""
 
     normalized = validate_task_evidence(root, row, raw, contract=contract)
-    declared_tokens = _command_tokens(_declared_command_identity(str(row["verification"])))
-    if not any(
-        check["identity"] not in CANONICAL_CHECKS
-        and _command_tokens(_command_identity(check["command"])[0]) == declared_tokens
+    declared_tokens = {
+        _command_tokens(command)
+        for command in _declared_command_identities(str(row["verification"]))
+    }
+    verified_tokens = {
+        _command_tokens(_command_identity(check["command"])[0])
         for check in normalized["checks"]
-    ):
+        if check["identity"] not in CANONICAL_CHECKS
+    }
+    if not declared_tokens.issubset(verified_tokens):
         raise CodexiconError(
-            f"task evidence for {row['id']} requires a successful check matching its declared verification"
+            f"task evidence for {row['id']} requires a successful check for every declared verification command"
         )
     return json.dumps(normalized, sort_keys=True, separators=(",", ":"))
 
@@ -3466,7 +3476,7 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_parser.add_argument("--mode", choices=VERIFICATION_MODES, default=BUILD_MODE)
 
     verify_parser = subparsers.add_parser("verify", help="run project-defined canonical checks")
-    verify_parser.add_argument("checks", nargs="*", choices=CANONICAL_CHECKS)
+    verify_parser.add_argument("checks", nargs="*", help="optional subset: lint, test, security")
     verify_parser.add_argument("--root", type=Path, default=ROOT)
     verify_parser.add_argument("--mode", choices=VERIFICATION_MODES, default=BUILD_MODE)
 

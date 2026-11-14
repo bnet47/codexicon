@@ -168,17 +168,22 @@ def sha256_path(path: Path) -> str:
     if not path.is_dir():
         raise OSError(f"path is not a file or directory: {path}")
     digest = hashlib.sha256()
+    digest.update(b"codexicon-skill-tree-v2\0")
     files = sorted(path.rglob("*"), key=lambda item: item.relative_to(path).as_posix())
     for child in files:
         relative = child.relative_to(path).as_posix()
         if child.is_symlink():
             raise ValueError(f"symlink found at {relative}")
         if child.is_file():
-            digest.update(relative.encode("utf-8"))
-            digest.update(b"\0")
+            relative_bytes = relative.encode("utf-8")
+            file_digest = hashlib.sha256()
             with child.open("rb") as stream:
                 for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                    digest.update(chunk)
+                    file_digest.update(chunk)
+            digest.update(b"F")
+            digest.update(len(relative_bytes).to_bytes(8, "big"))
+            digest.update(relative_bytes)
+            digest.update(file_digest.digest())
     return digest.hexdigest()
 
 

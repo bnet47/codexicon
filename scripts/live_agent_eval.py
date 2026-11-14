@@ -13,10 +13,12 @@ import hashlib
 import json
 import os
 import re
+import signal
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +33,8 @@ except ImportError:  # pragma: no cover - imported as scripts.live_agent_eval
 ROOT = Path(__file__).resolve().parents[1]
 RUN_TIMEOUT_SECONDS = 90
 TEST_TIMEOUT_SECONDS = 10
+MAX_CAPTURE_BYTES_PER_STREAM = 1024 * 1024
+CAPTURE_CHUNK_BYTES = 64 * 1024
 ORACLE_FILENAME = "test_calculator.py"
 CALCULATOR_FILENAME = "calculator.py"
 PROMPTS = {
@@ -110,49 +114,17 @@ def restore_oracle(fixture_dir: Path) -> None:
     (fixture_dir / ORACLE_FILENAME).write_text(_oracle_source(), encoding="utf-8")
 
 
-def _run_fixture_test(
-    command: Sequence[str],
-    *,
-    cwd: Path,
-    timeout: int,
-    runner: Callable[..., Any],
-) -> Any:
-    return runner(
-        list(command),
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-        timeout=timeout,
-    )
-
-
 def score_fixture(
     fixture_dir: Path,
-    *,
-    runner: Callable[..., Any] = subprocess.run,
-    timeout: int = TEST_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
-    """Run the canonical oracle independently and return sanitized test status."""
+    """Score a fixture without importing or executing agent-written Python."""
 
-    restore_oracle(fixture_dir)
-    try:
-        completed = _run_fixture_test(
-            [sys.executable, "-B", "-m", "unittest", ORACLE_FILENAME],
-            cwd=fixture_dir,
-            timeout=timeout,
-            runner=runner,
-        )
-    except subprocess.TimeoutExpired:
-        return {"status": "timeout", "exit_status": "timeout"}
-    except OSError as exc:
-        return {"status": "error", "exit_status": type(exc).__name__}
-
+    result = autonomy.verify_fixture(fixture_dir, "calculator")
+    passed = result["status"] == "passed"
     return {
-        "status": "passed" if completed.returncode == 0 else "failed",
-        "exit_status": completed.returncode,
+        "status": result["status"],
+        "exit_status": 0 if passed else 1,
+        "method": result.get("method", "non-executing AST evaluation"),
     }
 
 
@@ -216,11 +188,16 @@ def sanitize_events(stdout: str, stderr: str, fixture_dir: Path) -> dict[str, An
 
 
 def _fixture_snapshot(fixture_dir: Path) -> dict[str, str]:
+    if fixture_dir.is_symlink() or not fixture_dir.is_dir():
+        raise ValueError("evaluation fixture root is not a directory")
     snapshot: dict[str, str] = {}
     for path in fixture_dir.rglob("*"):
+        relative = path.relative_to(fixture_dir).as_posix()
+        if path.is_symlink():
+            snapshot[relative] = "symlink"
+            continue
         if not path.is_file():
             continue
-        relative = path.relative_to(fixture_dir).as_posix()
         if "__pycache__/" in f"{relative}/" or relative.endswith(".pyc"):
             continue
         snapshot[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -236,43 +213,252 @@ def _changed_unrelated_files(before: Mapping[str, str], after: Mapping[str, str]
     return sorted(name for name in changed if name != CALCULATOR_FILENAME)
 
 
+class OutputLimitExceeded(RuntimeError):
+    """Raised after evaluator output exceeds its bounded capture allowance."""
+
+
+def _create_windows_kill_job(process: Any) -> Any:
+    """Assign and then resume the suspended evaluator in a kill-on-close job."""
+
+    if os.name != "nt":
+        return None
+    import ctypes
+    from ctypes import wintypes
+
+    class BasicLimitInformation(ctypes.Structure):
+        _fields_ = [
+            ("PerProcessUserTimeLimit", ctypes.c_longlong),
+            ("PerJobUserTimeLimit", ctypes.c_longlong),
+            ("LimitFlags", wintypes.DWORD),
+            ("MinimumWorkingSetSize", ctypes.c_size_t),
+            ("MaximumWorkingSetSize", ctypes.c_size_t),
+            ("ActiveProcessLimit", wintypes.DWORD),
+            ("Affinity", ctypes.c_size_t),
+            ("PriorityClass", wintypes.DWORD),
+            ("SchedulingClass", wintypes.DWORD),
+        ]
+
+    class IoCounters(ctypes.Structure):
+        _fields_ = [(name, ctypes.c_ulonglong) for name in (
+            "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+            "ReadTransferCount", "WriteTransferCount", "OtherTransferCount",
+        )]
+
+    class ExtendedLimitInformation(ctypes.Structure):
+        _fields_ = [
+            ("BasicLimitInformation", BasicLimitInformation),
+            ("IoInfo", IoCounters),
+            ("ProcessMemoryLimit", ctypes.c_size_t),
+            ("JobMemoryLimit", ctypes.c_size_t),
+            ("PeakProcessMemoryUsed", ctypes.c_size_t),
+            ("PeakJobMemoryUsed", ctypes.c_size_t),
+        ]
+
+    class ThreadEntry32(ctypes.Structure):
+        _fields_ = [
+            ("dwSize", wintypes.DWORD),
+            ("cntUsage", wintypes.DWORD),
+            ("th32ThreadID", wintypes.DWORD),
+            ("th32OwnerProcessID", wintypes.DWORD),
+            ("tpBasePri", wintypes.LONG),
+            ("tpDeltaPri", wintypes.LONG),
+            ("dwFlags", wintypes.DWORD),
+        ]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+    kernel32.SetInformationJobObject.restype = wintypes.BOOL
+    kernel32.SetInformationJobObject.argtypes = [
+        wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD,
+    ]
+    kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+    kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.TerminateJobObject.restype = wintypes.BOOL
+    kernel32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    kernel32.Thread32First.restype = wintypes.BOOL
+    kernel32.Thread32First.argtypes = [wintypes.HANDLE, ctypes.POINTER(ThreadEntry32)]
+    kernel32.Thread32Next.restype = wintypes.BOOL
+    kernel32.Thread32Next.argtypes = [wintypes.HANDLE, ctypes.POINTER(ThreadEntry32)]
+    kernel32.OpenThread.restype = wintypes.HANDLE
+    kernel32.OpenThread.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.ResumeThread.restype = wintypes.DWORD
+    kernel32.ResumeThread.argtypes = [wintypes.HANDLE]
+
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        error = ctypes.WinError(ctypes.get_last_error())
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        raise error
+    limits = ExtendedLimitInformation()
+    limits.BasicLimitInformation.LimitFlags = 0x00002000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+    try:
+        if not kernel32.SetInformationJobObject(
+            job, 9, ctypes.byref(limits), ctypes.sizeof(limits)
+        ):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if not kernel32.AssignProcessToJobObject(job, process._handle):
+            raise ctypes.WinError(ctypes.get_last_error())
+        snapshot = kernel32.CreateToolhelp32Snapshot(0x00000004, 0)  # TH32CS_SNAPTHREAD
+        invalid_handle = ctypes.c_void_p(-1).value
+        if not snapshot or snapshot == invalid_handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            entry = ThreadEntry32()
+            entry.dwSize = ctypes.sizeof(entry)
+            primary_thread_id = None
+            found = kernel32.Thread32First(snapshot, ctypes.byref(entry))
+            while found:
+                if entry.th32OwnerProcessID == process.pid:
+                    if primary_thread_id is not None:
+                        raise OSError("suspended evaluator has multiple startup threads")
+                    primary_thread_id = entry.th32ThreadID
+                found = kernel32.Thread32Next(snapshot, ctypes.byref(entry))
+            if primary_thread_id is None:
+                raise ctypes.WinError(ctypes.get_last_error())
+        finally:
+            kernel32.CloseHandle(snapshot)
+        thread = kernel32.OpenThread(0x0002, False, primary_thread_id)  # THREAD_SUSPEND_RESUME
+        if not thread:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            if kernel32.ResumeThread(thread) == 0xFFFFFFFF:
+                raise ctypes.WinError(ctypes.get_last_error())
+        finally:
+            kernel32.CloseHandle(thread)
+        return (kernel32, job)
+    except BaseException:
+        kernel32.TerminateJobObject(job, 1)
+        kernel32.CloseHandle(job)
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=3,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        raise
+
+
+def _close_windows_kill_job(job: Any) -> None:
+    if job is not None:
+        kernel32, handle = job
+        if not kernel32.CloseHandle(handle):
+            raise OSError("failed to close evaluator process Job Object")
+
+
+def _terminate_process_tree(process: Any, job: Any) -> None:
+    if os.name == "nt":
+        _close_windows_kill_job(job)
+    else:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except OSError:
+            if process.poll() is None:
+                process.kill()
+    try:
+        process.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+
+
 def _run_codex_process(command: Sequence[str], *, cwd: Path, timeout: int) -> Any:
-    """Run Codex with a killable process group so Windows descendants cannot hang pipes."""
+    """Run Codex with bounded output and platform-specific process cleanup."""
 
     creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-    with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
-        process = subprocess.Popen(
-            list(command),
-            cwd=cwd,
-            stdin=subprocess.DEVNULL,
-            stdout=stdout_file,
-            stderr=stderr_file,
-            creationflags=creationflags,
-        )
-        try:
-            process.wait(timeout=timeout)
-        except subprocess.TimeoutExpired as exc:
-            if os.name == "nt":
-                try:
-                    subprocess.run(
-                        ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                        stdin=subprocess.DEVNULL,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        check=False,
-                        timeout=3,
-                    )
-                except subprocess.TimeoutExpired:
-                    pass
-            else:
-                process.kill()
-            raise subprocess.TimeoutExpired(command, timeout) from exc
+    if os.name == "nt":
+        creationflags |= getattr(subprocess, "CREATE_SUSPENDED", 0x00000004)
+    process = subprocess.Popen(
+        list(command),
+        cwd=cwd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        bufsize=0,
+        creationflags=creationflags,
+        start_new_session=os.name != "nt",
+    )
+    try:
+        job = _create_windows_kill_job(process)
+    except BaseException:
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        raise
+    output_exceeded = threading.Event()
+    captured: dict[str, bytearray] = {"stdout": bytearray(), "stderr": bytearray()}
 
-        stdout_file.seek(0)
-        stderr_file.seek(0)
-        stdout = stdout_file.read().decode("utf-8", errors="replace")
-        stderr = stderr_file.read().decode("utf-8", errors="replace")
-        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    def drain(name: str, stream: Any) -> None:
+        while True:
+            chunk = stream.read(CAPTURE_CHUNK_BYTES)
+            if not chunk:
+                return
+            kept = captured[name]
+            available = MAX_CAPTURE_BYTES_PER_STREAM - len(kept)
+            if available > 0:
+                kept.extend(chunk[:available])
+            if len(chunk) > available:
+                output_exceeded.set()
+
+    readers = [
+        threading.Thread(target=drain, args=(name, stream), daemon=True)
+        for name, stream in (("stdout", process.stdout), ("stderr", process.stderr))
+    ]
+    for reader in readers:
+        reader.start()
+
+    deadline = time.monotonic() + timeout
+    timed_out = False
+    try:
+        while process.poll() is None:
+            if output_exceeded.is_set():
+                _terminate_process_tree(process, job)
+                job = None
+                raise OutputLimitExceeded("Codex output exceeded the capture limit")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                timed_out = True
+                _terminate_process_tree(process, job)
+                job = None
+                raise subprocess.TimeoutExpired(command, timeout)
+            time.sleep(min(0.02, remaining))
+        if output_exceeded.is_set():
+            _terminate_process_tree(process, job)
+            job = None
+            raise OutputLimitExceeded("Codex output exceeded the capture limit")
+        # Remove background descendants even when the CLI itself exited normally.
+        _terminate_process_tree(process, job)
+        job = None
+    finally:
+        if job is not None:
+            _close_windows_kill_job(job)
+        for stream in (process.stdout, process.stderr):
+            if stream is not None:
+                stream.close()
+        for reader in readers:
+            reader.join(timeout=1)
+
+    stdout = bytes(captured["stdout"]).decode("utf-8", errors="replace")
+    stderr = bytes(captured["stderr"]).decode("utf-8", errors="replace")
+    if timed_out:
+        raise subprocess.TimeoutExpired(command, timeout)
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
 def invoke_codex(
@@ -306,6 +492,20 @@ def invoke_codex(
         return {
             "elapsed_seconds": round(time.monotonic() - started, 3),
             "exit_status": "timeout",
+            "interrupted": True,
+            "invocation_started": True,
+            "event_metadata": {
+                "json_event_count": 0,
+                "event_types": {},
+                "non_json_line_count": 0,
+                "stderr_present": False,
+                "last_message_excerpt": None,
+            },
+        }
+    except OutputLimitExceeded:
+        return {
+            "elapsed_seconds": round(time.monotonic() - started, 3),
+            "exit_status": "output_limit_exceeded",
             "interrupted": True,
             "invocation_started": True,
             "event_metadata": {
@@ -368,6 +568,7 @@ def run_arm(
             "acceptance": score["status"] == "passed",
             "test_status": score["status"],
             "test_exit_status": score["exit_status"],
+            "test_verification_method": score["method"],
             "elapsed_seconds": invocation["elapsed_seconds"],
             "exit_status": invocation["exit_status"],
             "interrupted": invocation["interrupted"],

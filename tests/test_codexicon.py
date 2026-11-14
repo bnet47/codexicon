@@ -694,6 +694,28 @@ class CodexiconManagerTests(unittest.TestCase):
         stored = CODEXICON.task_rows(root)[1][0]["evidence"]
         self.assertEqual(json.loads(stored)["result"], "passed")
 
+    def test_done_evidence_must_cover_every_declared_verification_command(self) -> None:
+        root = self.temp_dir / "project"
+        root.mkdir()
+        self.write_contract(root)
+        first = "python -m unittest tests.test_codexicon"
+        second = "python scripts/render_playbook.py --check"
+        self.write_extended_tasks(
+            root,
+            f"| T-001 | ACTIVE | R-001 | I-001 | src | `{first}`; `{second}` | None | None | None |\n",
+        )
+        evidence = json.loads(self.task_evidence(root))
+        with self.assertRaisesRegex(CODEXICON.CodexiconError, "every declared verification command"):
+            CODEXICON.tasks_set_state(root, "T-001", "DONE", evidence=json.dumps(evidence))
+        evidence["checks"].append(
+            {
+                "identity": "playbook-check",
+                "command": ["python", "scripts/render_playbook.py", "--check"],
+                "result": "passed",
+            }
+        )
+        CODEXICON.tasks_set_state(root, "T-001", "DONE", evidence=json.dumps(evidence))
+
     def test_done_rejects_wrong_and_stale_receipts(self) -> None:
         root = self.temp_dir / "project"
         root.mkdir()
@@ -1636,6 +1658,50 @@ class CodexiconManagerTests(unittest.TestCase):
             and "executable path is not tracked yet; stage it, then run sync-git-modes" not in line
         ]
         self.assertEqual(unexpected_warnings, [], output.getvalue())
+
+    def test_verify_without_checks_runs_every_canonical_command(self) -> None:
+        root = self.temp_dir / "verify-project"
+        scripts = root / "scripts"
+        scripts.mkdir(parents=True)
+        for name in CODEXICON.CANONICAL_CHECKS:
+            for suffix in ("sh", "ps1"):
+                (scripts / f"{name}.{suffix}").write_text("stub\n", encoding="utf-8")
+
+        with (
+            mock.patch.object(CODEXICON.shutil, "which", return_value="powershell"),
+            mock.patch.object(
+                CODEXICON.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess([], 0),
+            ) as run,
+        ):
+            result = CODEXICON.verify(root, [])
+
+        self.assertEqual(result, 0)
+        self.assertEqual(len(run.call_args_list), len(CODEXICON.CANONICAL_CHECKS))
+        invoked = [
+            Path(call.args[0][-1]).name if os.name == "nt" else Path(call.args[0][0]).name
+            for call in run.call_args_list
+        ]
+        expected_suffix = "ps1" if os.name == "nt" else "sh"
+        self.assertEqual(
+            invoked,
+            [f"{name}.{expected_suffix}" for name in CODEXICON.CANONICAL_CHECKS],
+        )
+
+    def test_verify_parser_accepts_then_rejects_unknown_check_names(self) -> None:
+        bare_args = CODEXICON.build_parser().parse_args(["verify"])
+        self.assertEqual(bare_args.checks, [])
+        args = CODEXICON.build_parser().parse_args(["verify", "not-a-check"])
+        with self.assertRaisesRegex(CODEXICON.CodexiconError, "lint, test, and/or security"):
+            CODEXICON.verify(self.temp_dir, args.checks)
+
+    def test_bare_verify_command_dispatches_to_canonical_default(self) -> None:
+        with mock.patch.object(CODEXICON, "verify", return_value=0) as verify:
+            result = CODEXICON.main(["verify"])
+
+        self.assertEqual(result, 0)
+        verify.assert_called_once_with(CODEXICON.ROOT, [], mode=CODEXICON.BUILD_MODE)
 
     def test_capability_policy_has_profiles_and_stable_json_output(self) -> None:
         policy = CODEXICON.validate_capability_policy(ROOT)

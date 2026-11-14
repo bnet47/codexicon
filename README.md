@@ -287,6 +287,17 @@ Receipts distinguish requested or configured routing from observed runtime
 values, and paired direct-versus-routed evaluation is required before any
 default change. No model/provider identity is pinned in reusable guidance.
 
+### Current evaluation evidence
+
+The [adaptive recovery pilot](docs/evals/adaptive-autonomy-pilot.md) retained
+the current recovery defaults: the proposed live recovery cases had zero
+attempted arms, so improvement remains unmeasured. The [skill comparison](docs/evals/skill-comparison.md)
+validates nine mocked artifact checks but did not measure live skill activation
+or quality. The [method-selection note](docs/agent-patterns.md) is a reviewable
+candidate protocol; it does not prove that a client selected or used a method.
+These reports keep candidates inactive until live evidence supports a
+maintainer decision.
+
 <details>
 <summary><strong>See a realistic project sequence</strong></summary>
 

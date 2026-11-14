@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
@@ -42,7 +43,7 @@ class LiveAgentEvaluationTests(unittest.TestCase):
             ],
         )
 
-    def test_fixture_scoring_restores_oracle_and_scores_calculator(self) -> None:
+    def test_fixture_scoring_uses_independent_verifier_and_scores_calculator(self) -> None:
         with tempfile.TemporaryDirectory() as name:
             fixture = Path(name)
             EVAL.create_fixture(fixture)
@@ -55,7 +56,99 @@ class LiveAgentEvaluationTests(unittest.TestCase):
             (fixture / EVAL.ORACLE_FILENAME).write_text("broken oracle", encoding="utf-8")
             score = EVAL.score_fixture(fixture)
             self.assertEqual(score["status"], "passed")
-            self.assertIn("CalculatorOracle", (fixture / EVAL.ORACLE_FILENAME).read_text(encoding="utf-8"))
+            self.assertEqual((fixture / EVAL.ORACLE_FILENAME).read_text(encoding="utf-8"), "broken oracle")
+
+    def test_scoring_and_snapshots_do_not_follow_fixture_symlinks(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            fixture = root / "fixture"
+            fixture.mkdir()
+            outside = root / "outside.py"
+            outside.write_text("def add(left, right):\n    return left + right\n", encoding="utf-8")
+            EVAL.create_fixture(fixture)
+            (fixture / EVAL.CALCULATOR_FILENAME).unlink()
+            (fixture / EVAL.CALCULATOR_FILENAME).symlink_to(outside)
+
+            snapshot = EVAL._fixture_snapshot(fixture)
+            score = EVAL.score_fixture(fixture)
+
+            self.assertEqual(snapshot[EVAL.CALCULATOR_FILENAME], "symlink")
+            self.assertEqual(score["status"], "failed")
+            self.assertEqual(outside.read_text(encoding="utf-8"), "def add(left, right):\n    return left + right\n")
+
+    def test_evaluator_output_capture_has_a_hard_limit(self) -> None:
+        noisy_script = "import sys; sys.stdout.write('x' * 4096); sys.stdout.flush(); import time; time.sleep(10)"
+        with tempfile.TemporaryDirectory() as name, patch.object(EVAL, "MAX_CAPTURE_BYTES_PER_STREAM", 1024):
+            with self.assertRaises(EVAL.OutputLimitExceeded):
+                EVAL._run_codex_process(
+                    [sys.executable, "-c", noisy_script],
+                    cwd=Path(name),
+                    timeout=5,
+                )
+
+    @unittest.skipUnless(os.name == "nt", "Windows Job Objects are platform-specific")
+    def test_windows_job_object_terminates_evaluator_descendants(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            sentinel = Path(name) / "late-child-write.txt"
+            child_script = (
+                "import pathlib, sys, time; time.sleep(0.5); "
+                "pathlib.Path(sys.argv[1]).write_text('late')"
+            )
+            parent_script = (
+                "import subprocess, sys, time; "
+                "subprocess.Popen([sys.executable, '-c', "
+                f"{child_script!r}, sys.argv[1]]); time.sleep(10)"
+            )
+            with self.assertRaises(subprocess.TimeoutExpired):
+                EVAL._run_codex_process(
+                    [sys.executable, "-c", parent_script, str(sentinel)],
+                    cwd=Path(name),
+                    timeout=0.2,
+                )
+            time.sleep(0.7)
+            self.assertFalse(sentinel.exists())
+
+    def test_fixture_scoring_does_not_execute_agent_written_python(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            fixture = Path(name)
+            EVAL.create_fixture(fixture)
+            sentinel = fixture / "score-side-effect.txt"
+            (fixture / EVAL.CALCULATOR_FILENAME).write_text(
+                "from pathlib import Path\n"
+                "Path('score-side-effect.txt').write_text('executed')\n"
+                "def add(left, right):\n    return left + right\n",
+                encoding="utf-8",
+            )
+
+            score = EVAL.score_fixture(fixture)
+
+            self.assertFalse(sentinel.exists())
+            self.assertEqual(score["status"], "failed")
+
+    @unittest.skipIf(os.name == "nt", "POSIX process groups are unavailable")
+    def test_timeout_kills_evaluator_process_group(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            fixture = Path(name)
+            sentinel = fixture / "late-child-write.txt"
+            child_script = (
+                "import pathlib, sys, time; time.sleep(0.5); "
+                "pathlib.Path(sys.argv[1]).write_text('late')"
+            )
+            parent_script = (
+                "import subprocess, sys, time; "
+                "subprocess.Popen([sys.executable, '-c', "
+                f"{child_script!r}, sys.argv[1]]); time.sleep(10)"
+            )
+
+            with self.assertRaises(subprocess.TimeoutExpired):
+                EVAL._run_codex_process(
+                    [sys.executable, "-c", parent_script, str(sentinel)],
+                    cwd=fixture,
+                    timeout=0.1,
+                )
+            time.sleep(0.7)
+
+            self.assertFalse(sentinel.exists())
 
     def test_unavailable_cli_is_explicit_and_nonzero(self) -> None:
         report, status = EVAL.run_evaluation(which=lambda _: None)

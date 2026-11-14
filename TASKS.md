@@ -5,7 +5,7 @@
 # Task Register
 
 **Contract:** SPEC.md
-**Plan:** agent_docs/plans/2026-09-23-adaptive-intelligence-routing-plan.md; agent_docs/plans/2026-11-13-adaptive-autonomy-plan.md
+**Plan:** agent_docs/plans/2026-09-23-adaptive-intelligence-routing-plan.md; agent_docs/plans/2026-11-13-adaptive-autonomy-plan.md; agent_docs/plans/2026-11-14-repository-audit-plan.md
 **Format:** nine-column register with dependencies, blockers, and evidence; legacy six-column registers remain migratable.
 
 | id | state | requirement | interface | scope | verification | Dependencies | Blocker | Evidence |
@@ -54,6 +54,9 @@
 | T-042 | DONE | R-039 | I-032 | `.agents/skills/init/SKILL.md`, `agent_docs/operations.md`, `docs/build-contracts.md`, `tests/test_template.py` | `python -m unittest tests.test_scaffold tests.test_template` | T-041 | None | {"acceptance_ids":["A-040"],"checks":[{"command":["python","-m","unittest","tests.test_scaffold","tests.test_template"],"identity":"T-042-verification","result":"passed"}],"contract_digest":"sha256:224a34b829856bed04cc88c62d0d2fde88035789cb674350a3958dcc2d508bff","result":"passed","schema_version":1,"source_digest":"sha256:137eb0e19260b9f758b6b427630b3a63ad405fe87809a22149c09a8f06500111","task_id":"T-042","timestamp":"2026-11-13T16:00:12.826320Z"} |
 | T-043 | DONE | R-040 | I-033 | `scripts/autonomy_eval.py`, `scripts/live_agent_eval.py`, `tests/test_autonomy_eval.py`, `docs/evals/skill-comparison.md` | `python -m unittest tests.test_autonomy_eval.SkillComparisonTests` | T-038,T-040 | None | {"acceptance_ids":["A-041"],"checks":[{"command":["python","-m","unittest","tests.test_autonomy_eval.SkillComparisonTests"],"identity":"T-043-verification","result":"passed"}],"contract_digest":"sha256:224a34b829856bed04cc88c62d0d2fde88035789cb674350a3958dcc2d508bff","result":"passed","schema_version":1,"source_digest":"sha256:00186edfae81ccbd38ee11690aeaf2276167ca3c37872971574c44dfb597fa75","task_id":"T-043","timestamp":"2026-11-13T16:16:53.530675+00:00"} |
 | T-044 | DONE | R-041 | I-034 | `docs/evals/agent-loop-benchmark.md`, `docs/evals/capability-matrix.md`, `docs/maintainers.md`, `docs/upgrading.md`, `agent_docs/decisions/ADR-007-adaptive-autonomy-rollout.md` | `python scripts/validate_template.py` | T-041,T-042,T-043 | None | {"acceptance_ids":["A-042"],"checks":[{"command":["python","scripts/validate_template.py"],"identity":"T-044-verification","result":"passed"},{"command":["scripts/lint.ps1"],"identity":"lint","result":"passed"},{"command":["scripts/test.ps1"],"identity":"test","result":"passed"},{"command":["scripts/security.ps1"],"identity":"security","result":"passed"}],"contract_digest":"sha256:224a34b829856bed04cc88c62d0d2fde88035789cb674350a3958dcc2d508bff","result":"passed","schema_version":1,"source_digest":"sha256:bb69338e752c88f6e0f40570c7369e69c7031ea218123f9a50cf3274bbf7ee59","task_id":"T-044","timestamp":"2026-11-13T16:02:56.157779Z"} |
+| T-045 | DONE | R-010 | I-008 | `scripts/security_scan.py`, `tests/test_security_scan.py`, `scripts/skill_provenance.py`, `tests/test_skill_provenance.py`, `scripts/live_agent_eval.py`, `tests/test_live_agent_eval.py`, `docs/evals/agent-loop-benchmark.md`, `docs/codex.md` | `python -m unittest tests.test_security_scan tests.test_skill_provenance tests.test_live_agent_eval` | None | None | {"acceptance_ids":["A-010"],"checks":[{"command":["python","-m","unittest","tests.test_security_scan","tests.test_skill_provenance","tests.test_live_agent_eval"],"identity":"T-045-verification","result":"passed"}],"contract_digest":"sha256:224a34b829856bed04cc88c62d0d2fde88035789cb674350a3958dcc2d508bff","result":"passed","schema_version":1,"source_digest":"sha256:df6f59e037ff842fc38917c82a862e72fbb7307bf1002887118f7c4fba09b571","task_id":"T-045","timestamp":"2026-11-14T02:03:36.660449+00:00"} |
+| T-046 | DONE | R-041 | I-034 | `scripts/codexicon.py`, `scripts/security_scan.py`, `scripts/live_agent_eval.py`, `tests/test_codexicon.py`, `tests/test_security_scan.py`, `tests/test_live_agent_eval.py`, `README.md`, `docs/index.md`, `docs/capabilities.md`, `docs/evals/agent-loop-benchmark.md`, `docs/repo-template-playbook.source.html`, `docs/repo-template-playbook.html` | `python -m unittest tests.test_codexicon tests.test_template tests.test_security_scan tests.test_live_agent_eval`; `python scripts/render_playbook.py --check`; `python scripts/security_scan.py --mode ship` | T-045 | None | {"acceptance_ids":["A-042"],"checks":[{"command":["python","-m","unittest","tests.test_codexicon","tests.test_template","tests.test_security_scan","tests.test_live_agent_eval"],"identity":"T-046-focused-tests","result":"passed"},{"command":["python","scripts/render_playbook.py","--check"],"identity":"T-046-playbook-render-check","result":"passed"},{"command":["python","scripts/security_scan.py","--mode","ship"],"identity":"T-046-ship-security-scan","result":"passed"},{"command":["scripts/lint.sh"],"identity":"lint","result":"passed"},{"command":["scripts/test.sh"],"identity":"test","result":"passed"},{"command":["scripts/security.sh"],"identity":"security","result":"passed"}],"contract_digest":"sha256:224a34b829856bed04cc88c62d0d2fde88035789cb674350a3958dcc2d508bff","result":"passed","review_findings":[{"disposition":"fixed","id":"AUDIT-EVAL-SYMLINK-001"},{"disposition":"fixed","id":"AUDIT-EVAL-OUTPUT-001"},{"disposition":"fixed","id":"AUDIT-WIN-KILL-001"},{"disposition":"fixed","id":"EVAL-WIN-JOB-RACE-003"},{"disposition":"fixed","id":"SEC-SCAN-BINARY-001"},{"disposition":"accepted","id":"EVAL-POSIX-DETACH-002"},{"disposition":"fixed","id":"AUDIT-T046-VERIFY-001"}],"schema_version":1,"source_digest":"sha256:235acea6991fb79c592d4daa3da25d24809f509904217358a94caf1da741d88a","task_id":"T-046","timestamp":"2026-11-14T02:44:44.986550+00:00"} |
+| T-047 | DONE | R-005 | I-005 | `.codex/hooks/codex_hook.py`, `tests/test_template.py`, `docs/codex.md` | `python -m unittest tests.test_template.CodexHookTests` | T-046 | None | {"acceptance_ids":["A-005"],"checks":[{"command":["python","-m","unittest","tests.test_template.CodexHookTests"],"identity":"T-047-malformed-state-regression","result":"passed"},{"command":["scripts/lint.sh"],"identity":"lint","result":"passed"},{"command":["scripts/test.sh"],"identity":"test","result":"passed"},{"command":["scripts/security.sh"],"identity":"security","result":"passed"}],"contract_digest":"sha256:224a34b829856bed04cc88c62d0d2fde88035789cb674350a3958dcc2d508bff","result":"passed","review_findings":[{"disposition":"fixed","id":"HOOK-STATE-RESET-ON-CHECK-001"},{"disposition":"fixed","id":"HOOK-STATE-INCOMPLETE-SCHEMA-001"}],"schema_version":1,"source_digest":"sha256:9641a8903e2061d2fb5ea27ba335c309dc349243a481e93cea887526c590168c","task_id":"T-047","timestamp":"2026-11-14T03:21:50.254119+00:00"} |
 
 ## Dependency order
 
@@ -92,6 +95,18 @@
 - T-033 depends on T-030.
 - T-034 depends on T-030 and T-033.
 - T-035 depends on T-031, T-032, T-033, and T-034.
+- T-036 has no dependency.
+- T-037 depends on T-036.
+- T-038 depends on T-037.
+- T-039 depends on T-038.
+- T-040 depends on T-038 and T-039.
+- T-041 depends on T-040.
+- T-042 depends on T-041.
+- T-043 depends on T-038 and T-040.
+- T-044 depends on T-041, T-042, and T-043.
+- T-045 has no dependency.
+- T-046 depends on T-045.
+- T-047 depends on T-046.
 
 ## Evidence ledger
 

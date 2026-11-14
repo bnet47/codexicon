@@ -133,3 +133,13 @@ audit/review checks, without release/publication evidence. Publish, merge, or
 deploy adds release/publication evidence only when that exact authority is
 explicitly requested. A passing check does not override a missing rubric item,
 stale evidence, a repeated failure, a plateau, or a human boundary.
+
+## Current evaluation evidence
+
+The [adaptive recovery pilot](evals/adaptive-autonomy-pilot.md) retained the
+current defaults because its two live recovery scenarios were not attempted.
+The [skill comparison](evals/skill-comparison.md) passed its deterministic
+mock-artifact checks but did not measure live activation or outcome quality.
+The method-selection protocol in [agent patterns](agent-patterns.md) is a
+reviewable candidate; a report's presence does not establish live client
+behavior or authorize promotion.

@@ -33,6 +33,7 @@ Codexicon gives new and established repositories durable context, routed workflo
 | Add Codexicon to an existing repository | Read the [adoption and diagnostics guide](codex.md) | A read-only compatibility plan and conflict-preserving integration |
 | Understand the operating model | Review the [build contracts](build-contracts.md), [agent patterns](agent-patterns.md), and [security model](codex.md#credential-and-git-gates) | The workflow, evidence, and authority boundaries in context |
 | Maintain or release the template | Use the [maintainer and release guide](maintainers.md) | Versioning, validation, and publication checks |
+| Review current autonomy evidence | Read the [recovery pilot](evals/adaptive-autonomy-pilot.md), [skill comparison](evals/skill-comparison.md), and [method-selection guidance](agent-patterns.md) | Current defaults, deterministic results, and live behavior that remains unmeasured |
 
 > **See the whole system at a glance →** [Open the interactive visual playbook](repo-template-playbook.html) for the lifecycle, skill routing, capability tiers, and safety boundaries.
 
@@ -86,6 +87,14 @@ risk classification only through a complete dispatch envelope, one worker depth,
 primary-owned review/integration, and honest requested-versus-observed evidence.
 Ineligible or runtime-unverified work stays on the primary path; no reusable
 guidance pins a model or provider identity.
+
+The latest [recovery pilot](evals/adaptive-autonomy-pilot.md) retained current
+defaults because the live recovery cases were not attempted. The [skill
+comparison](evals/skill-comparison.md) reports deterministic mock checks but no
+live skill activation or quality result. The [method-selection guidance](agent-patterns.md)
+remains a candidate protocol; none of these reports supports automatic
+promotion.
+
 
 > Codexicon improves the development process; it does not make an unfinished application production-ready by itself. Each project still supplies and verifies its own architecture, security, data, operations, and release evidence.
 

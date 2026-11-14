@@ -106,6 +106,18 @@ class SkillProvenanceTests(unittest.TestCase):
             any("does not match local skill content" in error for error in MODULE.validate_lock(self.root))
         )
 
+    def test_directory_digest_frames_file_boundaries(self) -> None:
+        skill_path = self.root / ".agents" / "skills" / "framing-test"
+        skill_path.mkdir(parents=True)
+        (skill_path / "SKILL.md").write_bytes(b"P")
+        (skill_path / "z.md").write_bytes(b"Q")
+        original_digest = MODULE.sha256_path(skill_path)
+
+        (skill_path / "z.md").unlink()
+        (skill_path / "SKILL.md").write_bytes(b"Pz.md\0Q")
+
+        self.assertNotEqual(MODULE.sha256_path(skill_path), original_digest)
+
     def test_path_traversal_is_rejected(self) -> None:
         value = self.base_lock()
         entry = self.valid_entry()

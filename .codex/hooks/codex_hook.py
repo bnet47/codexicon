@@ -359,14 +359,22 @@ def state_lock(*, blocking: bool = True) -> Iterator[bool]:
 
 
 def valid_state(value: Any) -> bool:
-    return (
+    if not (
         isinstance(value, dict)
         and value.get("schema_version") == 4
         and isinstance(value.get("has_writes"), bool)
         and isinstance(value.get("lint_passed"), bool)
         and isinstance(value.get("test_passed"), bool)
         and isinstance(value.get("test_required"), bool)
-    )
+    ):
+        return False
+    if epoch(value.get("session_started_epoch")) <= 0:
+        return False
+    if value["has_writes"] and epoch(value.get("last_write_epoch")) <= 0:
+        return False
+    if value["test_required"] and epoch(value.get("last_test_relevant_write_epoch")) <= 0:
+        return False
+    return True
 
 
 def load_state_unlocked(strict: bool = False) -> dict[str, Any]:
@@ -621,12 +629,20 @@ def mutate_state(
         state = load_state_unlocked()
         state_was_trusted = valid_state(state)
         if not state_was_trusted:
+            stamp, rendered = utc_now()
             state = {
                 "schema_version": 4,
-                "has_writes": False,
+                "session_started_at": rendered,
+                "session_started_epoch": stamp,
+                "last_event_at": rendered,
+                "has_writes": True,
                 "lint_passed": False,
                 "test_passed": False,
-                "test_required": False,
+                "test_required": True,
+                "last_write_at": rendered,
+                "last_write_epoch": stamp,
+                "last_test_relevant_write_at": rendered,
+                "last_test_relevant_write_epoch": stamp,
             }
         reconcile_pending_writes_unlocked(
             state,

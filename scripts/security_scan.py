@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import codecs
 import os
 import re
 import subprocess
 import sys
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -17,6 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD_MODE = "build"
 SHIP_MODE = "ship"
 SCAN_MODES = (BUILD_MODE, SHIP_MODE)
+PREFIX_BYTES = 8192
+MAX_SCAN_FILE_BYTES = 8 * 1024 * 1024
 EXCLUDED_DIRS = {
     ".codex-state",
     ".git",
@@ -268,18 +272,25 @@ def filesystem_files(root: Path, findings: list[Finding]) -> tuple[list[Path], l
 
 
 def scan_lines(path: Path, root: Path) -> Iterable[Finding]:
+    relative = normalized_relative(path, root)
     try:
         with path.open("rb") as raw:
-            prefix = raw.read(8192)
-            if b"\0" in prefix:
+            prefix = raw.read(min(PREFIX_BYTES, MAX_SCAN_FILE_BYTES + 1))
+            if len(prefix) > MAX_SCAN_FILE_BYTES:
+                yield Finding(relative, 0, "oversized-file")
                 return
-            content = prefix + raw.read()
+            encoding = text_encoding(prefix)
+            if encoding is None:
+                return
+            content = prefix + raw.read(MAX_SCAN_FILE_BYTES + 1 - len(prefix))
+            if len(content) > MAX_SCAN_FILE_BYTES:
+                yield Finding(relative, 0, "oversized-file")
+                return
     except OSError:
-        yield Finding(normalized_relative(path, root), 0, "unreadable-file")
+        yield Finding(relative, 0, "unreadable-file")
         return
 
-    text = content.decode("utf-8", errors="replace")
-    relative = normalized_relative(path, root)
+    text = content.decode(encoding, errors="replace")
     for line_number, line in enumerate(text.splitlines(), start=1):
         for detector, pattern in TOKEN_PATTERNS:
             if pattern.search(line):
@@ -288,6 +299,40 @@ def scan_lines(path: Path, root: Path) -> Iterable[Finding]:
             value = next(group for group in assignment.groups() if group is not None).strip()
             if not SAFE_VALUE.fullmatch(value):
                 yield Finding(relative, line_number, "literal-secret-assignment")
+
+
+def text_encoding(prefix: bytes) -> str | None:
+    """Recognize UTF-8 and common UTF-16 text while leaving binary files out."""
+
+    if prefix.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+        return "utf-16"
+    if b"\0" not in prefix:
+        return "utf-8"
+    complete = prefix[: len(prefix) - (len(prefix) % 2)]
+    units = len(complete) // 2
+    if units < 4:
+        return None
+    even_nulls = complete[0::2].count(b"\0")
+    odd_nulls = complete[1::2].count(b"\0")
+    minimum_nulls = max(2, units // 4)
+    maximum_opposite_nulls = units // 20
+    encoding = None
+    if odd_nulls >= minimum_nulls and even_nulls <= maximum_opposite_nulls:
+        encoding = "utf-16-le"
+    elif even_nulls >= minimum_nulls and odd_nulls <= maximum_opposite_nulls:
+        encoding = "utf-16-be"
+    if encoding is None:
+        return None
+    try:
+        decoded = complete.decode(encoding)
+    except UnicodeDecodeError:
+        return None
+    if any(
+        unicodedata.category(char) == "Cc" and char not in "\t\n\r\f"
+        for char in decoded
+    ):
+        return None
+    return encoding
 
 
 def scan_repository(root: Path, mode: str = BUILD_MODE) -> list[Finding]:

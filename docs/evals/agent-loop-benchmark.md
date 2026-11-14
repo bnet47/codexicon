@@ -17,16 +17,25 @@ Codexicon-guided, and one explicitly routed local invocation per trial with:
 codex exec --ephemeral --sandbox workspace-write --skip-git-repo-check -C <temp> --json <prompt>
 ```
 
-Each arm is independently scored by the canonical unittest oracle. The routed
-prompt is advisory: it carries the minimum-sufficient envelope, forbids scope
+Codex receives a canonical unittest oracle inside its workspace sandbox. After
+each invocation, the parent independently scores the edited calculator with
+the non-executing AST verifier in `scripts/autonomy_eval.py`; it never imports
+or executes model-edited Python while scoring. The routed prompt is advisory:
+it carries the minimum-sufficient envelope, forbids scope
 or authority broadening and recursive spawning, and leaves integration and
 acceptance with the primary. The runner
-keeps raw JSON events in memory only, records sanitized event metadata and a
-short final-message excerpt, enforces a 90-second per-run timeout, and deletes
-each fixture. Use `--runs N` for repeated paired trials. Missing CLI, timeout,
-and failed-run outcomes are nonzero and remain explicit in the sanitized
-report; model, token, cost, and tool-call fields are `unmeasured` unless the
-CLI exposes reliable values.
+captures at most 1 MiB each from stdout and stderr, records sanitized event
+metadata and a short final-message excerpt, enforces a 90-second per-run
+timeout, cleans up the assigned Windows Job Object or POSIX process group on
+exit and timeout, and deletes each fixture. Fixture snapshots record symlinks
+without reading their targets; the parent verifier does not restore or execute
+the oracle after an invocation. A POSIX child that deliberately starts a new
+session or process group may outlive this evaluator's group cleanup; containment
+of that case is not established.
+Use `--runs N` for repeated paired trials. Missing CLI, timeout, output-limit,
+and failed-run outcomes remain explicit in the sanitized report; model, token,
+cost, and tool-call fields are `unmeasured` unless the CLI exposes reliable
+values.
 
 ## Paired starter pilot
 

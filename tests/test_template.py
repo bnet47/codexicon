@@ -2074,7 +2074,7 @@ class CodexHookTests(unittest.TestCase):
         result = self.run_hook("verify-stop", {"session_id": "s1", "stop_hook_active": False})
 
         self.assertEqual(result.returncode, 2, result.stderr)
-        self.assertIn("Missing or stale: lint", result.stderr)
+        self.assertIn("cannot be trusted", result.stderr)
 
     def test_common_read_only_shell_commands_do_not_require_verification(self) -> None:
         self.assertEqual(self.run_hook("session-start", {"session_id": "s1"}).returncode, 0)
@@ -2282,6 +2282,81 @@ class CodexHookTests(unittest.TestCase):
         )
         self.assertEqual(active.returncode, 0)
         self.assertIn("systemMessage", active.stdout)
+
+    def test_malformed_state_recovery_during_check_keeps_stop_gate_fail_closed(self) -> None:
+        self.assertEqual(self.run_hook("session-start", {"session_id": "s1"}).returncode, 0)
+        self.assertEqual(
+            self.run_hook(
+                "record-write",
+                {"session_id": "s1", "tool_input": {"file_path": "src/example.py"}},
+            ).returncode,
+            0,
+        )
+        self.state_file.write_text("{", encoding="utf-8")
+
+        recovered = self.run_hook(
+            "record-shell",
+            {
+                "session_id": "s1",
+                "tool_input": {"command": "./scripts/lint.sh"},
+                "tool_response": self.receipt("lint"),
+            },
+        )
+        self.assertEqual(recovered.returncode, 0, recovered.stderr)
+
+        state = json.loads(self.state_file.read_text(encoding="utf-8"))
+        self.assertTrue(state["has_writes"])
+        self.assertTrue(state["test_required"])
+        self.assertFalse(state["lint_passed"])
+        self.assertFalse(state["test_passed"])
+
+        blocked = self.run_hook("verify-stop", {"session_id": "s1", "stop_hook_active": False})
+        self.assertEqual(blocked.returncode, 2)
+        self.assertIn("lint", blocked.stderr)
+        self.assertIn("tests", blocked.stderr)
+
+    def test_incomplete_schema_state_recovery_keeps_stop_gate_fail_closed(self) -> None:
+        self.assertEqual(self.run_hook("session-start", {"session_id": "s1"}).returncode, 0)
+        self.assertEqual(
+            self.run_hook(
+                "record-write",
+                {"session_id": "s1", "tool_input": {"file_path": "src/example.py"}},
+            ).returncode,
+            0,
+        )
+        self.state_file.write_text(
+            json.dumps(
+                {
+                    "schema_version": 4,
+                    "has_writes": False,
+                    "lint_passed": False,
+                    "test_passed": False,
+                    "test_required": False,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        recovered = self.run_hook(
+            "record-shell",
+            {
+                "session_id": "s1",
+                "tool_input": {"command": "./scripts/lint.sh"},
+                "tool_response": self.receipt("lint"),
+            },
+        )
+        self.assertEqual(recovered.returncode, 0, recovered.stderr)
+
+        state = json.loads(self.state_file.read_text(encoding="utf-8"))
+        self.assertTrue(state["has_writes"])
+        self.assertTrue(state["test_required"])
+        self.assertFalse(state["lint_passed"])
+        self.assertFalse(state["test_passed"])
+
+        blocked = self.run_hook("verify-stop", {"session_id": "s1", "stop_hook_active": False})
+        self.assertEqual(blocked.returncode, 2)
+        self.assertIn("lint", blocked.stderr)
+        self.assertIn("tests", blocked.stderr)
 
     def test_resume_recovers_missing_state_conservatively(self) -> None:
         with (

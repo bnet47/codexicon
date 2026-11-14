@@ -60,6 +60,33 @@ class SecurityScanTests(unittest.TestCase):
         self.assertIn("app.py:1 [github-token]", result.stderr)
         self.assertNotIn(fake_token, result.stdout + result.stderr)
 
+    def test_scanner_detects_and_redacts_utf16_credentials(self) -> None:
+        fake_token = "gh" + "p_" + ("A" * 36)
+        for index, encoding in enumerate(("utf-16", "utf-16-le", "utf-16-be")):
+            with self.subTest(encoding=encoding):
+                source = self.root / f"settings-{index}.txt"
+                source.write_bytes(f'credential = "{fake_token}"\n'.encode(encoding))
+
+                findings = SECURITY_SCAN.scan_repository(self.root)
+
+                self.assertIn(
+                    SECURITY_SCAN.Finding(source.name, 1, "github-token"), findings
+                )
+
+    def test_utf16_heuristic_does_not_treat_binary_controls_as_text(self) -> None:
+        binary_prefix = bytes((1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0))
+        self.assertIsNone(SECURITY_SCAN.text_encoding(binary_prefix))
+
+    def test_oversized_text_file_fails_closed_without_unbounded_reading(self) -> None:
+        source = self.root / "large.txt"
+        fake_token = "gh" + "p_" + ("A" * 36)
+        source.write_text(f'credential="{fake_token}"\n' + ("x" * 256), encoding="utf-8")
+        with mock.patch.object(SECURITY_SCAN, "MAX_SCAN_FILE_BYTES", 128):
+            findings = SECURITY_SCAN.scan_repository(self.root)
+        self.assertIn(
+            SECURITY_SCAN.Finding(source.name, 0, "oversized-file"), findings
+        )
+
     def test_scanner_allows_documented_placeholders(self) -> None:
         source = self.root / "config.example.py"
         token_name = "auth_" + "token"
