@@ -159,6 +159,122 @@
     {
       "path": "scripts/security.ps1",
       "policy": "project"
+    },
+    {
+      "path": ".agents/skills/architecture-review/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/brainstorm/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/concise/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/conventional-commit/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/create-marketing/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/create-marketing/agents/openai.yaml",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/create-marketing/references/campaigns-and-channels.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/create-marketing/references/copy-and-conversion.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/create-marketing/references/research-and-measurement.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/design-experience/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/design-experience/agents/openai.yaml",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/design-experience/references/hardening.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/design-experience/references/interface-craft.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/discover/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/init/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/investigate/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/production-readiness/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/production-readiness/agents/openai.yaml",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/quick/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/retro/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/review-creative/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/review-creative/agents/openai.yaml",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/review-creative/references/review-rubric.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/review-creative/scripts/scan_interface.py",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/review/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/ship/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/spec/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": ".agents/skills/write-plan/SKILL.md",
+      "policy": "merge"
+    },
+    {
+      "path": "docs/build-contracts.md",
+      "policy": "merge"
     }
   ]
 }

@@ -50,6 +50,8 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **R-040:** Evaluate proposed skill changes against measured behavior and activation.
 - **R-041:** Integrate only behavior that meets the evaluation bar and report unsupported capabilities.
 
+- **R-042:** Existing-project adoption carries the starter's complete skill resources, preserves local instructions, and diagnoses missing core workflow integration without claiming application readiness.
+
 ## Interfaces
 
 - **I-001:** `python scripts/codexicon.py spec-check`, `tasks-next`, `tasks-start`, `tasks-done`, and `tasks-blocked` expose validated contract/task outcomes with documented exit behavior and optional machine-readable output.
@@ -86,6 +88,8 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **I-032:** `$init` and `agent_docs/operations.md` describe project launch, fixture, observation, and outcome-check paths.
 - **I-033:** A maintainer-only skill comparison shares the benchmark runner and report format.
 - **I-034:** Maintainer guidance and a decision record link evaluated versions, outcomes, and retained defaults.
+
+- **I-035:** The adoption manifest, starter allowlist, doctor diagnostics, and manual operating-guidance merge describe the same portable workflow.
 
 ## Acceptance
 
@@ -132,6 +136,8 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **A-041:** Current and candidate skills are compared on intended triggers, near misses, and held-out tasks; no trial promotes a skill automatically.
 - **A-042:** Maintainers can repeat comparisons, identify active behavior, and understand unmeasured areas; canonical verification succeeds and distinct queue blockers remain visible.
 
+- **A-043:** A real-manifest adoption installs all starter skill resources, preserves customized AGENTS and commands, and passes structural diagnostics after deliberate guidance integration; missing skills and guidance are warned about without requiring development contracts in clean starters.
+
 ## Anti-goals
 
 - **AG-001:** Do not add a daemon, cron substitute, scheduler service, paid service, or third-party memory dependency to the default template.
@@ -153,6 +159,7 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 
 ## Amendments
 
+
 - **2026-09-09:** Created from `docs/codexicon-recommendations-2026-09-09.md`; preserves the recommendation package as historical input and authorizes local implementation only.
 - **2026-09-11:** Authorized clean starter generation, writer-policy reconciliation, reproducible release identity, and live Codex comparison work; publication remains confined to the later Ship phase.
 - **2026-09-11:** Authorized implementation of the evolution brief's bounded capability layer: validated profiles, quality/refinement guidance, selective review, verification tiers, decision visibility, and capability evidence. Preserve the no-daemon and explicit Ship boundaries.
@@ -160,3 +167,5 @@ Codexicon provides a portable, local-first template and manager whose contract, 
 - **2026-09-23:** Authorized implementation of the adaptive-intelligence routing recommendations as an opt-in, evidence-first extension of the existing capability/task/evaluation layers. Preserve primary ownership, one-writer Build, existing budgets, no recursive delegation, no model pinning, and the explicit Ship boundary.
 - **2026-11-14:** Authorized implementation of the adaptive-autonomy evaluation and recovery milestone. Require independent outcome verification, matched starter comparisons, bounded synthetic recovery cases, and an evidence-based decision before changing default behavior.
 - **2026-11-14:** Following the T-040 decision to retain current recovery defaults, authorized the adaptive method-selection, project verification, and skill-comparison milestone. Candidates remain inactive until their evidence supports an explicit maintainer decision; no automatic promotion or new authority is granted.
+
+- **2026-11-21:** Authorized adoption completeness repair R-042/I-035/A-043; preserve project instructions and distinguish structural integration from application readiness.

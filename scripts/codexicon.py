@@ -38,6 +38,10 @@ CHECKPOINT_MARKER = "codexicon-checkpoint:"
 SCHEMA_VERSION = 1
 POLICIES = {"managed", "merge", "project"}
 CANONICAL_CHECKS = ("lint", "test", "security")
+CORE_WORKFLOW_SKILLS = (
+    "discover", "init", "spec", "write-plan", "quick", "investigate",
+    "autonomous-build", "execute-plan", "review", "ship",
+)
 BUILD_MODE = "build"
 SHIP_MODE = "ship"
 VERIFICATION_MODES = (BUILD_MODE, SHIP_MODE)
@@ -3062,6 +3066,24 @@ def doctor(root: Path, *, mode: str = BUILD_MODE) -> int:
         raise CodexiconError(f"unsupported verification mode: {mode}")
     root = root.resolve()
     diagnostics: list[tuple[str, str]] = []
+    for skill in CORE_WORKFLOW_SKILLS:
+        relative = f".agents/skills/{skill}/SKILL.md"
+        try:
+            present = checked_path(root, relative).is_file()
+        except CodexiconError as exc:
+            diagnostics.append(("ERROR", str(exc)))
+            continue
+        if not present:
+            diagnostics.append(("WARN", f"missing workflow skill: {relative}; review a trusted source update"))
+    try:
+        guidance_path = checked_path(root, "AGENTS.md")
+        guidance = guidance_path.read_text(encoding="utf-8") if guidance_path.is_file() else ""
+        if "docs/build-contracts.md" not in guidance:
+            diagnostics.append(("WARN", "AGENTS.md has no docs/build-contracts.md reference; "
+                                "merge the operating guidance in docs/upgrading.md; "
+                                "installed files alone do not establish workflow integration"))
+    except (OSError, UnicodeError, CodexiconError) as exc:
+        diagnostics.append(("ERROR", f"cannot inspect project operating guidance: {exc}"))
     parse_config(root, diagnostics)
     parse_hooks(root, diagnostics)
     if (root / "SPEC.md").exists():

@@ -67,7 +67,12 @@ class LiveAgentEvaluationTests(unittest.TestCase):
             outside.write_text("def add(left, right):\n    return left + right\n", encoding="utf-8")
             EVAL.create_fixture(fixture)
             (fixture / EVAL.CALCULATOR_FILENAME).unlink()
-            (fixture / EVAL.CALCULATOR_FILENAME).symlink_to(outside)
+            try:
+                (fixture / EVAL.CALCULATOR_FILENAME).symlink_to(outside)
+            except OSError as exc:
+                if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                    self.skipTest("Windows symlink privilege is unavailable")
+                raise
 
             snapshot = EVAL._fixture_snapshot(fixture)
             score = EVAL.score_fixture(fixture)

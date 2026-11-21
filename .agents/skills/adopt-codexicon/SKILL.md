@@ -31,6 +31,8 @@ After the user deliberately stages the adopted files, run `python TARGET/scripts
 
 Run `python TARGET/scripts/codexicon.py doctor --root TARGET`, then the target's canonical lint, test, and security commands.
 
+Adoption preserves project-owned `AGENTS.md`; installing files does not merge its operating rules. Merge the small operating paragraph in `docs/upgrading.md` into the existing instructions, preserving project identity and commands. Resolve missing workflow skills from a reviewed source update. A clean doctor result is a structural check, not evidence of agent activation or passing application checks.
+
 ## 3. Update
 
 From an adopted target, inspect a trusted local release source before apply:

@@ -18,6 +18,7 @@ from security_scan import (  # noqa: E402
     safe_discover_files,
 )
 from skill_provenance import validate_lock  # noqa: E402
+from scaffold import STARTER_FILES  # noqa: E402
 
 try:
     import tomllib
@@ -679,6 +680,15 @@ def validate(*, release: bool = False) -> list[str]:
         ):
             if required_manifest_path not in seen_manifest_paths:
                 errors.append(f".codexicon.json omits required path: {required_manifest_path}")
+        for relative in STARTER_FILES:
+            if relative.startswith(".agents/skills/") or relative == "docs/build-contracts.md":
+                if relative not in seen_manifest_paths:
+                    errors.append(f".codexicon.json omits starter workflow resource: {relative}")
+                elif not any(item.get("path") == relative and item.get("policy") == "merge"
+                             for item in manifest_files if isinstance(item, dict)):
+                    # The adoption skill itself is deliberately managed.
+                    if relative != ".agents/skills/adopt-codexicon/SKILL.md":
+                        errors.append(f"starter workflow resource must use merge policy: {relative}")
 
     skill_names: dict[str, str] = {}
     skill_catalog_chars = 0

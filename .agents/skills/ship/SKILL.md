@@ -58,11 +58,13 @@ For commit-only, run the narrowest feature checks plus:
 python scripts/security_scan.py --mode ship
 ```
 
-For publish, merge, or deploy, also run:
+For publish, merge, or deploy of the Codexicon template itself, also run:
 
 ```bash
 python scripts/release.py check --tag vX.Y.Z
 ```
+
+For an adopted application, use its documented release/build and publication checks from `agent_docs/operations.md` or the project instructions. `scripts/release.py` is Codexicon maintainer tooling and is not installed into consuming projects. If the project's publication checks are undefined, report that specific publication blocker after completing authorized local repairs and verification; do not invent a passing release check.
 
 Then verify the intended publication artifact and destination against the
 passed release identity before the authorized action. The release check

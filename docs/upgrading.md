@@ -123,6 +123,15 @@ Adopt the hook classifier and its regression tests together so read-only Codexic
 
 ## Adoption checklist
 
+### Merge operating guidance into an existing project
+
+Adoption and updates preserve project-owned `AGENTS.md`. Add the following paragraph deliberately, alongside the project's existing instructions:
+
+> Follow the local workflow in `docs/build-contracts.md`. For an authorized implementation or fix, diagnose and correct in-scope verification failures, rerun the relevant checks, and continue while runnable work remains. A failed check is feedback for the local repair loop. Missing commits or a remote block publication only. Keep diagnosis-only requests read-only; distinguish completed local work from any remaining publication blocker.
+
+The adoption manifest now includes all starter skills and their supporting resources. Existing installations receive absent files through a reviewed `update` plan; conflicts and previously deleted files remain explicit. Run `doctor` after integration. It warns about missing core skills and a missing build-contract reference without overwriting local instructions. That reference signals a documented integration path, not proof that a model followed it. Fresh, uninitialized starters need not have `SPEC.md` or `TASKS.md` yet.
+
+
 - Selected release changes are mapped to a real project need or safeguard.
 - Project identity, commands, supported platforms, and accepted decisions are preserved.
 - Credential paths and local state remain untracked and unopened.

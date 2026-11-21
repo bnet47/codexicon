@@ -461,12 +461,14 @@ class TemplateValidationTests(unittest.TestCase):
         self.assertIn("explicit authority", publish_actions)
 
         verify_start = ship.index("For commit-only, run the narrowest feature checks")
-        publish_verify_start = ship.index("For publish, merge, or deploy, also run:", verify_start)
+        publish_verify_start = ship.index("For publish, merge, or deploy of the Codexicon template itself, also run:", verify_start)
         commit_verify = ship[verify_start:publish_verify_start]
         publish_verify = ship[publish_verify_start:]
         self.assertIn("python scripts/security_scan.py --mode ship", commit_verify)
         self.assertNotIn("python scripts/release.py check", commit_verify)
         self.assertIn("python scripts/release.py check --tag vX.Y.Z", publish_verify)
+        self.assertIn("For an adopted application, use its documented release/build", publish_verify)
+        self.assertIn("not installed into consuming projects", publish_verify)
         self.assertIn("fails closed", publish_verify)
 
         for content in (codex_docs, autonomous_build, ship):

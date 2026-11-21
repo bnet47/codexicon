@@ -34,6 +34,7 @@ Before initialization, native Windows can run `./scripts/lint.ps1` and `./script
 ## Working agreements
 
 - Start from the requested outcome and done conditions. Inspect first; preserve unrelated changes.
+- Apply the local workflow in [build contracts](docs/build-contracts.md); missing Git setup does not block authorized local fixes or verification.
 - Build is autonomous by default: inspect, plan, implement, verify, critique, refine, and continue through the root `TASKS.md` without routine approval prompts or suggested-next-prompt stops while work is runnable. Make reversible assumptions and record consequential ones; batch genuinely blocking questions.
 - Use `$autonomous-build` for multi-task work. Use `$engineering-loop` only for independent read-only research or review. Keep small clear changes direct.
 - Use `$find-skills` only for an explicit capability search. External skill discovery is read-only until the user approves a reviewed, pinned, project-local installation.
